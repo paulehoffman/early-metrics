@@ -1,0 +1,33 @@
+[
+	{
+		"name": "Set up the machine as root",
+		"hosts": "vp001",
+		"remote_user": "root",
+		"tasks": [
+			{ "name": "Initialize apt", "apt": { "update_cache": true } },
+			{ "name": "Do the apt upgrade", "apt": { "upgrade": "full", "force": true } },
+			{ "name": "Install all the needed packages", "apt": { "pkg": [ "build-essential", "curl", "git",
+				"libcap-dev", "libssl-dev", "libuv1-dev", "man", "pkg-config", "python-ply", "rsync", "traceroute", "unzip" ] } },
+			{ "name": "Put .bashrc for root", "copy": { "src": "bashrc-for-root", "dest": "/root/.bashrc" } },
+			{ "name": "Make .ssh for metrics", "file": { "path": "/home/metrics/.ssh", "state": "directory",
+				"owner": "metrics", "group": "metrics", "mode": "0700" } },
+			{ "name": "authorized_keys for metrics", "copy": { "src": "authorized_keys", "dest": "/home/metrics/.ssh/authorized_keys",
+				"owner": "metrics", "group": "metrics", "mode": "0600" } }
+		]
+	},
+	{
+		"name": "Set up metrics user",
+		"hosts": "vp001",
+		"remote_user": "metrics",
+		"tasks": [
+			{ "name": "Put .bashrc for metrics", "template": { "src": "bashrc-for-metrics", "dest": "/home/metrics/.bashrc" } },
+			{ "name": "make Source/", "file": { "path": "/home/metrics/Source", "state": "directory", "mode": "0700" } },
+			{ "name": "make Target/", "file": { "path": "/home/metrics/Target", "state": "directory", "mode": "0700" } },
+			{ "name": "Get and expand BIND 9.16.0", "get_url": { "url": "https://downloads.isc.org/isc/bind9/9.16.0/bind-9.16.0.tar.xz", "dest": "/home/metrics/Source" } },
+			{ "name": "Expand BIND tarball", "unarchive": { "src": "bind-9.16.0.tar.xz", "dest": "/home/metrics/Source",
+				"creates": "/home/metrics/Source/bind-9.16.0" } },
+			{ "name": "Make BIND", "shell": { "cmd": "./configure --prefix=/home/metrics/Target; make install",
+				"chdir": "/home/metrics/Source/bind-9.16.0", "creates": "/home/metrics/Target/bin/dig" } }
+		]
+	}
+]
