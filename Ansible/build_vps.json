@@ -24,8 +24,9 @@
 			{ "name": "make Source/", "file": { "path": "/home/metrics/Source", "state": "directory", "mode": "0700" } },
 			{ "name": "make Target/", "file": { "path": "/home/metrics/Target", "state": "directory", "mode": "0700" } },
 			{ "name": "Copy local BIND tarball and expand it", "unarchive": { "src": "bind-9.16.0.tar.xz", "dest": "/home/metrics/Source",
-				"creates": "/home/metrics/Source/bind-9.16.0" } },
+					"creates": "/home/metrics/Source/bind-9.16.0" } },
 			{ "name": "Make BIND", "shell": { "cmd": "./configure --prefix=/home/metrics/Target; make install",
-				"chdir": "/home/metrics/Source/bind-9.16.0", "creates": "/home/metrics/Target/bin/dig" } } ]
+					"chdir": "/home/metrics/Source/bind-9.16.0", "creates": "/home/metrics/Target/bin/dig" } },
+			{ "name": "Clone the repo", "git": { "repo": "https://github.com/paulehoffman/early-metrics.git", "dest": "/home/metrics/repo" } } ]
 	}
 ]
