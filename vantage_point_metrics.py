@@ -4,9 +4,12 @@
 import argparse, logging, os, pickle, random, re, requests, subprocess, time
 from concurrent import futures
 
+################ Add elapsed time reporting to this ##########################
+
 # Run one command such as dig or traceroute; to be used under concurrent.futures
 def do_one_command(command_dict):
-	''' Takes a command_dict that contains command_dict["command"]; returns (success_bool, text) '''
+	''' Takes a command_dict that contains command_dict["command"]; returns (success_bool, elapsed, text) '''
+	one_command_start = time.time()
 	try:
 		command_to_give = command_dict["command"]
 	except:
@@ -14,12 +17,12 @@ def do_one_command(command_dict):
 	try:
 		command_p = subprocess.run(command_to_give, shell=True, capture_output=True, text=True, check=True)
 	except Exception as e:
-		return (False, "Running '{}' got exception '{}'.".format(command_to_give, e))
+		return (False, time.time()-one_command_start, "Running '{}' got exception '{}'.".format(command_to_give, e))
 	this_command_text = command_p.stdout
 	if len(this_command_text) == 0:
-		return (False, "Running '{}' got a zero-length response, stderr was '{}'".format(command_to_give, command_p.stderr))
+		return (False, time.time()-one_command_start, "Running '{}' got a zero-length response, stderr was '{}'".format(command_to_give, command_p.stderr))
 	else:
-		return (True, this_command_text)
+		return (True, time.time()-one_command_start, this_command_text)
 
 # Make a list candidate RRsets for the correctness testing in style 1
 def update_rr_list(file_to_write):
@@ -112,9 +115,9 @@ if __name__ == "__main__":
 	# Get the vantage point identifier from the environment
 	#   vp_ident of 999 is special: it means this is running on a local computer, probably for testing
 	#   This has to be done before setting up logging, so "exit" is needed if it fails
-	if vp_ident = os.environ.get("VP_NAME")
+	vp_ident = os.environ.get("VP_NAME")
 	# See if it is empty, or if the Ansible templating didn't work
-	if vp_ident == "" or if "vp_name" in vp_ident:
+	if vp_ident == "" or "vp_name" in vp_ident:
 		exit("The environment variable VP_NAME was set to '{}'. Exiting.".format(vp_ident))
 
 	# Set up the logging and alert mechanisms
@@ -304,14 +307,10 @@ if __name__ == "__main__":
 	with futures.ProcessPoolExecutor() as executor:
 		for (this_command, this_ret) in zip(all_commands, executor.map(do_one_command, all_commands)):
 			if this_ret[0]:
-				# The record of the command is [ target, internet, transport, ip_addr, test_type, dig_output ]
+				# The record of the command is [ target, internet, transport, ip_addr, test_type, elapsed, dig_output ]
 				this_record = [
-					this_command["target"],
-					this_command["internet"],
-					this_command["transport"],
-					this_command["ip_addr"],
-					this_command["test_type"],
-					this_ret[1] ]
+					this_command["target"], this_command["internet"], this_command["transport"], this_command["ip_addr"], this_command["test_type"],
+					this_ret[1], this_ret[2] ]
 				all_dig_output.append(this_record)
 			else:
 				log(this_ret[1])

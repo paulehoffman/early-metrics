@@ -9,9 +9,10 @@
 			{ "name": "Install all the needed packages", "apt": { "pkg": [ "build-essential", "curl", "git",
 				"libcap-dev", "libssl-dev", "libuv1-dev", "man", "pkg-config", "python-ply", "rsync", "traceroute", "unzip" ] } },
 			{ "name": "Put .bashrc for root", "copy": { "src": "bashrc-for-root", "dest": "/root/.bashrc" } },
+			{ "name": "Make user 'metrics'", "user": { "name": "metrics", "home": "/home/metrics", "shell": "/usr/bin/bash" } },
 			{ "name": "Make .ssh for metrics", "file": { "path": "/home/metrics/.ssh", "state": "directory",
 				"owner": "metrics", "group": "metrics", "mode": "0700" } },
-			{ "name": "authorized_keys for metrics", "copy": { "src": "authorized_keys", "dest": "/home/metrics/.ssh/authorized_keys",
+			{ "name": "authorized_keys for metrics", "copy": { "src": "../Local/authorized_keys", "dest": "/home/metrics/.ssh/authorized_keys",
 				"owner": "metrics", "group": "metrics", "mode": "0600" } } ]
 	},
 	{
