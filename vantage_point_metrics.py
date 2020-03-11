@@ -4,8 +4,6 @@
 import argparse, logging, os, pickle, random, re, requests, subprocess, time
 from concurrent import futures
 
-################ Add elapsed time reporting to this ##########################
-
 # Run one command such as dig or traceroute; to be used under concurrent.futures
 def do_one_command(command_dict):
 	''' Takes a command_dict that contains command_dict["command"]; returns (success_bool, elapsed, text) '''
@@ -17,12 +15,13 @@ def do_one_command(command_dict):
 	try:
 		command_p = subprocess.run(command_to_give, shell=True, capture_output=True, text=True, check=True)
 	except Exception as e:
-		return (False, time.time()-one_command_start, "Running '{}' got exception '{}'.".format(command_to_give, e))
+		return (False, 0, "Running '{}' got exception '{}'.".format(command_to_give, e))
+	one_command_elapsed = time.time() - one_command_start
 	this_command_text = command_p.stdout
 	if len(this_command_text) == 0:
-		return (False, time.time()-one_command_start, "Running '{}' got a zero-length response, stderr was '{}'".format(command_to_give, command_p.stderr))
+		return (False, one_command_elapsed, "Running '{}' got a zero-length response, stderr was '{}'".format(command_to_give, command_p.stderr))
 	else:
-		return (True, time.time()-one_command_start, this_command_text)
+		return (True, one_command_elapsed, this_command_text)
 
 # Make a list candidate RRsets for the correctness testing in style 1
 def update_rr_list(file_to_write):
