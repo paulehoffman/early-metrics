@@ -7,7 +7,7 @@
 			{ "name": "Initialize apt", "apt": { "update_cache": true } },
 			{ "name": "Do the apt upgrade", "apt": { "upgrade": "full", "force": true } },
 			{ "name": "Install all the needed packages", "apt": { "pkg": [ "build-essential", "curl", "git",
-				"libcap-dev", "libssl-dev", "libuv1-dev", "man", "pkg-config", "pyflakes3", "python-ply", "rsync", "traceroute", "unzip" ] } },
+				"libcap-dev", "libssl-dev", "libuv1-dev", "man", "pkg-config", "pyflakes3", "python-ply", "rsync", "scamper", "traceroute", "unzip" ] } },
 			{ "name": "Put .bashrc for root", "copy": { "src": "bashrc-for-root", "dest": "/root/.bashrc" } },
 			{ "name": "Make user 'metrics'", "user": { "name": "metrics", "home": "/home/metrics", "shell": "/bin/bash" } },
 			{ "name": "Make .ssh for metrics", "file": { "path": "/home/metrics/.ssh", "state": "directory",

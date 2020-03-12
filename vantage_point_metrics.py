@@ -4,7 +4,7 @@
 import argparse, logging, os, pickle, random, re, requests, subprocess, time
 from concurrent import futures
 
-# Run one command such as dig or traceroute; to be used under concurrent.futures
+# Run one command such as dig or scamper; to be used under concurrent.futures
 def do_one_command(command_dict):
 	''' Takes a command_dict that contains command_dict["command"]; returns (success_bool, elapsed, text) '''
 	one_command_start = time.time()
@@ -142,17 +142,17 @@ if __name__ == "__main__":
 			print("Exiting at {}: {}".format(int(time.time()), error_message))
 		exit()
 
-	# Sanity check for dig and traceroute
+	# Sanity check for dig and scamper
 	path_to_dig = os.path.expanduser("~/Target/bin/dig")
-	path_to_traceroute = "traceroute"
+	path_to_scamper = "scamper"
 	try:
 		subprocess.run("{} +yaml".format(path_to_dig), check=True, shell=True, capture_output=True)
 	except Exception as e:
 		die("Could not sanity-check for dig: '{}'.".format(e))
 	try:
-		subprocess.run("{} localhost".format(path_to_traceroute), check=True, shell=True, capture_output=True)
+		subprocess.run("{} localhost".format(path_to_scamper), check=True, shell=True, capture_output=True)
 	except Exception as e:
-		die("Could not sanity-check for traceroute: '{}'.".format(e))
+		die("Could not sanity-check for scamper: '{}'.".format(e))
 	
 	# Get the time string for this run
 	start_time_string = time.strftime("%Y%m%d%H%M")
@@ -199,33 +199,35 @@ if __name__ == "__main__":
 	#			"target": target for the query
 	#			"internet": "v4" or "v6"
 	#			"ip_addr": address for the query
-	#			"test_type": "T" for traceroute, "S" for ./SOA, "C" for correctness
+	#			"test_type": "T" for scamper, "S" for ./SOA, "C" for correctness
 	#			"command": the command to give
 	all_commands = []
 	
-	# Put together the list of commands for style 1
-	#    The command templates
-	style_1_traceroute_template = "{} -n -m 20 -q 1 -w 2 {}"
-	style_1_dot_soa_query_template = "{} +yaml . SOA @{} {} +{}tcp +nodnssec +noauthority +noadditional +bufsize=1220 +nsid +norecurse +time=4 +tries=1"
-	style_1_correctness_query_template = "{} +yaml {} {} @{} {} +{}tcp +dnssec +bufsize=1220 +nsid +norecurse +time=4 +tries=1"
-
-	# Run the traceroutes and the queries for . SOA
-	#   The logic here adds the traceroute commands just before the DNS queries
+	# Start with the scamper command; it will run first
+	this_scamper_cmd = "{} -i ".format(path_to_scamper)
 	for this_target in style_vars["targets"]:
 		for this_internet in ["v4", "v6"]:
 			specify_4_or_6 = "-4" if this_internet == "v4" else "-6"
 			for this_ip_addr in style_vars["targets"][this_target][this_internet]:
-				# Add the traceroute commands
-				this_traceroute_cmd = style_1_traceroute_template.format(path_to_traceroute, this_ip_addr)
-				all_commands.append( {
-					"target": this_target,
-					"internet": this_internet,
-					"ip_addr": this_ip_addr,
-					"transport": "",
-					"test_type": "T",
-					"command": this_traceroute_cmd
-				} )
-				# Continue the logic to create the . SOA commands
+				this_scamper_cmd += "{} ".format(this_ip_addr)
+	all_commands.append( {
+		"target": None,
+		"internet": None,
+		"ip_addr": None,
+		"transport": None,
+		"test_type": "T",
+		"command": this_scamper_cmd
+	} )
+
+	# Put together the list of commands for style 1
+	style_1_dot_soa_query_template = "{} +yaml . SOA @{} {} +{}tcp +nodnssec +noauthority +noadditional +bufsize=1220 +nsid +norecurse +time=4 +tries=1"
+	style_1_correctness_query_template = "{} +yaml {} {} @{} {} +{}tcp +dnssec +bufsize=1220 +nsid +norecurse +time=4 +tries=1"
+
+	# Run the queries for . SOA
+	for this_target in style_vars["targets"]:
+		for this_internet in ["v4", "v6"]:
+			specify_4_or_6 = "-4" if this_internet == "v4" else "-6"
+			for this_ip_addr in style_vars["targets"][this_target][this_internet]:
 				for this_transport in ["udp", "tcp"]:
 					is_tcp_string = "no" if this_transport == "udp" else ""
 					# Add the . SOA commands
