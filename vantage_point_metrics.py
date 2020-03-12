@@ -4,7 +4,7 @@
 import argparse, logging, os, pickle, random, re, requests, subprocess, time
 from concurrent import futures
 
-# Run one command such as dig or scamper; to be used under concurrent.futures
+# Run one command; to be used under concurrent.futures
 def do_one_command(command_dict):
 	''' Takes a command_dict that contains command_dict["command"]; returns (success_bool, elapsed, text) '''
 	one_command_start = time.time()
@@ -142,9 +142,6 @@ if __name__ == "__main__":
 			print("Exiting at {}: {}".format(int(time.time()), error_message))
 		exit()
 
-	path_to_dig = os.path.expanduser("~/Target/bin/dig")
-	path_to_scamper = "scamper"
-	
 	# Get the time string for this run
 	start_time_string = time.strftime("%Y%m%d%H%M")
 	# Log the start
@@ -190,27 +187,12 @@ if __name__ == "__main__":
 	#			"target": target for the query
 	#			"internet": "v4" or "v6"
 	#			"ip_addr": address for the query
-	#			"test_type": "T" for scamper, "S" for ./SOA, "C" for correctness
+	#			"test_type": "S" for ./SOA, "C" for correctness
 	#			"command": the command to give
 	all_commands = []
 	
-	# Start with the scamper command; it will run first
-	this_scamper_cmd = "{} -i ".format(path_to_scamper)
-	for this_target in style_vars["targets"]:
-		for this_internet in ["v4", "v6"]:
-			specify_4_or_6 = "-4" if this_internet == "v4" else "-6"
-			for this_ip_addr in style_vars["targets"][this_target][this_internet]:
-				this_scamper_cmd += "{} ".format(this_ip_addr)
-	all_commands.append( {
-		"target": None,
-		"internet": None,
-		"ip_addr": None,
-		"transport": None,
-		"test_type": "T",
-		"command": this_scamper_cmd
-	} )
-
 	# Put together the list of commands for style 1
+	path_to_dig = os.path.expanduser("~/Target/bin/dig")
 	style_1_dot_soa_query_template = "{} +yaml . SOA @{} {} +{}tcp +nodnssec +noauthority +noadditional +bufsize=1220 +nsid +norecurse +time=4 +tries=1"
 	style_1_correctness_query_template = "{} +yaml {} {} @{} {} +{}tcp +dnssec +bufsize=1220 +nsid +norecurse +time=4 +tries=1"
 
@@ -293,11 +275,12 @@ if __name__ == "__main__":
 	# If the commands are supposed to run in random order, this is the place to do that
 	#   random.shuffle(all_commands)  # Not doing that for style 1
 	
-	# Run the commands, collecting the text output
+	# Run the dig commands, collecting the text output
 	commands_clock_start = int(time.time())
 	all_dig_output = []
 	with futures.ProcessPoolExecutor() as executor:
 		for (this_command, this_ret) in zip(all_commands, executor.map(do_one_command, all_commands)):
+			# Check the first argument for True/False
 			if this_ret[0]:
 				# The record of the command is [ target, internet, transport, ip_addr, test_type, elapsed, dig_output ]
 				this_record = [
@@ -306,18 +289,40 @@ if __name__ == "__main__":
 				all_dig_output.append(this_record)
 			else:
 				log(this_ret[1])
-	commands_clock_stop = int(time.time())
 	
+	# Finish with the scamper command
+	scamper_output = ""
+	scamper_start_time = time.time()
+	this_scamper_cmd = "scamper -i "
+	for this_target in style_vars["targets"]:
+		for this_internet in ["v4", "v6"]:
+			specify_4_or_6 = "-4" if this_internet == "v4" else "-6"
+			for this_ip_addr in style_vars["targets"][this_target][this_internet]:
+				this_scamper_cmd += "{} ".format(this_ip_addr)
+	try:
+		command_p = subprocess.run(this_scamper_cmd, shell=True, capture_output=True, text=True, check=True)
+	except Exception as e:
+		log("Running scamper had the exception '{}'; continuing.".format(e))
+	scamper_output = command_p.stdout
+	scamper_elapsed = int(time.time() - scamper_start_time)
+	if len(scamper_output) == 0:
+		log("Running scamper got a zero-length response in {} seconds, stderr was '{}'".format(scamper_elapsed, command_p.stderr))
+	scamper_output += "Elapsed was {} seconds".format(scamper_elapsed)
+
+	commands_clock_stop = int(time.time())
+
 	# Save output as a dict
 	#   "v": int, version of this program (1 for now)
 	#   "d": int, the delay used: style_vars["wait_first"]
 	#   "e": float, elapsed time for commands: commands_clock_stop - commands_clock_start
 	#   "r": list, the records
+	#   "s", text, the output from scamper
 	output_dict = {
 		"v": 1,
 		"d": style_vars["wait_first"],
 		"e": commands_clock_stop - commands_clock_start,
-		"r": all_dig_output
+		"r": all_dig_output,
+		"s": scamper_output
 	}
 	# Save the output in a file with start_time_string and vp_ident
 	try:
