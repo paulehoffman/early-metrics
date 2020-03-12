@@ -3,6 +3,6 @@ PS1='`whoami|tr a-z A-Z`:\h:`pwd`# '
 alias dir='ls -lah '
 export LESS='-X'
 
-export PATH="/home/metrics/Target/bin:$PATH"
+export PATH="/home/metrics/Target/bin:/home/metrics/Target/sbin:$PATH"
 export VP_NAME="{{ vp_name }}"
 
