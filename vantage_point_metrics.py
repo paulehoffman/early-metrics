@@ -142,17 +142,8 @@ if __name__ == "__main__":
 			print("Exiting at {}: {}".format(int(time.time()), error_message))
 		exit()
 
-	# Sanity check for dig and scamper
 	path_to_dig = os.path.expanduser("~/Target/bin/dig")
 	path_to_scamper = "scamper"
-	try:
-		subprocess.run("{} +yaml".format(path_to_dig), check=True, shell=True, capture_output=True)
-	except Exception as e:
-		die("Could not sanity-check for dig: '{}'.".format(e))
-	try:
-		subprocess.run("{} localhost".format(path_to_scamper), check=True, shell=True, capture_output=True)
-	except Exception as e:
-		die("Could not sanity-check for scamper: '{}'.".format(e))
 	
 	# Get the time string for this run
 	start_time_string = time.strftime("%Y%m%d%H%M")

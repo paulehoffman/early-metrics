@@ -1,7 +1,7 @@
 [
 	{
 		"name": "Set up the machine as root",
-		"hosts": "all_vps",
+		"hosts": "vp001",
 		"remote_user": "root",
 		"tasks": [
 			{ "name": "Initialize apt", "apt": { "update_cache": true } },
@@ -17,7 +17,7 @@
 	},
 	{
 		"name": "Set up metrics user",
-		"hosts": "all_vps",
+		"hosts": "vp001",
 		"remote_user": "metrics",
 		"tasks": [
 			{ "name": "Put .bashrc for metrics", "template": { "src": "bashrc-for-metrics", "dest": "/home/metrics/.bashrc" } },
