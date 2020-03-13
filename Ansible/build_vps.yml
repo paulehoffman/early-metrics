@@ -1,6 +1,8 @@
 - name: Set up the machine as root
   hosts: all_vps  
   remote_user: root
+  vars_files:
+    - ../Local/reading-password.yml
   tasks:
   - name: Initialize apt
     apt:
@@ -17,11 +19,24 @@
     copy:
       src: bashrc-for-root
       dest: /root/.bashrc
+  - name: Replace sshd_config
+    copy:
+      src: sshd_config_allow_password
+      dest: /etc/ssh/sshd_config
+  - name: Restart sshd
+    systemd:
+      name: ssh
+      state: restarted
   - name: Make user 'metrics'
     user: 
       name: metrics
       home: /home/metrics
       shell: /bin/bash
+  - name: Make user 'reading'
+    user: 
+      name: reading
+      home: /home/reading
+      password: "{{ reading_password }}"
   - name: Make .ssh for metrics
     file:
       path: /home/metrics/.ssh
