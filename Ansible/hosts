@@ -7,3 +7,6 @@
 
 # 001 DO, SFO2, Standard / 1 GB / 3 vCPUs, $15/mo
 # 002 DO, BLR, Standard / 1 GB / 3 vCPUs, $15/mo
+
+[c00]
+c00.mtric.net vp_name="c00"

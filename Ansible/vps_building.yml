@@ -1,8 +1,6 @@
 - name: Set up the machine as root
   hosts: all_vps  
   remote_user: root
-  vars_files:
-    - ../Local/reading-password.yml
   tasks:
   - name: Initialize apt
     apt:
@@ -19,38 +17,44 @@
     copy:
       src: bashrc-for-root
       dest: /root/.bashrc
-  - name: Replace sshd_config
-    copy:
-      src: sshd_config_allow_password
-      dest: /etc/ssh/sshd_config
-  - name: Restart sshd
-    systemd:
-      name: ssh
-      state: restarted
   - name: Make user 'metrics'
     user: 
       name: metrics
       home: /home/metrics
       shell: /bin/bash
-  - name: Make user 'reading'
-    user: 
-      name: reading
-      home: /home/reading
-      password: "{{ reading_password }}"
   - name: Make .ssh for metrics
     file:
       path: /home/metrics/.ssh
       group: metrics
-      mode: '0700'
+      mode: u+rwx
       owner: metrics
       state: directory
   - name: authorized_keys for metrics
     copy:
-      src: ../Local/authorized_keys
+      src: ../Local/metrics_authorized_keys
       dest: /home/metrics/.ssh/authorized_keys
       group: metrics
-      mode: '0600'
+      mode: u+rw
       owner: metrics
+  - name: Make user 'reading'
+    user: 
+      name: reading
+      home: /home/reading
+      shell: /usr/sbin/nologin
+  - name: Make .ssh for reading
+    file:
+      path: /home/reading/.ssh
+      group: reading
+      mode: u+rwx
+      owner: reading
+      state: directory
+  - name: authorized_keys for reading
+    copy:
+      src: ../Local/reading_authorized_keys
+      dest: /home/reading/.ssh/authorized_keys
+      group: reading
+      mode: u+rw
+      owner: reading
 - name: Set up metrics user
   hosts: all_vps
   remote_user: metrics
@@ -62,17 +66,17 @@
   - name: make Source/
     file:
       path: /home/metrics/Source
-      mode: '0700'
+      mode: u+wrx,go+rx
       state: directory
   - name: make Target/
     file:
       path: /home/metrics/Target
-      mode: '0700'
+      mode: u+wrx,go+rx
       state: directory
   - name: Copy local BIND tarball and expand it
     unarchive: 
       src: bind-9.16.0.tar.xz
-      dest: /home/metrics/Source,
+      dest: /home/metrics/Source
       creates: /home/metrics/Source/bind-9.16.0
   - name: Make BIND
     shell:
