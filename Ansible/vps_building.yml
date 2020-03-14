@@ -40,7 +40,7 @@
     user: 
       name: reading
       home: /home/reading
-      shell: /usr/sbin/nologin
+      shell: /bin/bash
   - name: Make .ssh for reading
     file:
       path: /home/reading/.ssh
@@ -54,6 +54,13 @@
       dest: /home/reading/.ssh/authorized_keys
       group: reading
       mode: u+rw
+      owner: reading
+  - name: just-rsync.py for reading
+    copy:
+      src: just-rsync.py
+      dest: /home/reading
+      group: reading
+      mode: u+rwx
       owner: reading
 - name: Set up metrics user
   hosts: all_vps
