@@ -46,43 +46,43 @@ The RSSAC believes that a better long-term plan for the location of the vantage 
 
 ### 3.3 Connectivity and Other Requirements
 
-Vantage points shall be hosted inside data centers with reliable power and diverse connectivity providers.
+Vantage points shall be hosted inside data centers with reliable power `[roy]` and diverse connectivity providers. `[ppy]`
 
 The placement of vantage points should be based on the desire to have diverse connectivity providers. Diversity of connectivity providers helps to increase RSS coverage and avoid situations where multiple vantage points all reach the same instance.
 
-Vantage points may be deployed on “bare metal” or virtual machines (VMs). When VMs are utilized, they should provide dedicated IP addresses and a dedicated operating system environment.
+Vantage points may be deployed on “bare metal” or virtual machines (VMs). When VMs are utilized, they should provide dedicated IP addresses and a dedicated operating system environment. `[ota]` 
 
 ## 4 General Points about Metrics and Measurements
 
 ### 4.1 Reporting
 
-The metrics defined in this report shall be reported by the collection system on a monthly basis.
+The metrics defined in this report shall be reported by the collection system on a monthly basis. `[rps]`
 
-For RSI metrics (Section 5), the collection system reports results for each metric in a given month as either “pass” or “fail.” An RSI is reported to “pass” the metric when its value meets the appropriate threshold, and reported to “fail” when its value does not meet the threshold. The metric’s measured value is not reported in either reading. As stated in Section 2.2, these metrics are not designed to make performance comparisons between RSIs. See Section 8.1 for an example of an RSI metrics report.
+For RSI metrics (Section 5), the collection system reports results for each metric in a given month as either “pass” or “fail.” `[ntt]` An RSI is reported to “pass” the metric when its value meets the appropriate threshold, and reported to “fail” when its value does not meet the threshold. The metric’s measured value is not reported in either reading. `[cpm]` As stated in Section 2.2, these metrics are not designed to make performance comparisons between RSIs. See Section 8.1 for an example of an RSI metrics report.
 
-For RSS metrics (Section 6), the collection system reports the results for each metric in a given month with the measured value, as well as a pass or fail indication. See Section 8.2 for an example of an RSS metrics report.
+For RSS metrics (Section 6), the collection system reports the results for each metric in a given month with the measured value, as well as a pass or fail indication. `[nuc]` See Section 8.2 for an example of an RSS metrics report.
 
 ### 4.2 Timestamps and Measurement Scheduling
 
-Vantage points and the collection system shall be synchronized to Network Time Protocol (NTP).
+Vantage points and the collection system shall be synchronized to Network Time Protocol (NTP). `[ugt]`
 
-Vantage points run all tests at five-minute intervals. At the start of each five-minute interval, the measurement software should wait for an amount of time randomly chosen between 0 and 60 seconds. Thus, measurements from all vantage points start at slightly different times, but still have enough time to complete within the five-minute interval.
+Vantage points run all tests at five-minute intervals. `[wyn]` At the start of each five-minute interval, the measurement software should wait for an amount of time randomly chosen between 0 and 60 seconds. `[fzk]` Thus, measurements from all vantage points start at slightly different times, but still have enough time to complete within the five-minute interval. `[ygf]`
 
-Vantage points store measurements and the collection system reports metrics in Coordinated Universal Time (UTC). The collection system reports of pass or fail for thresholds are always shown for a whole month starting on the first of the month; dates for presentation always start at midnight (0 hours 0 minutes) UTC.
+Vantage points store measurements and the collection system reports metrics in Coordinated Universal Time (UTC). `[nms]` The collection system reports of pass or fail for thresholds are always shown for a whole month starting on the first of the month; `[ver]` dates for presentation always start at midnight (0 hours 0 minutes) UTC. `[jps]`
 
 ### 4.3 Elapsed Time and Timeouts
 
 Some vantage point measurements have timeouts or are designed to measure elapsed time. This section describes how to calculate elapsed time for individual measurements over differing transports. Unless specified otherwise for individual measurements, the following rules apply:
 
-For connectionless requests (i.e., over UDP) a timer starts immediately after the UDP message has been sent. It stops when the entire response has been received.
+For connectionless requests (i.e., over UDP) a timer starts immediately after the UDP message has been sent. It stops when the entire response has been received. `[tsm]`
 
-For connection-based requests (e.g., over TCP) a timer starts when the connection is initiated. It stops when the entire DNS response has been received (although not waiting for the TCP connection to close). 
+For connection-based requests (e.g., over TCP) a timer starts when the connection is initiated. It stops when the entire DNS response has been received (although not waiting for the TCP connection to close). `[epp]`
 
-Some features such as TCP Fast Open (TFO) reduce connection setup delays. None of those features should be turned on in the measurement platform. Environments and/or operating systems that do not allow TFO to be disabled should not be used for these measurements, if at all possible.
+Some features such as TCP Fast Open (TFO) reduce connection setup delays. None of those features should be turned on in the measurement platform. `[zbf]` Environments and/or operating systems that do not allow TFO to be disabled should not be used for these measurements, if at all possible. `[jbt]`
 
 ### 4.4 Connection Errors
 
-Both connectionless and connection-based transactions may terminate in an error. Some common errors include no route to host, connection refused, and connection reset by peer. For the purposes described in this document, vantage points shall treat such errors as timeouts. That is, in general, timeouts (including these errors) are not retried by vantage points and are not included in collection system metrics other than availability.
+Both connectionless and connection-based transactions may terminate in an error. Some common errors include no route to host, connection refused, and connection reset by peer. For the purposes described in this document, vantage points shall treat such errors as timeouts. `[dfl]` That is, in general, timeouts (including these errors) are not retried by vantage points and are not included in collection system metrics other than availability. `[dks]`
 
 ### 4.5 Spoofing Protections
 
