@@ -86,17 +86,17 @@ Both connectionless and connection-based transactions may terminate in an error.
 
 ### 4.5 Spoofing Protections
 
-Vantage points must take reasonable steps to prevent acceptance of spoofed responses. Vantage point software must use proper source port randomization, query id randomization, optional “0x20” mixed case, and proper query and response matching. DNS Cookies may be used as a lightweight DNS transaction security mechanism that provides limited protection to DNS servers and clients. 
+Vantage points must take reasonable steps to prevent acceptance of spoofed responses. Vantage point software must use proper source port randomization, `[uym]` query id randomization, `[wsb]` optional “0x20” mixed case, `[zon]` and proper query and response matching. `[doh]` DNS Cookies may be used as a lightweight DNS transaction security mechanism that provides limited protection to DNS servers and clients. `[ujj]` 
 
 If vantage points detect malicious or spoofed traffic, such events should be recorded and logged so that manual inspection of measurements can be performed and disregarded if necessary. 
 
 ### 4.6 Anycast
 
-The measurements defined in this report are “instance agnostic,” which means they do not target specific anycast instances within a RSI. Thus, the vantage points do not try to force queries to specific instances, rather they should let intermediate routers on the Internet determine which anycast instance of an RSI receives each query and measure the performance of the RSI as a whole.
+The measurements defined in this report are “instance agnostic,” which means they do not target specific anycast instances within a RSI. Thus, the vantage points do not try to force queries to specific instances, rather they should let intermediate routers on the Internet determine which anycast instance of an RSI receives each query and measure the performance of the RSI as a whole. `[fpy]`
 
 ### 4.7 Measurement Reuse
 
-In some cases, queries and responses for one measurement are used in more than one metric. In specific, the collection system uses the Start of Authority (SOA) query to an instance in the availability, and response latency, and publication latency metrics.
+In some cases, queries and responses for one measurement are used in more than one metric. In specific, the collection system uses the Start of Authority (SOA) query to an instance in the availability, and response latency, and publication latency metrics. `[dzn]`
 
 ### 4.8 Unexpected Results
 
