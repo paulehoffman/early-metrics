@@ -167,15 +167,15 @@ The purpose of these metrics is to characterize the response latency for a singl
 - IPv6 UDP Response Latency
 - IPv6 TCP Response Latency
 
-__Measurements.__ Measurements are taken from timing of queries and responses made for Section 5.1 "RSI Availability.” Timed-out queries are not utilized in this metric.
+__Measurements.__ Measurements are taken from timing of queries and responses made for Section 5.1 "RSI Availability.” `[zvy]` Timed-out queries are not utilized in this metric. `[vpa]`
 
-__Aggregation.__ All of the measurements for each transport and address type, from all vantage points, covering a period of one month are aggregated with the other measurements from the same transport and address type. Response latency is calculated as the median value of the aggregated latency measurements. 
+__Aggregation.__ All of the measurements for each transport and address type, from all vantage points, covering a period of one month are aggregated with the other measurements from the same transport and address type. `[fhw]` Response latency is calculated as the median value of the aggregated latency measurements. `[mzx]`
 
-__Precision.__ The number of aggregated measurements shall convey the metric’s precision.
+__Precision.__ The number of aggregated measurements shall convey the metric’s precision. `[lxr]`
 
-__Reporting.__ For each month, the report shall state whether or not each of the aggregated median response latency metrics meets or does not meet the established threshold.
+__Reporting.__ For each month, the report shall state whether or not each of the aggregated median response latency metrics meets or does not meet the established threshold. `[znh]`
 
-__Threshold.__ The recommended threshold for this metric is 250 milliseconds for UDP and 500 milliseconds for TCP. 
+__Threshold.__ The recommended threshold for this metric is 250 milliseconds for UDP `[zuc]` and 500 milliseconds for TCP. `[bpl]` 
 
 The threshold for TCP is twice that for UDP due to TCP connection setup latencies.
 
@@ -185,23 +185,23 @@ The purpose of this metric is to characterize whether or not a single root serve
 
 - Correctness
 
-The individual measurement responses will be marked either correct or incorrect. It might be difficult to determine whether an incorrect response was actually transmitted by an RSI, or due to an attacker transmitting spoofed responses. For this reason, implementations should follow the advice in Section 4.5 (“Spoofing Protections”) and Section 4.8 (“Unexpected Results”) to both minimize the chance of being affected by malicious traffic and to allow someone to investigate and disregard measurements that may be impacted by spoofing. 
+The individual measurement responses will be marked either correct or incorrect. `[jof]` It might be difficult to determine whether an incorrect response was actually transmitted by an RSI, or due to an attacker transmitting spoofed responses. For this reason, implementations should follow the advice in Section 4.5 (“Spoofing Protections”) and Section 4.8 (“Unexpected Results”) to both minimize the chance of being affected by malicious traffic and to allow someone to investigate and disregard measurements that may be impacted by spoofing. 
 
 The RSSAC recognizes that there are limitations to this metric because the vantage points are measuring a small number of root server instances, from known source IP addresses, with no detection of on-path attackers. Another potential limitation may arise in cases when root server instances are started up with older versions of the zone saved on disk. Typically, when name servers start up they will use any saved zone data and then quickly check for a newer version from the master server. If a correctness query happens during this short window of time between startup and zone refresh, stale data may be returned. Future improvements in the measurement system may address these and other concerns.
 
-__Measurements.__ Measurements shall be made by sending DNS queries at five-minute intervals to the RSIs. In each interval the transport and address type used for a particular measurement shall be chosen with uniform random probability among all combinations of IPv4/IPv6 and UDP/TCP. In order to test a variety of responses, the query name and type for a particular measurement are chosen at random as described below.
+__Measurements.__ Measurements shall be made by sending DNS queries at five-minute intervals to the RSIs. `[wca]` In each interval the transport and address type used for a particular measurement shall be chosen with uniform random probability among all combinations of IPv4/IPv6 and UDP/TCP. `[ogo]` In order to test a variety of responses, the query name and type for a particular measurement are chosen at random as described below.
 
-For all queries, the DNSSEC OK bit is always set, and the EDNS0 buffer size is set to 1220 when using UDP.
+For all queries, the DNSSEC OK bit is always set, `[rhe]` and the EDNS0 buffer size is set to 1220 when using UDP. `[rja]`
 
 There are two kinds of queries: expected positive and expected negative.
 
-- The expected positive queries are selected from the following RRSets from a recent root zone: ./SOA, ./DNSKEY, ./NS, <any_TLD>/NS, and <any_TLD>/DS. These measurements do not query non-authoritative data directly. However, any non-authoritative data included in the Additional section of responses will be checked for correctness.
+- The expected positive queries are selected from the following RRSets from a recent root zone: ./SOA, `[njh]` ./DNSKEY, `[hmc]` ./NS, `[xca]` <any_TLD>/NS, `[max]` and <any_TLD>/DS. `[kmd]` These measurements do not query non-authoritative data directly. However, any non-authoritative data included in the Additional section of responses will be checked for correctness.
 
-  - At the time this document is published, the ARPA TLD is served by many of the RSIs. From those root servers, an ARPA/NS query will return authoritative data, rather than a referral, and therefore cannot be tested for correctness as described in the checking rules below. Therefore, ARPA/NS must be excluded from the set of expected positive queries above as long as any RSI is serving ARPA authoritatively. Note, however, that ARPA/DS is included because it can be tested for correctness even in this scenario.
+  - At the time this document is published, the ARPA TLD is served by many of the RSIs. From those root servers, an ARPA/NS query will return authoritative data, rather than a referral, and therefore cannot be tested for correctness as described in the checking rules below. Therefore, ARPA/NS must be excluded from the set of expected positive queries above as long as any RSI is serving ARPA authoritatively. `[unt]` Note, however, that ARPA/DS is included because it can be tested for correctness even in this scenario.
 
-- The expected negative queries have a name that contains random letters and a resource record type of A. The names are constructed as “www.rssac047-test.<RAND-NXD>”, where <RAND-NXD> is formed by 10 ASCII letters chosen at random. Examples of expected negative questions are “www.rssac047-test.twxoozxmew” and “www.rssac047-test.hwzvpicwen”.
+- The expected negative queries have a name that contains random letters and a resource record type of A. The names are constructed as “www.rssac047-test.<RAND-NXD>”, `[hkc]` where <RAND-NXD> is formed by 10 ASCII letters chosen at random. `[dse]` Examples of expected negative questions are “www.rssac047-test.twxoozxmew” and “www.rssac047-test.hwzvpicwen”.
 
-When selecting a query to send for this metric, the vantage point chooses queries from the expected positive set with a 90% probability, and from the expected negative set with a 10% probability.
+When selecting a query to send for this metric, the vantage point chooses queries from the expected positive set with a 90% probability, and from the expected negative set with a 10% probability. `[yyg]`
 
 The rationale for the query styles is:
 
@@ -209,19 +209,19 @@ The rationale for the query styles is:
 
 - It is impossible to predict situations in which an RSI might provide incorrect responses. Using randomly generated TLDs - which look like typical queries - is a reasonable choice. By examining NSEC records from queries for random names we can identify cases where incorrect data may have been inserted into the root zone.
 
-Measurements shall use a timeout value of four seconds. Responses in which the TC bit is set shall be retried over TCP transport and the timeout restarted.
+Measurements shall use a timeout value of four seconds. `[twf]` Responses in which the TC bit is set shall be retried over TCP transport and the timeout restarted. `[hjw]`
 
-Measuring Correctness. For a response received within the timeout value, the measurement records the result as either correct or incorrect.
+__Measuring Correctness.__ For a response received within the timeout value, the measurement records the result as either correct or incorrect. `[lbl]`
 
-The collection system keeps a copy of every root zone file published after it has been set up. A response is tested against all root zones that were first seen in use in the 48 hours preceding the query until a correct result is returned. If no correct result is found, an incorrect result is returned.
+The collection system keeps a copy of every root zone file published after it has been set up. `[ooy]` A response is tested against all root zones that were first seen in use in the 48 hours preceding the query until a correct result is returned. `[yhu]` If no correct result is found, an incorrect result is returned. `[xog]`
 
-Correctness checking is based on the actual response data, rather than what was expected. For example, if a query was sent in the expected positive style, but the received response was negative (e.g., NXDOMAIN), matching is performed as a negative response. This is done to handle cases when vantage points might not receive configuration updates for a short period of time.
+Correctness checking is based on the actual response data, rather than what was expected. `[fgp]` For example, if a query was sent in the expected positive style, but the received response was negative (e.g., NXDOMAIN), matching is performed as a negative response. This is done to handle cases when vantage points might not receive configuration updates for a short period of time.
 
 For all matching testing:
 
-- All of the RRsets in the Answer, Authority, and Additional sections match RRsets found in the zone. This check does not include any OPT RRset found in the Additional section, nor does it include any RRSIG RRsets that are not named in the matching tests below.
+- All of the RRsets in the Answer, Authority, and Additional sections match RRsets found in the zone. `[vnk]` This check does not include any OPT RRset found in the Additional section, `[pvz]` nor does it include any RRSIG RRsets that are not named in the matching tests below. `[ygx]`
 
-- All RRsets that are signed have their signatures validated.
+- All RRsets that are signed have their signatures validated. `[yds]`
 
 For positive responses with QNAME = <TLD> and QTYPE = NS, a correct result requires all of the following:
 
