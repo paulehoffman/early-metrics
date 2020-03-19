@@ -223,83 +223,83 @@ For all matching testing:
 
 - All RRsets that are signed have their signatures validated. `[yds]`
 
-For positive responses with QNAME = <TLD> and QTYPE = NS, a correct result requires all of the following:
+For positive responses with QNAME = <TLD> and QTYPE = NS, a correct result requires all of the following: `[hmk]`
 
-- The header AA bit is not set.
+- The header AA bit is not set. `[ujy]`
 
-- The Answer section is empty.
+- The Answer section is empty. `[aeg]`
 
-- The Authority section contains the entire NS RRset for the query name.
+- The Authority section contains the entire NS RRset for the query name. `[pdd]`
 
-- If the DS RRset for the query name exists in the zone:
+- If the DS RRset for the query name exists in the zone:`[hue]`
 
-  - The Authority section contains the signed DS RRset for the query name.
+  - The Authority section contains the signed DS RRset for the query name. `[kbd]`
 
-- If the DS RRset for the query name does not exist in the zone:
+- If the DS RRset for the query name does not exist in the zone: `[fot]`
 
-  - The Authority section contains no DS RRset.
+  - The Authority section contains no DS RRset. `[bgr]`
 
-  - The Authority section contains a signed NSEC RRset covering the query name.
+  - The Authority section contains a signed NSEC RRset covering the query name. `[mkl]`
 
-- The Additional section contains at least one A or AAAA record found in the zone associated with at least one NS record found in the Authority section.
+- The Additional section contains at least one A or AAAA record found in the zone associated with at least one NS record found in the Authority section. `[cjm]`
 
-For positive responses where QNAME = <TLD> and QTYPE = DS, a correct result requires all of the following:
+For positive responses where QNAME = <TLD> and QTYPE = DS, a correct result requires all of the following: `[dru]`
 
-- The header AA bit is set.
+- The header AA bit is set. `[yot]`
 
-- The Answer section contains the signed DS RRset for the query name.
+- The Answer section contains the signed DS RRset for the query name. `[cpf]`
 
-- The Authority section is empty.
+- The Authority section is empty. `[xdu]`
 
-- The Additional section is empty.
+- The Additional section is empty. `[mle]`
 
-For positive responses for QNAME = . and QTYPE = SOA, a correct result requires all of the following:
+For positive responses for QNAME = . and QTYPE = SOA, a correct result requires all of the following: `[owf]`
 
-- The header AA bit is set.
+- The header AA bit is set. `[xhr]`
 
-- The Answer section contains the signed SOA record for the root.
+- The Answer section contains the signed SOA record for the root. `[obw]`
 
-- The Authority section contains the signed NS RRset for the root.
+- The Authority section contains the signed NS RRset for the root. `[ktm]`
 
-For positive responses for QNAME = . and QTYPE = NS, a correct result requires all of the following:
+For positive responses for QNAME = . and QTYPE = NS, a correct result requires all of the following: `[amj]`
 
-- The header AA bit is set.
+- The header AA bit is set. `[csz]`
 
-- The Answer section contains the signed NS RRset for the root.
+- The Answer section contains the signed NS RRset for the root. `[wal]`
 
-- The Authority section is empty.
+- The Authority section is empty. `[eyk]`
 
-For positive responses for QNAME = . and QTYPE = DNSKEY, a correct result requires all of the following:
+For positive responses for QNAME = . and QTYPE = DNSKEY, a correct result requires all of the following: `[djd]`
 
-- The header AA bit is set.
+- The header AA bit is set. `[occ]`
 
-- The Answer section contains the signed DNSKEY RRset for the root.
+- The Answer section contains the signed DNSKEY RRset for the root. `[eou]`
 
-- The Authority section is empty.
+- The Authority section is empty. `[kka]`
 
-- The Additional section is empty.
+- The Additional section is empty. `[jws]`
 
-For negative responses, a correct result requires all of the following:
+For negative responses, a correct result requires all of the following: `[vcu]`
 
-- The header AA bit is set.
+- The header AA bit is set. `[gpl]`
 
-- The Answer section is empty.
+- The Answer section is empty. `[dvh]`
 
-- The Authority section contains the signed . / SOA record.
+- The Authority section contains the signed . / SOA record. `[axj]`
 
-- The Authority section contains a signed NSEC record covering the query name.
+- The Authority section contains a signed NSEC record covering the query name. `[czb]`
 
-- The Authority section contains a signed NSEC record with owner name “.” proving no wildcard exists in the zone.
+- The Authority section contains a signed NSEC record with owner name “.” proving no wildcard exists in the zone. `[jhz]`
 
-- The Additional section is empty.
+- The Additional section is empty. `[trw]`
 
-__Aggregation.__ All of the measurements covering a period of one month are aggregated together. Correctness is calculated as the number of correct responses received divided by the total number of responses received, expressed as a percentage.
+__Aggregation.__ All of the measurements covering a period of one month are aggregated together. `[ebg]` Correctness is calculated as the number of correct responses received divided by the total number of responses received, expressed as a percentage. `[skm]`
 
-__Precision.__ The number of aggregated measurements shall convey the metric’s precision.
+__Precision.__ The number of aggregated measurements shall convey the metric’s precision. `[fee]`
 
-__Reporting.__ For each month, the report shall state whether or not the RSI’s aggregated correctness meets or does not meet the established threshold.
+__Reporting.__ For each month, the report shall state whether or not the RSI’s aggregated correctness meets or does not meet the established threshold. `[mah]`
 
-Thresholds. The recommended threshold for this metric is 100%. The expectation is that root name servers always serve correct responses.
+__Thresholds.__ The recommended threshold for this metric is 100%. `[ahw]` The expectation is that root name servers always serve correct responses.
 
 ### 5.4 RSI Publication Latency
 
@@ -309,23 +309,23 @@ The purpose of this metric is to characterize the publication latency for a sing
 
 The publication latency metric may also be affected by the situation described in Section 5.3, when name servers first start up with older zone data before the zone has been refreshed from the master server.
 
-__Measurements.__ The metrics are based on the amount of time between publication of a new root zone serial number, and the time the new serial number is observed by each vantage point over all of the transports and address types for each RSI. Rather than make additional SOA queries, this metric reuses the root zone SOA responses received from the response latency measurements from Section 5.2.
+__Measurements.__ The metrics are based on the amount of time between publication of a new root zone serial number, and the time the new serial number is observed by each vantage point over all of the transports and address types for each RSI. Rather than make additional SOA queries, this metric reuses the root zone SOA responses received from the response latency measurements from Section 5.2. `[kzu]`
 
-In each measurement interval, the collection system examines the response latency measurements and calculates the minimum SOA serial value over all of the transports and address types for each vantage point and RSI. This is because the RSI might return different SOA serials over UDP/TCP and IPv4/IPv6. Timed out and bogus responses must not be used in this calculation.
+In each measurement interval, the collection system examines the response latency measurements and calculates the minimum SOA serial value over all of the transports and address types for each vantage point and RSI. `[cnj]` This is because the RSI might return different SOA serials over UDP/TCP and IPv4/IPv6. Timed out and bogus responses must not be used in this calculation. `[tub]`
 
-The collection system needs to know, approximately, when new zones are published by the root zone maintainer. This is accomplished by examining the collective SOA serial responses from all RSIs. 
+The collection system needs to know, approximately, when new zones are published by the root zone maintainer. This is accomplished by examining the collective SOA serial responses from all RSIs. `[yxn]`
 
-The collection system then calculates the amount of time elapsed until a given vantage point observes the new serial number in a response from the RSI. Note that this will always be a multiple of five minutes. For vantage points that observe the new serial number in the same interval as the root zone publication time, the publication latency shall be recorded as zero minutes.
+The collection system then calculates the amount of time elapsed until a given vantage point observes the new serial number in a response from the RSI. `[kvg]` Note that this will always be a multiple of five minutes. For vantage points that observe the new serial number in the same interval as the root zone publication time, the publication latency shall be recorded as zero minutes. `[udz]`
 
-__Aggregation.__ All of the measurements, from all vantage points, covering a period of one month are aggregated together. Publication latency is calculated as the median value of the aggregated latency measurements.
+__Aggregation.__ All of the measurements, from all vantage points, covering a period of one month are aggregated together. `[jtz]` Publication latency is calculated as the median value of the aggregated latency measurements. `[yzp]`
 
 Note that the number of aggregated measurements depends on the number of root zones published in the aggregation interval. Most commonly there are two root zones published each day, which would result in at least approximately “sixty times the number of vantage points” measurements each month for each RSI. 
 
-__Precision.__ The number of aggregated measurements shall convey the metric’s precision.
+__Precision.__ The number of aggregated measurements shall convey the metric’s precision. `[hms]`
 
-__Reporting.__ For each month, the report shall state whether or not each of the aggregated publication latency metrics meets or does not meet the established threshold.
+__Reporting.__ For each month, the report shall state whether or not each of the aggregated publication latency metrics meets or does not meet the established threshold. `[erf]`
 
-Thresholds. The recommended threshold for this metric is 65 minutes. This is based on twice the value of the SOA refresh parameter (which is 30 minutes) plus one five-minute measurement interval. Note that the Root Zone Maintainer’s current distribution system sends out DNS NOTIFY messages from many different locations, to a set of addresses provided by each RSO. Even in situations where NOTIFY messages may not be reliably delivered, the RSO’s systems should be polling for zone updates at least every SOA refresh interval (30 minutes).
+__Thresholds.__ The recommended threshold for this metric is 65 minutes. `[fwa]` This is based on twice the value of the SOA refresh parameter (which is 30 minutes) plus one five-minute measurement interval. Note that the Root Zone Maintainer’s current distribution system sends out DNS NOTIFY messages from many different locations, to a set of addresses provided by each RSO. Even in situations where NOTIFY messages may not be reliably delivered, the RSO’s systems should be polling for zone updates at least every SOA refresh interval (30 minutes).
 
 ## 6 RSS Related Metrics
 
