@@ -196,9 +196,7 @@ For all queries, the DNSSEC OK bit is always set, `[rhe]` and the EDNS0 buffer s
 There are two kinds of queries: expected positive and expected negative.
 
 - The expected positive queries are selected from the following RRSets from a recent root zone: ./SOA, `[njh]` ./DNSKEY, `[hmc]` ./NS, `[xca]` <any_TLD>/NS, `[max]` and <any_TLD>/DS. `[kmd]` These measurements do not query non-authoritative data directly. However, any non-authoritative data included in the Additional section of responses will be checked for correctness.
-
   - At the time this document is published, the ARPA TLD is served by many of the RSIs. From those root servers, an ARPA/NS query will return authoritative data, rather than a referral, and therefore cannot be tested for correctness as described in the checking rules below. Therefore, ARPA/NS must be excluded from the set of expected positive queries above as long as any RSI is serving ARPA authoritatively. `[unt]` Note, however, that ARPA/DS is included because it can be tested for correctness even in this scenario.
-
 - The expected negative queries have a name that contains random letters and a resource record type of A. The names are constructed as “www.rssac047-test.<RAND-NXD>”, `[hkc]` where <RAND-NXD> is formed by 10 ASCII letters chosen at random. `[dse]` Examples of expected negative questions are “www.rssac047-test.twxoozxmew” and “www.rssac047-test.hwzvpicwen”.
 
 When selecting a query to send for this metric, the vantage point chooses queries from the expected positive set with a 90% probability, and from the expected negative set with a 10% probability. `[yyg]`
@@ -206,7 +204,6 @@ When selecting a query to send for this metric, the vantage point chooses querie
 The rationale for the query styles is:
 
 - Positive responses are the common case and using known authoritative Resource Record sets (RRsets) provides good coverage of the namespace.
-
 - It is impossible to predict situations in which an RSI might provide incorrect responses. Using randomly generated TLDs - which look like typical queries - is a reasonable choice. By examining NSEC records from queries for random names we can identify cases where incorrect data may have been inserted into the root zone.
 
 Measurements shall use a timeout value of four seconds. `[twf]` Responses in which the TC bit is set shall be retried over TCP transport and the timeout restarted. `[hjw]`
@@ -220,77 +217,53 @@ Correctness checking is based on the actual response data, rather than what was 
 For all matching testing:
 
 - All of the RRsets in the Answer, Authority, and Additional sections match RRsets found in the zone. `[vnk]` This check does not include any OPT RRset found in the Additional section, `[pvz]` nor does it include any RRSIG RRsets that are not named in the matching tests below. `[ygx]`
-
 - All RRsets that are signed have their signatures validated. `[yds]`
 
 For positive responses with QNAME = <TLD> and QTYPE = NS, a correct result requires all of the following: `[hmk]`
 
 - The header AA bit is not set. `[ujy]`
-
 - The Answer section is empty. `[aeg]`
-
 - The Authority section contains the entire NS RRset for the query name. `[pdd]`
-
 - If the DS RRset for the query name exists in the zone:`[hue]`
-
   - The Authority section contains the signed DS RRset for the query name. `[kbd]`
-
 - If the DS RRset for the query name does not exist in the zone: `[fot]`
-
   - The Authority section contains no DS RRset. `[bgr]`
-
   - The Authority section contains a signed NSEC RRset covering the query name. `[mkl]`
-
 - The Additional section contains at least one A or AAAA record found in the zone associated with at least one NS record found in the Authority section. `[cjm]`
 
 For positive responses where QNAME = <TLD> and QTYPE = DS, a correct result requires all of the following: `[dru]`
 
 - The header AA bit is set. `[yot]`
-
 - The Answer section contains the signed DS RRset for the query name. `[cpf]`
-
 - The Authority section is empty. `[xdu]`
-
 - The Additional section is empty. `[mle]`
 
 For positive responses for QNAME = . and QTYPE = SOA, a correct result requires all of the following: `[owf]`
 
 - The header AA bit is set. `[xhr]`
-
 - The Answer section contains the signed SOA record for the root. `[obw]`
-
 - The Authority section contains the signed NS RRset for the root. `[ktm]`
 
 For positive responses for QNAME = . and QTYPE = NS, a correct result requires all of the following: `[amj]`
 
 - The header AA bit is set. `[csz]`
-
 - The Answer section contains the signed NS RRset for the root. `[wal]`
-
 - The Authority section is empty. `[eyk]`
 
 For positive responses for QNAME = . and QTYPE = DNSKEY, a correct result requires all of the following: `[djd]`
 
 - The header AA bit is set. `[occ]`
-
 - The Answer section contains the signed DNSKEY RRset for the root. `[eou]`
-
 - The Authority section is empty. `[kka]`
-
 - The Additional section is empty. `[jws]`
 
 For negative responses, a correct result requires all of the following: `[vcu]`
 
 - The header AA bit is set. `[gpl]`
-
 - The Answer section is empty. `[dvh]`
-
 - The Authority section contains the signed . / SOA record. `[axj]`
-
 - The Authority section contains a signed NSEC record covering the query name. `[czb]`
-
 - The Authority section contains a signed NSEC record with owner name “.” proving no wildcard exists in the zone. `[jhz]`
-
 - The Additional section is empty. `[trw]`
 
 __Aggregation.__ All of the measurements covering a period of one month are aggregated together. `[ebg]` Correctness is calculated as the number of correct responses received divided by the total number of responses received, expressed as a percentage. `[skm]`
@@ -342,15 +315,15 @@ This metric is derived from the set of RSI availability measurements described i
 - IPv6 UDP Availability
 - IPv6 TCP Availability
 
-__Aggregation.__ For each transport and address type, in each measurement interval t, and for each vantage point v, calculate r_(t,v)  as the number of RSIs that responded to an availability query (section 5.1). The aggregated RSS availability (for each transport and address type) A is then:
+__Aggregation.__ For each transport and address type, in each measurement interval t, and for each vantage point v, calculate r_(t,v) as the number of RSIs that responded to an availability query (section 5.1). `[egb]` The aggregated RSS availability (for each transport and address type) A is then:
 
-{{ equation elided }}
+A = ( ∑ min(k, r_(t,v)) / ∑ k
 
-Where k is the value from Section 4.9, and the sums are taken over all intervals and all vantage points.
+Where k is the value from Section 4.9, and the sums are taken over all intervals and all vantage points. `[cvf]`
 
 In order for the calculated RSS availability to be anything less than 100%, there must be at least one interval in which at least one vantage point received responses from fewer than k RSIs.
 
-Aggregation Examples. Since the calculation of this metric is more complex than others, here are some fabricated examples that demonstrate how it is calculated. These examples are based on n=13 RSIs, k=8 required for operation, a 30-day month, and 20 vantage points.
+__Aggregation Examples.__ Since the calculation of this metric is more complex than others, here are some fabricated examples that demonstrate how it is calculated. These examples are based on n=13 RSIs, k=8 required for operation, a 30-day month, and 20 vantage points.
 
 Scenarios | Measured Availability | Notes
 --- | --- | ---
@@ -361,11 +334,11 @@ A 24-hour attack takes out all RSIs entirely. | 96.66% | 29/30
 In one five-minute interval, one vantage point can only reach seven RSIs. | 99.99992% | ((288*30*20*8)-1)/(288*30*20*8)
 For two intervals, seven vantage points can reach no RSIs. | 99.9989% | ((288*30*20*8)-14)/(288*30*20*8)
 
-__Precision.__ The number of aggregated measurements shall convey the precision.
+__Precision.__ The number of aggregated measurements shall convey the precision. `[vxl]`
 
-__Reporting.__ For each month, the report shall include the aggregated RSS Availability values for each transport and address type, and whether each meet, or does not meet the established threshold(s).
+__Reporting.__ For each month, the report shall include the aggregated RSS Availability values for each transport and address type, and whether each meet, or does not meet the established threshold(s). `[fdy]`
 
-Thresholds. The recommended threshold for this metric is 99.999%, based on the rationale for the RSI availability threshold in Section 5.1.
+__Thresholds.__ The recommended threshold for this metric is 99.999%, based on the rationale for the RSI availability threshold in Section 5.1. `[wzz]`
 
 ### 6.2 RSS Response Latency
 
@@ -378,15 +351,15 @@ Since the individual RSI response latency measurements are sent over specific tr
 - IPv6 UDP Response Latency
 - IPv6 TCP Response Latency
 
-__Measurements.__ In this method, the metric is derived from the set of RSI response latency measurements described in Section 5.1. 
+__Measurements.__ In this method, the metric is derived from the set of RSI response latency measurements described in Section 5.1. `[spx]`
 
-__Aggregation.__ In each five-minutes measurement interval, find the best k RSI response latencies for each vantage point and for each transport and address type. The aggregated response latency is calculated as the median value of the subset of lowest latencies. 
+__Aggregation.__ In each five-minutes measurement interval, find the best k RSI response latencies for each vantage point and for each transport and address type. `[bom]` The aggregated response latency is calculated as the median value of the subset of lowest latencies. `[jbr]`
 
-__Precision.__ Measurement Count shall be presented to convey the measurement range and precision.
+__Precision.__ Measurement Count shall be presented to convey the measurement range and precision. `[hgm]`
 
-__Reporting.__ For each month, the report shall include the aggregated RSS Response Latency values for each transport and address type, and whether each meet, or does not meet the established threshold(s).
+__Reporting.__ For each month, the report shall include the aggregated RSS Response Latency values for each transport and address type, and whether each meet, or does not meet the established threshold(s). `[gwm]`
 
-Thresholds. The recommended threshold for this metric is 150 milliseconds for UDP and 300 milliseconds for TCP. 
+__Thresholds.__ The recommended threshold for this metric is 150 milliseconds for UDP `[uwf]` and 300 milliseconds for TCP. `[lmx]`
 
 ### 6.3 RSS Correctness
 
@@ -396,13 +369,13 @@ The metric is derived from the set of individual RSI correctness measurements de
 
 - Correctness
 
-__Aggregation.__ All of the measurements covering a period of one month are aggregated together. RSS Correctness is calculated as the number of correct responses observed divided by the total number of responses, expressed as a percentage.
+__Aggregation.__ All of the measurements covering a period of one month are aggregated together. `[udc]` RSS Correctness is calculated as the number of correct responses observed divided by the total number of responses, expressed as a percentage. `[ywo]`
 
-__Precision.__ The number of aggregated measurements shall convey the precision.
+__Precision.__ The number of aggregated measurements shall convey the precision. `[kea]` 
 
-__Reporting.__ For each month, the report shall include the aggregated RSS Correctness values, and whether it meets, or does not meet the established threshold.
+__Reporting.__ For each month, the report shall include the aggregated RSS Correctness values, and whether it meets, or does not meet the established threshold. `[vpj]`
 
-Thresholds. The recommended threshold for this metric is 100%. The expectation is that the RSS always serves correct responses.
+__Thresholds.__ The recommended threshold for this metric is 100%. `[gfh]` The expectation is that the RSS always serves correct responses.
 
 ### 6.4 RSS Publication Latency
 
@@ -412,37 +385,17 @@ The metric is derived from the set of individual RSI publication latency measure
 
 - Publication Latency
 
-__Aggregation.__ All of the measurements covering a period of one month are aggregated together. Publication Latency is calculated as the median of the aggregated values.
+__Aggregation.__ All of the measurements covering a period of one month are aggregated together. `[dbo]` Publication Latency is calculated as the median of the aggregated values. `[zgb]`
 
-__Precision.__ The number of aggregated measurements shall convey the precision.
+__Precision.__ The number of aggregated measurements shall convey the precision. `[daz]`
 
-__Reporting.__ For each month, the report shall include the aggregated Publication Latency values, and whether it meets, or does not meet the established threshold.
+__Reporting.__ For each month, the report shall include the aggregated Publication Latency values, and whether it meets, or does not meet the established threshold. `[tkw]`
 
-Thresholds. The recommended threshold for this metric is 35 minutes. This is based on the root zone SOA retry value of 30 minutes, plus one five-minute measurement interval. Note that the RSS publication latency threshold is lower than the RSI publication latency threshold because we do not expect that a majority of RSIs to be close to the individual threshold at the same time.
+__Thresholds.__ The recommended threshold for this metric is 35 minutes. `[zkl]` This is based on the root zone SOA retry value of 30 minutes, plus one five-minute measurement interval. Note that the RSS publication latency threshold is lower than the RSI publication latency threshold because we do not expect that a majority of RSIs to be close to the individual threshold at the same time.
 
 ## 7 Summary of Metrics and Thresholds
 
-This table summarizes the recommended minimum thresholds for RSI metrics. Refer to the individual sections above for rationale and discussion regarding the particular metric thresholds.
-
-{{ table formatting is funky in Markdown }}
-
-Metrics | Name(s) | Threshold(s)
----|---|---
-5.1 RSI Availability | IPv4 UDP Availability, IPv4 TCP Availability, IPv6 UDP Availability, IPv6 TCP Availability | 96%, 96%, 96%, 96%
-5.2 RSI Response Latency | IPv4 UDP Response Latency, IPv4 TCP Response Latency, IPv6 UDP Response Latency, IPv6 TCP Response Latency | 250 milliseconds, 500 milliseconds, 250 milliseconds, 500 milliseconds
-5.3 RSI Correctness | Correctness | 100%
-5.4 RSI Publication Latency | Publication Latency | 65 minutes
-
-This table summarizes the recommended minimum thresholds for RSS metrics. Refer to the individual sections above for rationale and discussion.
-
-{{ table formatting is funky in Markdown }}
-
-Metrics | Name(s) | Threshold(s)
----|---|---
-6.1 RSS Availability | IPv4 UDP Availability, IPv4 TCP Availability, IPv6 UDP Availability, IPv6 TCP Availability | 99.999%, 99.999%, 99.999%, 99.999%
-6.2 RSS Response Latency | IPv4 UDP Response Latency, IPv4 TCP Response Latency, IPv6 UDP Response Latency, IPv6 TCP Response Latency | 150 milliseconds, 300 milliseconds, 150 milliseconds, 300 milliseconds
-6.3 RSS Correctness | Correctness | 100%
-6.4 RSS Publication Latency | Publication Latency | 35 minutes
+{{ elided }}
 
 ## 8 Recommendations
 
@@ -450,17 +403,17 @@ Recommendation 1: The RSSAC recommends the ICANN Board commission an initial imp
 
 Recommendation 2: The RSSAC recommends that the official implementation of the metric system must:
 
-a. Meet the minimum requirements specified in Section 3 of this report regarding the number, location, connectivity, and other requirements for the vantage points. 
+a. Meet the minimum requirements specified in Section 3 of this report regarding the number, location, connectivity, and other requirements for the vantage points. `[ccd]`
 
-a. Publish all software related to its operation under an open source license as defined by the Open Source Initiative.12
+a. Publish all software related to its operation under an open source license as defined by the Open Source Initiative. `[atl]`
 
-a. Make the raw measurement data available to anyone in the interest of transparency. A third party should be able to use the raw data to verify the computation of these metrics.
+a. Make the raw measurement data available to anyone in the interest of transparency. `[otd]` A third party should be able to use the raw data to verify the computation of these metrics.
 
-a. In its monthly reports, only publish threshold pass or fail indicators for each RSI, not the actual measurements or metrics used to determine the threshold pass or fail values. 
+a. In its monthly reports, only publish threshold pass or fail indicators for each RSI, not the actual measurements or metrics used to determine the threshold pass or fail values. `[gkr]`
 
-a. Publicly describe its methods for collecting measurements and aggregating metrics, including the topological location of each measurement vantage point. This description should be complete enough for RSOs and DNS researchers to create their own measurement collection systems similar to those used by the official implementation.
+a. Publicly describe its methods for collecting measurements and aggregating metrics, including the topological location of each measurement vantage point. `[uys]` This description should be complete enough for RSOs and DNS researchers to create their own measurement collection systems similar to those used by the official implementation.
 
-a. Share with an RSO the underlying measurements and metrics that resulted in failure any time an RSI fails to pass a threshold test. The shared measurements and metrics must include all measurements from around the time of failure and must include all measured values for all transports and address types.
+a. Share with an RSO the underlying measurements and metrics that resulted in failure any time an RSI fails to pass a threshold test. `[drc]` The shared measurements and metrics must include all measurements from around the time of failure and must include all measured values for all transports and address types. `[lpf]`
 
 Recommendation 3: The RSSAC, in collaboration with ICANN and the Internet community, should consider the following additional work:  
 
