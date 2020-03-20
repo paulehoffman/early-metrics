@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-''' Vantage point measurements probe for RSSAC0XY deliverables  '''
+''' Vantage point measurements probe for RSSAC047 '''
+
+# Three-letter items in square brackets (such as [xyz]) refer to parts of rssac-047.md
 
 import argparse, logging, os, pickle, random, re, requests, subprocess, time
 from concurrent import futures
@@ -162,7 +164,7 @@ if __name__ == "__main__":
 	}
 	# Currently only supporting style 1
 	if opts.style == 1:
-		# Set the wait time for a random period of up to 60 seconds
+		# Set the wait time for a random period of up to 60 seconds [fzk]
 		style_vars["wait_first"] = random.randint(0, 60)
 		# List the targets by root server identifier letter and associated IP addresses
 		style_vars["targets"]= {
