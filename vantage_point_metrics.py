@@ -157,7 +157,7 @@ if __name__ == "__main__":
 	
 	# Set the wait time for a random period of up to 60 seconds [fzk]
 	wait_first = random.randint(0, 60)
-	# List the targets by root server identifier letter and associated IP addresses
+	# List the targets by root server identifier letter and associated IP addresses [yns]
 	test_targets= {
 		"a": { "v4": ["198.41.0.4"], "v6": ["2001:503:ba3e::2:30"] },
 		"b": { "v4": ["199.9.14.201"], "v6": ["2001:500:200::b"] },
@@ -190,13 +190,17 @@ if __name__ == "__main__":
 	#   dig uses query source port randomization [uym], query ID randomization [wsb], and query response matching [doh]
 	#   Using dig causes some limitations in the implementation:
 	#      There is no control of the reported time for TCP. [epp] This may or may not be OK for the final implementation.
-  #      dig does not have settings for 0x20 mixed case. [zon] This may or may not be OK for the final implementation.
   #   The templates below do *not* do DNS cookies [ujj] because they are optional and are not necessarily supported by all instances.
+  #      This is a divergence from RSSAC047.
 	
 	# Put together the list of commands
 	path_to_dig = os.path.expanduser("~/Target/bin/dig")
-	# dot_soa_query_template is used many of the measurements [dzn]
-	#   It uses +nsid for later identification of instances [mgj]
+	# dot_soa_query_template uses +nodnssec +noauthority +noadditional in order to reduce the size of the responses
+	#   The variables to be filled in  are path_to_dig, IP address, -4 or -6, and "no" if this is for UDP
+	#   It is used many of the measurements [dzn] [hht] [wdo]
+	#   It has +nsid for later identification of instances [mgj]
+	#   It has a timeout of 4 seconds [ywz]
+	#   It does not allow retries [xyl]
 	dot_soa_query_template = "{} +yaml . SOA @{} {} +{}tcp +nodnssec +noauthority +noadditional +bufsize=1220 +nsid +norecurse +time=4 +tries=1"
 	# The correctness_query_template is only used for correctness measurements
 	#   It uses +nsid for later identification of instances [mgj]
@@ -204,9 +208,11 @@ if __name__ == "__main__":
 
 	# Run the queries for . SOA
 	for this_target in test_targets:
+		# Sent to both v4 and v6 addresses [jhb]
 		for this_internet in ["v4", "v6"]:
 			specify_4_or_6 = "-4" if this_internet == "v4" else "-6"
 			for this_ip_addr in test_targets[this_target][this_internet]:
+				# Send to both UDP and TCP [ykn]
 				for this_transport in ["udp", "tcp"]:
 					is_tcp_string = "no" if this_transport == "udp" else ""
 					# Add the . SOA commands
@@ -242,14 +248,16 @@ if __name__ == "__main__":
 	for i in range(9):
 		this_pair = random.choice(qname_qtype_pairs)
 		(this_qname, this_qtype) = this_pair.split("/")
+		# RSSAC047 calls for the use of 0x20 mixed case in the QNAME. [zon] This is not done here because it feels unneccessary,
+		#   given that it is already highly unpredictable what queries will be sent.
+		#   This is a divergence from RSSAC047.
 		correctness_candidates.append([this_qname, this_qtype])
 	# For the negative test, choose a RAND-NXD
 	all_letters = "abcdefghijklmnopqrstuvwxyz"
 	ten_random_letters = ""
 	for i in range(10):
 		ten_random_letters += all_letters[random.randint(0, 25)]
-	##### The following needs to be changed when the metrics document is published
-	rand_nxd_tld = "www.rssac0xx-test.{}.".format(ten_random_letters)
+	rand_nxd_tld = "www.rssac047-test.{}.".format(ten_random_letters)
 	correctness_candidates.append([rand_nxd_tld, "A"])
 	# Pick just one of these ten
 	this_correctness_test = random.choice(correctness_candidates)

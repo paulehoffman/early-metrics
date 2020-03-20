@@ -134,7 +134,7 @@ The purpose of these metrics is to characterize the availability of a single RSI
 
 In accordance with the recommendations in this report, it is likely that vantage points will be placed inside data centers some distance away from root server instances. The queries and responses between vantage point and instance traverse through some number of networks, routers, and switches. These intermediate network components, which are not necessarily under an RSO’s control, also factor into the availability measurements. That is, the availability of an RSI at a particular point in time depends not only on the RSI itself, but on the availability of the intermediate networks as well.
 
-__Measurements.__ Measurements shall be made by sending DNS queries of type SOA with QNAME=”.” `[hht]` at five-minute intervals `[mba]` over each of the transports and address types `[jhb]` to the root server addresses `[yns]`. 
+__Measurements.__ Measurements shall be made by sending DNS queries of type SOA with QNAME=”.” `[hht]` at five-minute intervals `[mba]` over each of the transports `[ykn]` and address types `[jhb]` to the root server addresses `[yns]`. 
 
 Measurements shall use a timeout value of four seconds. `[ywz]`
 
