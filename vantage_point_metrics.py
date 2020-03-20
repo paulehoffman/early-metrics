@@ -75,16 +75,13 @@ def update_rr_list(file_to_write):
 	root_auth_text = ""
 	for this_key in root_name_and_types:
 		(this_name, this_type) = this_key.split("/")
-		# Don't save the RRSIG or NSEC records because they won't be queried for
-		if this_type in ("RRSIG", "NSEC"):
-			continue
-		# Only include zones for which the root is authoritative
-		if this_name.count(".") > 1:
-			continue
-		# Don't include .arpa / NS
-		if this_name == "arpa." and this_type == "NS":
-			continue
-		root_auth_text += "{}\n".format(this_key)
+		# The logic on the following lines comes from [njh] [hmc] [xca] [max] [kmd] [unt]
+		if ( ((this_name == ".") and (this_type == "SOA")) \
+			or ((this_name == ".") and (this_type == "DNSKEY")) \
+			or ((this_name == ".") and (this_type == "NS")) \
+			or ((this_name != ".") and (this_name.count(".") == 1) and (this_type == "NS") and (this_name != "arpa.")) \
+			or ((this_name != ".") and (this_name.count(".") == 1) and (this_type == "DS")) ):
+			root_auth_text += "{}\n".format(this_key)
 	root_auth_out_f = open(file_to_write, mode="wt")
 	root_auth_out_f.write(root_auth_text)
 	root_auth_out_f.close()
@@ -193,18 +190,15 @@ if __name__ == "__main__":
   #   The templates below do *not* do DNS cookies [ujj] because they are optional and are not necessarily supported by all instances.
   #      This is a divergence from RSSAC047.
 	
-	# Put together the list of commands
 	path_to_dig = os.path.expanduser("~/Target/bin/dig")
+
 	# dot_soa_query_template uses +nodnssec +noauthority +noadditional in order to reduce the size of the responses
-	#   The variables to be filled in  are path_to_dig, IP address, -4 or -6, and "no" if this is for UDP
-	#   It is used many of the measurements [dzn] [hht] [wdo]
+	#   The variables to be filled in are path_to_dig, IP address, -4 or -6, and "no" if this is for UDP
+	#   It is used many of the measurements [dzn] [hht] [wdo] [zvy] [kzu]
 	#   It has +nsid for later identification of instances [mgj]
 	#   It has a timeout of 4 seconds [ywz]
 	#   It does not allow retries [xyl]
 	dot_soa_query_template = "{} +yaml . SOA @{} {} +{}tcp +nodnssec +noauthority +noadditional +bufsize=1220 +nsid +norecurse +time=4 +tries=1"
-	# The correctness_query_template is only used for correctness measurements
-	#   It uses +nsid for later identification of instances [mgj]
-	correctness_query_template = "{} +yaml {} {} @{} {} +{}tcp +dnssec +bufsize=1220 +nsid +norecurse +time=4 +tries=1"
 
 	# Run the queries for . SOA
 	for this_target in test_targets:
@@ -226,6 +220,13 @@ if __name__ == "__main__":
 						"command": this_dig_cmd
 					} )
 
+	# The correctness_query_template is only used for correctness measurements
+	#   The variables to be filled in are path_to_dig, QNAME, QTYPE, IP address, -4 or -6, and "no" if this is for UDP
+	#   It uses +nsid for later identification of instances [mgj]
+	#   It uses +dnssec [rhe]
+	#   It uses a UDP buffer size of 1220 [rja]
+	correctness_query_template = "{} +yaml {} {} @{} {} +{}tcp +dnssec +bufsize=1220 +nsid +norecurse +time=4 +tries=1"
+
 	# Create one command for correctness
 	#    90% chance of a positive authoritative QNAME/QTYPE, 10% chance of a negative test value
 	correctness_candidates = []
@@ -237,7 +238,7 @@ if __name__ == "__main__":
 		f.close()
 		# But set this to be modified at the beginning of time so it is immediately updated
 		os.utime(root_auth_file, (0,0))
-	# See if the file is more than 24 hours old
+	# See if the file is more than 24 hours old [mow]
 	if time.time() - os.stat(root_auth_file).st_mtime > 86400:
 		update_rr_list(root_auth_file)
 	try:
@@ -262,7 +263,9 @@ if __name__ == "__main__":
 	# Pick just one of these ten
 	this_correctness_test = random.choice(correctness_candidates)
 	for this_target in test_targets:
+		# Pick a random address type [thb]
 		rand_v4_v6 = random.choice(["v4", "v6"])
+		# Pick a random transport [ogo]
 		rand_udp_tcp = random.choice(["udp", "tcp"])
 		specify_4_or_6 = "-4" if this_internet == "v4" else "-6"
 		is_tcp_string = "no" if this_transport == "udp" else ""
@@ -370,4 +373,16 @@ if __name__ == "__main__":
 			if this_line.endswith("    NSID"):
 				this_line = this_line + ":"
 			this_dig_text += "{}\n".format(this_line)
+'''
+
+'''
+# Don't save the RRSIG or NSEC records because they won't be queried for
+if this_type in ("RRSIG", "NSEC"):
+	continue
+# Only include zones for which the root is authoritative
+if this_name.count(".") > 1:
+	continue
+# Don't include .arpa / NS
+if this_name == "arpa." and this_type == "NS":
+	continue
 '''
