@@ -25,7 +25,7 @@ def do_one_command(command_dict):
 	else:
 		return (True, one_command_elapsed, this_command_text)
 
-# Make a list candidate RRsets for the correctness testing in style 1
+# Make a list candidate RRsets for the correctness testing
 def update_rr_list(file_to_write):
 	internic_url = "https://www.internic.net/domain/root.zone"
 	try:
@@ -151,38 +151,27 @@ if __name__ == "__main__":
 
 	# Get the command-line arguments
 	this_parser = argparse.ArgumentParser()
-	this_parser.add_argument("--style",  dest="style", action="store", type=int, default=1,
-		help="Style of tests to be run, defaults to 1")
 	this_parser.add_argument("--verbose",  dest="verbose", action="store_true", 
 		help="Make the logging more verbose")
 	opts = this_parser.parse_args()
 	
-	# All variables for a given style are kept in style_vars. Set defaults for everything.
-	style_vars = {
-		"wait_first": 0,
-		"targets": { "": { "v4": [], "v6": [] } }
-	}
-	# Currently only supporting style 1
-	if opts.style == 1:
-		# Set the wait time for a random period of up to 60 seconds [fzk]
-		style_vars["wait_first"] = random.randint(0, 60)
-		# List the targets by root server identifier letter and associated IP addresses
-		style_vars["targets"]= {
-			"a": { "v4": ["198.41.0.4"], "v6": ["2001:503:ba3e::2:30"] },
-			"b": { "v4": ["199.9.14.201"], "v6": ["2001:500:200::b"] },
-			"c": { "v4": ["192.33.4.12"], "v6": ["2001:500:2::c"] },
-			"d": { "v4": ["199.7.91.13"], "v6": ["2001:500:2d::d"] },
-			"e": { "v4": ["192.203.230.10"], "v6": ["2001:500:a8::e"] },
-			"f": { "v4": ["192.5.5.241"], "v6": ["2001:500:2f::f"] },
-			"g": { "v4": ["192.112.36.4"], "v6": ["2001:500:12::d0d"] },
-			"h": { "v4": ["198.97.190.53"], "v6": ["2001:500:1::53"] },
-			"i": { "v4": ["192.36.148.17"], "v6": ["2001:7fe::53"] },
-			"j": { "v4": ["192.58.128.30"], "v6": ["2001:503:c27::2:30"] },
-			"k": { "v4": ["193.0.14.129"], "v6": ["2001:7fd::1"] },
-			"l": { "v4": ["199.7.83.42"], "v6": ["2001:500:9f::42"] },
-			"m": { "v4": ["202.12.27.33"], "v6": ["2001:dc3::35"] } }
-	else:
-		die("Got an unexpected style {} from the command line.".format(opts.style))	
+	# Set the wait time for a random period of up to 60 seconds [fzk]
+	wait_first = random.randint(0, 60)
+	# List the targets by root server identifier letter and associated IP addresses
+	test_targets= {
+		"a": { "v4": ["198.41.0.4"], "v6": ["2001:503:ba3e::2:30"] },
+		"b": { "v4": ["199.9.14.201"], "v6": ["2001:500:200::b"] },
+		"c": { "v4": ["192.33.4.12"], "v6": ["2001:500:2::c"] },
+		"d": { "v4": ["199.7.91.13"], "v6": ["2001:500:2d::d"] },
+		"e": { "v4": ["192.203.230.10"], "v6": ["2001:500:a8::e"] },
+		"f": { "v4": ["192.5.5.241"], "v6": ["2001:500:2f::f"] },
+		"g": { "v4": ["192.112.36.4"], "v6": ["2001:500:12::d0d"] },
+		"h": { "v4": ["198.97.190.53"], "v6": ["2001:500:1::53"] },
+		"i": { "v4": ["192.36.148.17"], "v6": ["2001:7fe::53"] },
+		"j": { "v4": ["192.58.128.30"], "v6": ["2001:503:c27::2:30"] },
+		"k": { "v4": ["193.0.14.129"], "v6": ["2001:7fd::1"] },
+		"l": { "v4": ["199.7.83.42"], "v6": ["2001:500:9f::42"] },
+		"m": { "v4": ["202.12.27.33"], "v6": ["2001:dc3::35"] } }
 
 	# Make the list of commands to give on this run
 	#   This is a list of dicts. Each dict contains:
@@ -193,20 +182,20 @@ if __name__ == "__main__":
 	#			"command": the command to give
 	all_commands = []
 	
-	# Put together the list of commands for style 1
+	# Put together the list of commands
 	path_to_dig = os.path.expanduser("~/Target/bin/dig")
-	style_1_dot_soa_query_template = "{} +yaml . SOA @{} {} +{}tcp +nodnssec +noauthority +noadditional +bufsize=1220 +nsid +norecurse +time=4 +tries=1"
-	style_1_correctness_query_template = "{} +yaml {} {} @{} {} +{}tcp +dnssec +bufsize=1220 +nsid +norecurse +time=4 +tries=1"
+	dot_soa_query_template = "{} +yaml . SOA @{} {} +{}tcp +nodnssec +noauthority +noadditional +bufsize=1220 +nsid +norecurse +time=4 +tries=1"
+	correctness_query_template = "{} +yaml {} {} @{} {} +{}tcp +dnssec +bufsize=1220 +nsid +norecurse +time=4 +tries=1"
 
 	# Run the queries for . SOA
-	for this_target in style_vars["targets"]:
+	for this_target in test_targets:
 		for this_internet in ["v4", "v6"]:
 			specify_4_or_6 = "-4" if this_internet == "v4" else "-6"
-			for this_ip_addr in style_vars["targets"][this_target][this_internet]:
+			for this_ip_addr in test_targets[this_target][this_internet]:
 				for this_transport in ["udp", "tcp"]:
 					is_tcp_string = "no" if this_transport == "udp" else ""
 					# Add the . SOA commands
-					this_dig_cmd = style_1_dot_soa_query_template.format(path_to_dig, this_ip_addr, specify_4_or_6, is_tcp_string)
+					this_dig_cmd = dot_soa_query_template.format(path_to_dig, this_ip_addr, specify_4_or_6, is_tcp_string)
 					all_commands.append( {
 						"target": this_target,
 						"internet": this_internet,
@@ -249,14 +238,14 @@ if __name__ == "__main__":
 	correctness_candidates.append([rand_nxd_tld, "A"])
 	# Pick just one of these ten
 	this_correctness_test = random.choice(correctness_candidates)
-	for this_target in style_vars["targets"]:
+	for this_target in test_targets:
 		rand_v4_v6 = random.choice(["v4", "v6"])
 		rand_udp_tcp = random.choice(["udp", "tcp"])
 		specify_4_or_6 = "-4" if this_internet == "v4" else "-6"
 		is_tcp_string = "no" if this_transport == "udp" else ""
-		for this_ip_addr in style_vars["targets"][this_target][rand_v4_v6]:
+		for this_ip_addr in test_targets[this_target][rand_v4_v6]:
 			# Add the DNSSEC correctness commands
-			this_dig_cmd = style_1_correctness_query_template.format(
+			this_dig_cmd = correctness_query_template.format(
 				path_to_dig,
 				this_correctness_test[0],
 				this_correctness_test[1],
@@ -272,10 +261,10 @@ if __name__ == "__main__":
 				"command": this_dig_cmd } )
 	
 	# Sleep a random time
-	time.sleep(style_vars["wait_first"])
+	time.sleep(wait_first)
 
-	# If the commands are supposed to run in random order, this is the place to do that
-	#   random.shuffle(all_commands)  # Not doing that for style 1
+	# If the commands are supposed to run in random order, this would be the place to do that
+	#   random.shuffle(all_commands)
 	
 	# Run the dig commands, collecting the text output
 	commands_clock_start = int(time.time())
@@ -296,10 +285,10 @@ if __name__ == "__main__":
 	scamper_output = ""
 	scamper_start_time = time.time()
 	this_scamper_cmd = "scamper -i "
-	for this_target in style_vars["targets"]:
+	for this_target in test_targets:
 		for this_internet in ["v4", "v6"]:
 			specify_4_or_6 = "-4" if this_internet == "v4" else "-6"
-			for this_ip_addr in style_vars["targets"][this_target][this_internet]:
+			for this_ip_addr in test_targets[this_target][this_internet]:
 				this_scamper_cmd += "{} ".format(this_ip_addr)
 	try:
 		command_p = subprocess.run(this_scamper_cmd, shell=True, capture_output=True, text=True, check=True)
@@ -315,13 +304,13 @@ if __name__ == "__main__":
 
 	# Save output as a dict
 	#   "v": int, version of this program (1 for now)
-	#   "d": int, the delay used: style_vars["wait_first"]
+	#   "d": int, the delay used: wait_first
 	#   "e": float, elapsed time for commands: commands_clock_stop - commands_clock_start
 	#   "r": list, the records
 	#   "s", text, the output from scamper
 	output_dict = {
 		"v": 1,
-		"d": style_vars["wait_first"],
+		"d": wait_first,
 		"e": commands_clock_stop - commands_clock_start,
 		"r": all_dig_output,
 		"s": scamper_output
