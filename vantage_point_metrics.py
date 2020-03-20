@@ -225,7 +225,9 @@ if __name__ == "__main__":
 	#   It uses +nsid for later identification of instances [mgj]
 	#   It uses +dnssec [rhe]
 	#   It uses a UDP buffer size of 1220 [rja]
-	correctness_query_template = "{} +yaml {} {} @{} {} +{}tcp +dnssec +bufsize=1220 +nsid +norecurse +time=4 +tries=1"
+	#   It has a timeout of 4 seconds [twf]
+	#   It has +noignore to force a retry if the response has the TC bit set [hjw]
+	correctness_query_template = "{} +yaml {} {} @{} {} +{}tcp +dnssec +bufsize=1220 +nsid +norecurse +time=4 +tries=1 +noignore"
 
 	# Create one command for correctness
 	#    90% chance of a positive authoritative QNAME/QTYPE, 10% chance of a negative test value
@@ -254,13 +256,13 @@ if __name__ == "__main__":
 		#   This is a divergence from RSSAC047.
 		correctness_candidates.append([this_qname, this_qtype])
 	# For the negative test, choose a RAND-NXD
-	all_letters = "abcdefghijklmnopqrstuvwxyz"
+	all_letters = "abcdefghijklmnopqrstuvwxyz"  # [dse]
 	ten_random_letters = ""
 	for i in range(10):
 		ten_random_letters += all_letters[random.randint(0, 25)]
-	rand_nxd_tld = "www.rssac047-test.{}.".format(ten_random_letters)
+	rand_nxd_tld = "www.rssac047-test.{}.".format(ten_random_letters)  # [hkc]
 	correctness_candidates.append([rand_nxd_tld, "A"])
-	# Pick just one of these ten
+	# Pick just one of these ten [yyg]
 	this_correctness_test = random.choice(correctness_candidates)
 	for this_target in test_targets:
 		# Pick a random address type [thb]
