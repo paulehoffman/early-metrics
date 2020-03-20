@@ -152,7 +152,7 @@ if __name__ == "__main__":
 	# Get the command-line arguments
 	this_parser = argparse.ArgumentParser()
 	this_parser.add_argument("--verbose",  dest="verbose", action="store_true", 
-		help="Make the logging more verbose")
+		help="Make the logging more verbose; not currently used")
 	opts = this_parser.parse_args()
 	
 	# Set the wait time for a random period of up to 60 seconds [fzk]
@@ -182,9 +182,24 @@ if __name__ == "__main__":
 	#			"command": the command to give
 	all_commands = []
 	
+	# Notes on using "dig"
+	#   Starting in BIND 9.16, dig has a "+yaml" argument that outputs responses in YAML format;
+	#      this makes it much easier to parse the output than in earlier versions of BIND.
+	#   The reported time for UDP is from query to response, as expected. [tsm]
+	#   dig treats connection errors as timeouts [dfl] and are not retried. [dks]  ### Need to check this later
+	#   dig uses query source port randomization [uym], query ID randomization [wsb], and query response matching [doh]
+	#   Using dig causes some limitations in the implementation:
+	#      There is no control of the reported time for TCP. [epp] This may or may not be OK for the final implementation.
+  #      dig does not have settings for 0x20 mixed case. [zon] This may or may not be OK for the final implementation.
+  #   The templates below do *not* do DNS cookies [ujj] because they are optional and are not necessarily supported by all instances.
+	
 	# Put together the list of commands
 	path_to_dig = os.path.expanduser("~/Target/bin/dig")
+	# dot_soa_query_template is used many of the measurements [dzn]
+	#   It uses +nsid for later identification of instances [mgj]
 	dot_soa_query_template = "{} +yaml . SOA @{} {} +{}tcp +nodnssec +noauthority +noadditional +bufsize=1220 +nsid +norecurse +time=4 +tries=1"
+	# The correctness_query_template is only used for correctness measurements
+	#   It uses +nsid for later identification of instances [mgj]
 	correctness_query_template = "{} +yaml {} {} @{} {} +{}tcp +dnssec +bufsize=1220 +nsid +norecurse +time=4 +tries=1"
 
 	# Run the queries for . SOA
@@ -281,7 +296,7 @@ if __name__ == "__main__":
 			else:
 				log(this_ret[1])
 	
-	# Finish with the scamper command
+	# Finish with the scamper command to run traceroute-like queries for all targets [vno]
 	scamper_output = ""
 	scamper_start_time = time.time()
 	this_scamper_cmd = "scamper -i "
