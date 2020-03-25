@@ -31,6 +31,14 @@
   become_user: metrics
   become: yes
   tasks:
+  - name: Get .bashrc for metrics
+    template:
+      src: bashrc-for-metrics
+      dest: /home/metrics/.bashrc
+  - name: Get short-host-name.txt
+    template:
+      src: short-host-name.txt
+      dest: /home/metrics/short-host-name.txt
   - name: Generate an SSH key for nnn-transfer on the conroller
     command:
       cmd: ssh-keygen -q -t rsa -b 2048 -N "" -C "for {{ inventory_hostname_short }}-transfer" -f /home/metrics/{{ inventory_hostname_short }}-transfer-rsa
@@ -48,6 +56,11 @@
   - name: make Source/
     file:
       path: /home/metrics/Source
+      mode: u+wrx,go+rx
+      state: directory
+  - name: make Logs/
+    file:
+      path: /home/metrics/Logs
       mode: u+wrx,go+rx
       state: directory
   - name: make Target/
@@ -69,7 +82,12 @@
     git:
       repo: 'https://github.com/paulehoffman/early-metrics.git'
       dest: /home/metrics/repo
-  - name: Set up the crontab
+  - name: Set up the crontab path
+    cron:
+      env: yes
+      name: SHELL
+      job: /bin/bash
+  - name: Give the firs crontab entry
     cron:
       name: Get measurements
       minute: "0-59/5"
