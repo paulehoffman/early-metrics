@@ -1,5 +1,5 @@
 - name: Set up the machine as root
-  hosts: all_vps  
+  hosts: new_vps  
   remote_user: root
   tasks:
   - name: Initialize apt
@@ -18,58 +18,33 @@
       src: bashrc-for-root
       dest: /root/.bashrc
   - name: Make user 'metrics'
-    user: 
+    user:
       name: metrics
       home: /home/metrics
       shell: /bin/bash
-  - name: Make .ssh for metrics
-    file:
-      path: /home/metrics/.ssh
-      group: metrics
-      mode: u+rwx
-      owner: metrics
-      state: directory
-  - name: authorized_keys for metrics
-    copy:
-      src: ../Local/metrics_authorized_keys
-      dest: /home/metrics/.ssh/authorized_keys
-      group: metrics
-      mode: u+rw
-      owner: metrics
-  - name: Make user 'reading'
-    user: 
-      name: reading
-      home: /home/reading
-      shell: /bin/bash
-  - name: Make .ssh for reading
-    file:
-      path: /home/reading/.ssh
-      group: reading
-      mode: u+rwx
-      owner: reading
-      state: directory
-  - name: authorized_keys for reading
-    copy:
-      src: ../Local/reading_authorized_keys
-      dest: /home/reading/.ssh/authorized_keys
-      group: reading
-      mode: u+rw
-      owner: reading
-  - name: just-rsync.py for reading
-    copy:
-      src: just-rsync.py
-      dest: /home/reading
-      group: reading
-      mode: u+rwx
-      owner: reading
+      generate_ssh_key: yes
+      ssh_key_bits: 2048
+      ssh_key_comment: Key for {{ inventory_hostname_short }}
 - name: Set up metrics user
-  hosts: all_vps
-  remote_user: metrics
+  hosts: new_vps
+  remote_user: root
+  become_user: metrics
+  become: yes
   tasks:
-  - name: Put .bashrc for metrics
-    template:
-      src: bashrc-for-metrics
-      dest: /home/metrics/.bashrc
+  - name: Generate an SSH key for nnn-transfer on the conroller
+    command:
+      cmd: ssh-keygen -q -t rsa -b 2048 -N "" -C "for {{ inventory_hostname_short }}-transfer" -f /home/metrics/{{ inventory_hostname_short }}-transfer-rsa
+      creates: /home/metrics/{{ inventory_hostname_short }}-transfer-rsa
+  - name: Get the public key for metrics
+    fetch:
+      src: /home/metrics/.ssh/id_rsa.pub
+      dest: ../Local/VP-keys/{{ inventory_hostname_short }}-id_rsa.pub
+      flat: yes
+  - name: Get the public key for nnn-transfer-rsa
+    fetch:
+      src: /home/metrics/{{ inventory_hostname_short }}-transfer-rsa.pub
+      dest: ../Local/Transfer-keys/{{ inventory_hostname_short }}-transfer-rsa.pub
+      flat: yes
   - name: make Source/
     file:
       path: /home/metrics/Source
@@ -94,3 +69,9 @@
     git:
       repo: 'https://github.com/paulehoffman/early-metrics.git'
       dest: /home/metrics/repo
+  - name: Set up the crontab
+    cron:
+      name: Get measurements
+      minute: "0-59/5"
+      job: "/home/metrics/repo/vantage_point_metrics.py >>/home/metrics/Logs/cron-alert.txt 2>&1"
+  

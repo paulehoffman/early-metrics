@@ -24,49 +24,69 @@
   - name: Make .ssh for metrics
     file:
       path: /home/metrics/.ssh
+      owner: metrics
       group: metrics
       mode: '0700'
-      owner: metrics
       state: directory
   - name: authorized_keys for metrics
     copy:
       src: ../Local/metrics_authorized_keys
       dest: /home/metrics/.ssh/authorized_keys
+      owner: metrics
       group: metrics
       mode: u+rw
-      owner: metrics
   - name: Put .bashrc for metrics
     become_user: metrics
     become: true
     template:
       src: bashrc-for-metrics
       dest: /home/metrics/.bashrc
-  - name: Make user 'reading'
-    user: 
-      name: reading
-      home: /home/reading
-      shell: /bin/bash
-  - name: Make .ssh for reading
+  - name: Make /sftp for transfers
     file:
-      path: /home/reading/.ssh
-      group: reading
-      mode: u+rwx
-      owner: reading
+      path: /sftp
       state: directory
-  - name: authorized_keys for reading
+      mode: go-w
+  - name: Replace sshd_config
     copy:
-      src: ../Local/reading_authorized_keys
-      dest: /home/reading/.ssh/authorized_keys
-      group: reading
+      src: sshd_config-for-collector
+      dest: /etc/ssh/sshd_config
+  - name: Restart sshd after changing the config
+    systemd:
+      state: restarted
+      name: sshd.service
+      daemon_reload: yes      
+  - name: Make user 'transfer'
+    user: 
+      name: transfer
+      home: /home/transfer
+      shell: /usr/sbin/nologin
+  - name: Make .ssh for transfer
+    file:
+      path: /home/transfer/.ssh
+      owner: transfer
+      group: transfer
+      mode: '0700'
+      state: directory
+  - name: Copy SSH public key for transfer
+    copy:
+      src: ../Local/transfer_rsa.pub
+      dest: /home/transfer/.ssh/id_rsa.pub
+      owner: transfer
+      group: transfer
       mode: u+rw
-      owner: reading
-  - name: just-rsync.py for reading
+  - name: Copy SSH private key for transfer
     copy:
-      src: just-rsync.py
-      dest: /home/reading
-      group: reading
-      mode: u+rwx
-      owner: reading
+      src: ../Local/transfer_rsa
+      dest: /home/transfer/.ssh/id_rsa
+      owner: transfer
+      group: transfer
+      mode: u+rw
+  - name: Create download folder for transfer
+    file:
+      path: /sftp/transfer
+      owner: transfer
+      group: transfer
+      state: directory      
   - name: Initialize Postgres for metrics
     become_user: postgres
     become: true

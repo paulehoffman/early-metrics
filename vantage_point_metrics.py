@@ -359,32 +359,3 @@ if __name__ == "__main__":
 	log("Finishing run, wrote out {}.gz, elapsed was {} seconds".format(os.path.basename(out_run_file_name), int(commands_clock_stop - commands_clock_start)))
 	exit()
 
-'''
-# Kept just in case, from an earlier verison where checking for dig's yaml output was needed
-		# Fix temporary bug with dig's YAML output where there might be dig comments
-		# Also fix temprory bug with dig's YAML output where NSID in the query appears without a colon after it
-		dig_lines = dig_text.splitlines()
-		this_dig_text = ""
-		for this_line in dig_lines:
-			if this_line.startswith(";"):
-				# The following are known problems
-				if "<<>> DiG" in this_line or "global options" in this_line:
-					continue
-				log("Found a dig comment in the YAML: {}".format(this_line))
-				continue
-			if this_line.endswith("    NSID"):
-				this_line = this_line + ":"
-			this_dig_text += "{}\n".format(this_line)
-'''
-
-'''
-# Don't save the RRSIG or NSEC records because they won't be queried for
-if this_type in ("RRSIG", "NSEC"):
-	continue
-# Only include zones for which the root is authoritative
-if this_name.count(".") > 1:
-	continue
-# Don't include .arpa / NS
-if this_name == "arpa." and this_type == "NS":
-	continue
-'''
