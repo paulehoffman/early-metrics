@@ -39,7 +39,7 @@ def update_rr_list(file_to_write):
 	temp_latest_zone_f.close()
 	# Give the named-compilezone command, then post-process
 	try:
-		named_compilezone_p = subprocess.run("named-compilezone -q -i none -r ignore -o - . '{}'".format(temp_latest_zone_name),
+		named_compilezone_p = subprocess.run("/home/metrics/Target/sbin/named-compilezone -q -i none -r ignore -o - . '{}'".format(temp_latest_zone_name),
 			shell=True, text=True, check=True, capture_output=True)
 	except Exception as e:
 		die("named-compilezone failed with '{}'".format(e))
@@ -193,7 +193,7 @@ if __name__ == "__main__":
   #   The templates below do *not* do DNS cookies [ujj] because they are optional and are not necessarily supported by all instances.
   #      This is a divergence from RSSAC047.
 	
-	path_to_dig = os.path.expanduser("~/Target/bin/dig")
+	path_to_dig = "/home/metrics/Target/bin/dig"
 
 	# dot_soa_query_template uses +nodnssec +noauthority +noadditional in order to reduce the size of the responses
 	#   The variables to be filled in are path_to_dig, IP address, -4 or -6, and "no" if this is for UDP
@@ -315,7 +315,7 @@ if __name__ == "__main__":
 	# Finish with the scamper command to run traceroute-like queries for all targets [vno]
 	scamper_output = ""
 	scamper_start_time = time.time()
-	this_scamper_cmd = "scamper -i "
+	this_scamper_cmd = "/usr/bin/scamper -i "
 	for this_target in test_targets:
 		for this_internet in ["v4", "v6"]:
 			specify_4_or_6 = "-4" if this_internet == "v4" else "-6"
@@ -355,7 +355,7 @@ if __name__ == "__main__":
 	pickle.dump(output_dict, out_f)
 	out_f.close()
 	try:
-		subprocess.run("gzip '{}'".format(out_run_file_name), shell=True, check=True)
+		subprocess.run("/usr/bin/gzip '{}'".format(out_run_file_name), shell=True, check=True)
 	except Exception as e:
 		die("Could not gzip '{}': '{}'".format(out_run_file_name, e))
 	# Log the finish
