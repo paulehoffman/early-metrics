@@ -3,7 +3,7 @@
 
 # Three-letter items in square brackets (such as [xyz]) refer to parts of rssac-047.md
 
-import argparse, logging, os, pickle, random, re, requests, subprocess, time
+import argparse, logging, os, pickle, random, re, requests, subprocess, tempfile, time
 from concurrent import futures
 
 # Run one command; to be used under concurrent.futures
@@ -358,6 +358,19 @@ if __name__ == "__main__":
 		subprocess.run("/usr/bin/gzip '{}'".format(out_run_file_name), shell=True, check=True)
 	except Exception as e:
 		die("Could not gzip '{}': '{}'".format(out_run_file_name, e))
+	# Try pushing the new file to c00.mtric.net
+	(_, tempfname) = tempfile.mkstemp()
+	tempf = open(tempfname, mode="wt")
+	tempf.write("cd /transfer-{}\nput {}.gz\nexit".format(vp_ident, out_run_file_name))
+	tempf.close()
+	try:
+		sftp_p = subprocess.run("/usr/bin/sftp -i /home/metrics/transfer-{} -b {} transfer-{}@c00.mtric.net".format(vp_ident, tempfname, vp_ident), shell=True, check=True)
+	except Exception as e:
+		log("Running sftp had the exception '{}'; continuing.".format(e))
+	try:
+		os.unlink(tempfname)
+	except:
+		pass # Not worth alerting on this
 	# Log the finish
 	log("Finishing run, wrote out {}.gz, elapsed was {} seconds".format(os.path.basename(out_run_file_name), int(commands_clock_stop - commands_clock_start)))
 	exit()
