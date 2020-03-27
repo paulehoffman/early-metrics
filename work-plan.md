@@ -1,31 +1,35 @@
 # Metrics Work Plan
 
 - Use mtric.net as domain name for RSSAC work
+- Each vantage point (VP) is named `nnn`.mtric.net where `nnn` is a three-digit number
+- Collector is named c00.mtric.net
+
+## Deployment
+
+- Deployed with Ansible
+	- In `Ansible` directory in the repo
+	- Files that are not part of the distribution are on `Local` directory in the repo
+	- Create VPs first with `vps_building.yml`, then create collector with `collector_building.yml`
+	- Creates users on collector with names transfer-xxx to receive files from the VPs
 
 ## Logging and alerts
 
 - Logs are text files kept on VPs and collector
 - Alerts are text files, monitored by Prometheus on collector
-	- ~/Logs/`vp_number`-alerts.txt on every machine
-- All scripts have _die_ function that prints to alert logs
+	- ~/Logs/nnn-alerts.txt on every machine
+- All Python scripts have _die_ function that prints to alert logs
 
 ## Vantage points
 
-- Each vp is `nnn`.mtric.net
-
-- Should have more than one core if possible
-
-- Each VP has VP_NAME environment variable set to the number in 
-
-- Deploy with Ansible
+- Each VP should have more than one core if possible
 
 - `vantage_point_metrics.py`
-	- Run from cron job every 5 minutes on 0, 5, ...
-	- `--style _n_` to say what style queries are run
+	- Is run from cron job every 5 minutes on 0, 5, ... `[mba]` `[wca]`
 	- Use `dig + yaml` from BIND 9.16
-	- Run `traceroute` before queries to each source for both IPv4 and IPv6
-	- Queries as .pickle.gz to ~/Output
-	- Logs to ~/Logs/`vp_number`-log.txt
+	- Run `scamper` after queries to each source for both IPv4 and IPv6
+	- Results of each run are saved as .pickle.gz to ~/Output
+	- Also pushed to collector during run
+	- Logs to ~/Logs/nnn-log.txt
 
 - `watch_fp.py`
 	- Run from cron every 5 minutes on 4, 9, ...
@@ -41,14 +45,20 @@
 - Maintenance
 	- Be sure NTP is updating properly
 	
+- Possible VP providers
+	- hertzner.com
+	- Linode
+	- Digital Ocean
+	- AWS
+	- Google Cloud
+	- OVH
+	- Vultr.com
+	- Ask the GSEs for others
+
 
 ## Collector
 
-- Deploy with Ansible
-
 - Run on a VM with lots of cores and memory
-
-- Each colletor.mtric.net
 
 - `get_root_zone.py`
 	- Stores zones in ~/Output/root_zones
@@ -74,13 +84,3 @@
 - Data distribution
 	- Raw responses (.pickle.gz) files available for a month or longer
 	- Available by read-only rsync
-
-- VP providers
-	- hertzner.com
-	- Linode
-	- Digital Ocean
-	- AWS
-	- Google Cloud
-	- OVH
-	- Vultr.com
-	- Ask the GSEs for others
