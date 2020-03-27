@@ -16,36 +16,26 @@
     copy:
       src: bashrc-for-root
       dest: /root/.bashrc
-  - name: Make user 'metrics'
-    user: 
-      name: metrics
-      home: /home/metrics
-      shell: /bin/bash
-  - name: Make .ssh for metrics
-    file:
-      path: /home/metrics/.ssh
-      owner: metrics
-      group: metrics
-      mode: '0700'
-      state: directory
-  - name: authorized_keys for metrics
-    copy:
-      src: ../Local/metrics_authorized_keys
-      dest: /home/metrics/.ssh/authorized_keys
-      owner: metrics
-      group: metrics
-      mode: u+rw
-  - name: Put .bashrc for metrics
-    become_user: metrics
-    become: true
-    template:
-      src: bashrc-for-metrics
-      dest: /home/metrics/.bashrc
-  - name: Make /sftp for transfers
+  - name: Make /sftp for transfer users
     file:
       path: /sftp
       state: directory
       mode: go-w
+  - name: Create user transfer-xxx
+    user:
+      name: transfer-{{ item | basename }}
+      home: /sftp/transfer-{{ item | basename }}
+      shell: /bin/bash
+      generate_ssh_key: yes
+      # The SSH key will be overwritten
+    with_fileglob:
+      - "../Local/Transfer-keys/???"
+  - name: authorized_keys for transfer-xxx
+    authorized_key:
+      user: transfer-{{ item | basename }}
+      key: lookup("file", "../Local/Transfer-keys/{{ item | basename }}.pub")
+    with_fileglob:
+      - "../Local/Transfer-keys/???"
   - name: Replace sshd_config
     copy:
       src: sshd_config-for-collector
@@ -55,38 +45,17 @@
       state: restarted
       name: sshd.service
       daemon_reload: yes      
-  - name: Make user 'transfer'
+  - name: Make user 'metrics'
     user: 
-      name: transfer
-      home: /home/transfer
-      shell: /usr/sbin/nologin
-  - name: Make .ssh for transfer
-    file:
-      path: /home/transfer/.ssh
-      owner: transfer
-      group: transfer
-      mode: '0700'
-      state: directory
-  - name: Copy SSH public key for transfer
-    copy:
-      src: ../Local/transfer_rsa.pub
-      dest: /home/transfer/.ssh/id_rsa.pub
-      owner: transfer
-      group: transfer
-      mode: u+rw
-  - name: Copy SSH private key for transfer
-    copy:
-      src: ../Local/transfer_rsa
-      dest: /home/transfer/.ssh/id_rsa
-      owner: transfer
-      group: transfer
-      mode: u+rw
-  - name: Create download folder for transfer
-    file:
-      path: /sftp/transfer
-      owner: transfer
-      group: transfer
-      state: directory      
+      name: metrics
+      home: /home/metrics
+      shell: /bin/bash
+  - name: Put .bashrc for metrics
+    become_user: metrics
+    become: true
+    template:
+      src: bashrc-for-metrics
+      dest: /home/metrics/.bashrc
   - name: Initialize Postgres for metrics
     become_user: postgres
     become: true
@@ -95,7 +64,9 @@
       role_attr_flags: CREATEDB,NOSUPERUSER
 - name: Install things as metrics
   hosts: c00.mtric.net  
-  remote_user: metrics
+  user: root
+  become: true
+  become_user: metrics
   tasks:
   - name: Create first database
     postgresql_db:

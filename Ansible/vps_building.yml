@@ -31,27 +31,40 @@
   become_user: metrics
   become: yes
   tasks:
-  - name: Get .bashrc for metrics
+  - name: Get the generated public key for metrics
+    fetch:
+      src: /home/metrics/.ssh/id_rsa.pub
+      dest: ../Local/VP-keys/{{ inventory_hostname_short }}-id_rsa.pub
+      flat: yes
+  - name: Put the known_hosts for c00
+    known_hosts:
+      key: {{ lookup("file", "../Local/key-for-c00.txt") }}
+  - name: Put .bashrc for metrics
     template:
       src: bashrc-for-metrics
       dest: /home/metrics/.bashrc
-  - name: Get short-host-name.txt
+  - name: Put short-host-name.txt
     template:
       src: short-host-name.txt
       dest: /home/metrics/short-host-name.txt
   - name: Generate an SSH key for nnn-transfer on the conroller
     command:
-      cmd: ssh-keygen -q -t rsa -b 2048 -N "" -C "for {{ inventory_hostname_short }}-transfer" -f /home/metrics/{{ inventory_hostname_short }}-transfer-rsa
-      creates: /home/metrics/{{ inventory_hostname_short }}-transfer-rsa
-  - name: Get the public key for metrics
+      cmd: ssh-keygen -q -t rsa -b 2048 -N "" -C "for transfer-{{ inventory_hostname_short }}" -f /home/metrics/transfer-{{ inventory_hostname_short }}
+      creates: /home/metrics/transfer-{{ inventory_hostname_short }}
+  - name: Get the private key for transfer-nnn
     fetch:
-      src: /home/metrics/.ssh/id_rsa.pub
-      dest: ../Local/VP-keys/{{ inventory_hostname_short }}-id_rsa.pub
+      src: /home/metrics/transfer-{{ inventory_hostname_short }}
+      dest: ../Local/Transfer-keys/{{ inventory_hostname_short }}
       flat: yes
-  - name: Get the public key for nnn-transfer-rsa
+  - name: Get the private key for transfer-nnn
     fetch:
-      src: /home/metrics/{{ inventory_hostname_short }}-transfer-rsa.pub
-      dest: ../Local/Transfer-keys/{{ inventory_hostname_short }}-transfer-rsa.pub
+      src: /home/metrics/transfer-{{ inventory_hostname_short }}
+      dest: ../Local/Transfer-keys/{{ inventory_hostname_short }}
+      flat: yes
+  - name: Get the public key for transfer-nnn
+    fetch:
+      src: /home/metrics/transfer-{{ inventory_hostname_short }}.pub
+      dest: ../Local/Transfer-keys/{{ inventory_hostname_short }}.pub
       flat: yes
   - name: make Source/
     file:
@@ -68,7 +81,7 @@
       path: /home/metrics/Target
       mode: u+wrx,go+rx
       state: directory
-  - name: Copy local BIND tarball and expand it
+  - name: Put local BIND tarball and expand it
     unarchive: 
       src: bind-9.16.0.tar.xz
       dest: /home/metrics/Source
@@ -87,7 +100,7 @@
       env: yes
       name: SHELL
       job: /bin/bash
-  - name: Give the firs crontab entry
+  - name: Give the first crontab entry
     cron:
       name: Get measurements
       minute: "0-59/5"
