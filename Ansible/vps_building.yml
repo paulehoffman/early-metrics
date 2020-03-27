@@ -1,6 +1,6 @@
 - name: Set up the machine as root
   hosts: new_vps  
-  remote_user: root
+  remote_user: "{{ superuser }}"
   tasks:
   - name: Initialize apt
     apt:
@@ -27,7 +27,7 @@
       ssh_key_comment: Key for {{ inventory_hostname_short }}
 - name: Set up metrics user
   hosts: new_vps
-  remote_user: root
+  remote_user: "{{ superuser }}"
   become_user: metrics
   become: yes
   tasks:
@@ -38,9 +38,10 @@
       flat: yes
   - name: Put the known_hosts for c00
     known_hosts:
-      key: {{ lookup("file", "../Local/key-for-c00.txt") }}
+      name: c00.mtric.net
+      key: '{{ lookup("file", "../Local/key-for-c00.txt") }}'
   - name: Put .bashrc for metrics
-    template:
+    copy:
       src: bashrc-for-metrics
       dest: /home/metrics/.bashrc
   - name: Put short-host-name.txt
@@ -51,20 +52,10 @@
     command:
       cmd: ssh-keygen -q -t rsa -b 2048 -N "" -C "for transfer-{{ inventory_hostname_short }}" -f /home/metrics/transfer-{{ inventory_hostname_short }}
       creates: /home/metrics/transfer-{{ inventory_hostname_short }}
-  - name: Get the private key for transfer-nnn
-    fetch:
-      src: /home/metrics/transfer-{{ inventory_hostname_short }}
-      dest: ../Local/Transfer-keys/{{ inventory_hostname_short }}
-      flat: yes
-  - name: Get the private key for transfer-nnn
-    fetch:
-      src: /home/metrics/transfer-{{ inventory_hostname_short }}
-      dest: ../Local/Transfer-keys/{{ inventory_hostname_short }}
-      flat: yes
   - name: Get the public key for transfer-nnn
     fetch:
       src: /home/metrics/transfer-{{ inventory_hostname_short }}.pub
-      dest: ../Local/Transfer-keys/{{ inventory_hostname_short }}.pub
+      dest: ../Local/Transfer-public-keys/{{ inventory_hostname_short }}
       flat: yes
   - name: make Source/
     file:

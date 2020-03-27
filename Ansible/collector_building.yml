@@ -1,6 +1,6 @@
 - name: Set up the machine as root
   hosts: c00.mtric.net  
-  remote_user: root
+  remote_user: "{{ superuser }}"
   tasks:
   - name: Initialize apt
     apt:
@@ -21,21 +21,19 @@
       path: /sftp
       state: directory
       mode: go-w
-  - name: Create user transfer-xxx
+  - name: Create all users transfer-xxx
     user:
       name: transfer-{{ item | basename }}
       home: /sftp/transfer-{{ item | basename }}
       shell: /bin/bash
-      generate_ssh_key: yes
-      # The SSH key will be overwritten
     with_fileglob:
-      - "../Local/Transfer-keys/???"
+      - "../Local/Transfer-public-keys/???"
   - name: authorized_keys for transfer-xxx
     authorized_key:
       user: transfer-{{ item | basename }}
-      key: lookup("file", "../Local/Transfer-keys/{{ item | basename }}.pub")
+      key: '{{lookup("file", "../Local/Transfer-public-keys/{{ item | basename }}") }}'
     with_fileglob:
-      - "../Local/Transfer-keys/???"
+      - "../Local/Transfer-public-keys/???"
   - name: Replace sshd_config
     copy:
       src: sshd_config-for-collector
@@ -64,7 +62,7 @@
       role_attr_flags: CREATEDB,NOSUPERUSER
 - name: Install things as metrics
   hosts: c00.mtric.net  
-  user: root
+  remote_user: "{{ superuser }}"
   become: true
   become_user: metrics
   tasks:
