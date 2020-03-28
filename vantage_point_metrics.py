@@ -361,7 +361,7 @@ if __name__ == "__main__":
 	# Try pushing the new file to c00.mtric.net
 	tempfname = "{}/sftptemp".format(output_dir)
 	tempf = open(tempfname, mode="wt")
-	tempf.write("cd /transfer-{}\nput {}.gz\nexit".format(vp_ident, out_run_file_name))
+	tempf.write("cd /transfer-{}/Output\nput {}.gz\nexit".format(vp_ident, out_run_file_name))
 	tempf.close()
 	try:
 		sftp_p = subprocess.run("/usr/bin/sftp -i /home/metrics/transfer-{} -b {} transfer-{}@c00.mtric.net".format(vp_ident, tempfname, vp_ident), shell=True, check=True)
