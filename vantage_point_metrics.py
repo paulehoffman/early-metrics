@@ -364,7 +364,8 @@ if __name__ == "__main__":
 	tempf.write("cd /transfer-{}/Output\nput {}.gz\nexit".format(vp_ident, out_run_file_name))
 	tempf.close()
 	try:
-		sftp_p = subprocess.run("/usr/bin/sftp -i /home/metrics/transfer-{} -b {} transfer-{}@c00.mtric.net".format(vp_ident, tempfname, vp_ident), shell=True, check=True)
+		sftp_p = subprocess.run("/usr/bin/sftp -i /home/metrics/transfer-{} -b {} transfer-{}@c00.mtric.net".format(vp_ident, tempfname, vp_ident),\
+			capture_output=True, shell=True, check=True)
 	except Exception as e:
 		log("Running sftp had the exception '{}'; continuing.".format(e))
 	try:
