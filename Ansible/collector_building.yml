@@ -28,6 +28,12 @@
       shell: /bin/bash
     with_fileglob:
       - "../Local/Transfer-public-keys/???"
+  - name: Change permissions on  ~transfer-xxx
+    file:
+      path: /sftp/transfer-{{ item | basename }}
+      mode: go+w
+    with_fileglob:
+      - "../Local/Transfer-public-keys/???"
   - name: authorized_keys for transfer-xxx
     authorized_key:
       user: transfer-{{ item | basename }}

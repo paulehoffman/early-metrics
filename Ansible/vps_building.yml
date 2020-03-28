@@ -86,13 +86,8 @@
     git:
       repo: 'https://github.com/paulehoffman/early-metrics.git'
       dest: /home/metrics/repo
-  - name: Set up the crontab path
-    cron:
-      env: yes
-      name: SHELL
-      job: /bin/bash
   - name: Give the first crontab entry
-    cron:
+    cron:   # [mba] [wca]
       name: Get measurements
       minute: "0-59/5"
       job: "/home/metrics/repo/vantage_point_metrics.py >>/home/metrics/Logs/cron-alert.txt 2>&1"

@@ -59,28 +59,30 @@
 ## Collector
 
 - Run on a VM with lots of cores and memory
+- All programs run as metrics user
 
 - `get_root_zone.py`
-	- Stores zones in ~/Output/root_zones
+	- Stores zones in ~/Output/RootZones
 	- Run from cron job every 30 minutes
 	- Process zone file with BIND utility, look for SOA
 	- If not already there, name new file _soa_.root.txt
 
-- `get_measurments.py`
-	- Stores results in ~/Output/queries
-	- Run from cron job every 30 minutes
-	- Fills database with measurements
-		- Store both the raw YAML (for later searching) and the pickle version (faster)
+- `update_measurments.py`
+	- Run from cron job every 5 minutes on 4, 9, ...
+	- For each .gz file in /sftp/transfer-nnn
+		- Open file, store results in the database
+		- Move file to ~/Originals/yyyymm/
 
 - `produce_reports.py`
+	- Run from cron job every week, and on the first of each month
 	-`--style _n_` to say what style of report (weekly, monthly)
-	- Run from cron on the first of each month
 
 - `watch_collector.py`
-	- Run from cron every 30 minutes on 5, 35
-	- Alerts ~/Output/queries is not fuller than on the last run
+	- Run from cron job every 30 minutes on 1, 31
+	- Alerts if ~/Output/Originals is not fuller than on the last run
+	- Alerts if ~/Output/root_zones is not fuller than it was 24 hours ago
 	- Check for disk usage > 80%, alert if found
 
 - Data distribution
 	- Raw responses (.pickle.gz) files available for a month or longer
-	- Available by read-only rsync
+	- Available by read-only rsync or maybe HTTPS
