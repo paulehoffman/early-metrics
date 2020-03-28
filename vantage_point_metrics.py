@@ -3,7 +3,7 @@
 
 # Three-letter items in square brackets (such as [xyz]) refer to parts of rssac-047.md
 
-import argparse, logging, os, pickle, random, re, requests, subprocess, tempfile, time
+import argparse, logging, os, pickle, random, re, requests, subprocess, time
 from concurrent import futures
 
 # Run one command; to be used under concurrent.futures
@@ -359,7 +359,7 @@ if __name__ == "__main__":
 	except Exception as e:
 		die("Could not gzip '{}': '{}'".format(out_run_file_name, e))
 	# Try pushing the new file to c00.mtric.net
-	(_, tempfname) = tempfile.mkstemp()
+	tempfname = "{}/sftptemp".format(output_dir)
 	tempf = open(tempfname, mode="wt")
 	tempf.write("cd /transfer-{}\nput {}.gz\nexit".format(vp_ident, out_run_file_name))
 	tempf.close()

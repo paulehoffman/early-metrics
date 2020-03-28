@@ -24,7 +24,7 @@
 - Each VP should have more than one core if possible
 
 - `vantage_point_metrics.py`
-	- Is run from cron job every 5 minutes on 0, 5, ... `[mba]` `[wca]`
+	- Is run from cron job every 5 minutes on 0, 5, ... `[wyn]` `[mba]` `[wca]`
 	- Use `dig + yaml` from BIND 9.16
 	- Run `scamper` after queries to each source for both IPv4 and IPv6
 	- Results of each run are saved as .pickle.gz to ~/Output
@@ -43,7 +43,7 @@
 	- Ask if they need more or, if not, which to use
 
 - Maintenance
-	- Be sure NTP is updating properly
+	- Be sure NTP is updating properly  `[ugt]`
 	
 - Possible VP providers
 	- hertzner.com
