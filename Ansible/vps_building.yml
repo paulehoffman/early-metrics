@@ -83,9 +83,7 @@
       cmd: "./configure --prefix=/home/metrics/Target; make install"
       creates: /home/metrics/Target/bin/dig
   - name: Clone the repo
-    git:
-      repo: 'https://github.com/paulehoffman/early-metrics.git'
-      dest: /home/metrics/repo
+    include: freshen-vps-github.yml
   - name: Give the first crontab entry
     cron:   # [mba] [wca]
       name: Get measurements

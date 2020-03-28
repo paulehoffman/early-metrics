@@ -28,10 +28,23 @@
       shell: /bin/bash
     with_fileglob:
       - "../Local/Transfer-public-keys/???"
-  - name: Change permissions on  ~transfer-xxx
+  - name: Make  ~transfer-xxx/Output
     file:
-      path: /sftp/transfer-{{ item | basename }}
-      mode: go+w
+      path: /sftp/transfer-{{ item | basename }}/Output
+      state: directory
+      recurse: yes
+      owner: transfer-{{ item | basename }}
+      group: transfer-{{ item | basename }}
+    with_fileglob:
+      - "../Local/Transfer-public-keys/???"
+  - name: Make  ~transfer-xxx/AlreadyProcessed
+    file:
+      path: /sftp/transfer-{{ item | basename }}/AlreadyProcessed
+      state: directory
+      recurse: yes
+      owner: transfer-{{ item | basename }}
+      group: transfer-{{ item | basename }}
+      mode: go+wx
     with_fileglob:
       - "../Local/Transfer-public-keys/???"
   - name: authorized_keys for transfer-xxx
