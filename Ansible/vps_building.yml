@@ -15,7 +15,7 @@
         pyflakes3, python-ply, rsync, scamper, traceroute, unzip]
   - name: Put .bashrc for root
     copy:
-      src: bashrc-for-root
+      src: bashrc-for-metrics-and-root
       dest: /root/.bashrc
   - name: Make /sftp for transfer user
     file:
@@ -68,7 +68,7 @@
   tasks:
   - name: Put .bashrc for metrics
     copy:
-      src: bashrc-for-metrics
+      src: bashrc-for-metrics-and-root
       dest: /home/metrics/.bashrc
   - name: Put short-host-name.txt
     template:
@@ -103,7 +103,7 @@
     git:
       repo: 'https://github.com/paulehoffman/early-metrics.git'
       dest: /home/metrics/repo
-  - name: Give the first crontab entry
+  - name: Give the crontab entry for vantage_point_metrics.py
     cron:   # [mba] [wca]
       name: Get measurements
       minute: "0-59/5"

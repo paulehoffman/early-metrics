@@ -15,7 +15,7 @@
         pkg-config, postgresql, pyflakes3, python-ply, python-psycopg2, rsync, unzip]
   - name: Put .bashrc for root
     copy:
-      src: bashrc-for-root
+      src: bashrc-for-metrics-and-root
       dest: /root/.bashrc
   - name: Make /sftp for transfer user
     file:
@@ -70,7 +70,7 @@
   tasks:
   - name: Put .bashrc for metrics
     template:
-      src: bashrc-for-metrics
+      src: bashrc-for-metrics-and-root
       dest: /home/metrics/.bashrc
   - name: Create first database
     postgresql_db:
@@ -104,5 +104,8 @@
       chdir: /home/metrics/Source/bind-9.16.1
       cmd: "./configure --prefix=/home/metrics/Target; make install"
       creates: /home/metrics/Target/bin/dig
-
-      
+  - name: Give the crontab entry for get_root_zone.py
+    cron:   # [mba] [wca]
+      name: Get the new root zone
+      minute: "3,33"
+      job: "/home/metrics/repo/get_root_zone.py >>/home/metrics/Logs/cron-alert.txt 2>&1"

@@ -65,10 +65,8 @@
 - Also has "tranfer" user for others to copy data
 
 - `get_root_zone.py`
-	- Stores zones in ~/Output/RootZones
 	- Run from cron job every 30 minutes
-	- Process zone file with BIND utility, look for SOA
-	- If not already there, name new file _soa_.root.txt
+	- Stores zones in ~/Output/RootZones for every SOA seen
 
 - `update_measurments.py`
 	- Run from cron job every 30 minutes on 29, 59
