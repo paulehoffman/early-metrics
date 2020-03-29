@@ -40,7 +40,7 @@ if __name__ == "__main__":
 	output_dir = os.path.expanduser("~/Output")
 	if not os.path.exists(output_dir):
 		os.mkdir(output_dir)
-	saved_root_zone_dir = "{}/RootZones"
+	saved_root_zone_dir = "{}/RootZones".format(output_dir)
 	if not os.path.exists(saved_root_zone_dir):
 		os.mkdir(saved_root_zone_dir)
 	# Get the current root zone
