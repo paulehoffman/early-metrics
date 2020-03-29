@@ -4,7 +4,7 @@
   become_user: metrics
   become: yes
   tasks:
-  - name: Clone the repo
+  - name: Freshen GitHub for metrics user in VPs
     git:
-      repo: 'https://github.com/paulehoffman/early-metrics.git'
+      repo: "https://github.com/paulehoffman/early-metrics.git"
       dest: /home/metrics/repo

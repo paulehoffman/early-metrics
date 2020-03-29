@@ -47,11 +47,11 @@
   become_user: transfer
   become: yes
   tasks:
-  -name: Set up authorized_keys for transfer
+  - name: Set up authorized_keys for transfer
     authorized_key:
       user: transfer
-      key: '{{lookup("file", "../Local/transfer-id_rsa.pub") }}'
-  -name: Create Output/
+      key: "{{ lookup('file', '../Local/transfer-id_rsa.pub') }}"
+  - name: Create Output/
     file:
       path: /sftp/transfer/Output
       mode: go+w
@@ -99,8 +99,11 @@
       chdir: /home/metrics/Source/bind-9.16.0
       cmd: "./configure --prefix=/home/metrics/Target; make install"
       creates: /home/metrics/Target/bin/dig
+  - name: Pull or freshen the Github repo
   - name: Clone the repo
-    include: freshen-vps-github.yml
+    git:
+      repo: 'https://github.com/paulehoffman/early-metrics.git'
+      dest: /home/metrics/repo
   - name: Give the first crontab entry
     cron:   # [mba] [wca]
       name: Get measurements

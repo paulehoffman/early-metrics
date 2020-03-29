@@ -90,19 +90,10 @@ def update_rr_list(file_to_write):
 # Main program starts here
 
 if __name__ == "__main__":
-	# Get the base for the log directorie
-	#   This has to be done before setting up logging, so "exit" is needed if they fail
-	if "VP_HOME_DIR" in os.environ:
-		vp_home_dir = os.environ["VP_HOME_DIR"]
-	else:
-		vp_home_dir = os.path.expanduser("~")
-	# Be sure the log and output directories exist
-	log_dir = "{}/Logs".format(vp_home_dir)
+	# Get the base for the log directory
+	log_dir = "{}/Logs".format(os.path.expanduser("~"))
 	if not os.path.exists(log_dir):
-		try:
-			os.mkdir(log_dir)
-		except Exception as e:
-			exit("Could not create '{}': {}. Exiting.".format(log_dir, e))
+		exit("Could not create '{}': {}. Exiting.".format(log_dir))
 
 	# Get the vantage point identifier from the short-host-name.txt file
 	#   vp_ident of 999 is special: it means this is running on a local computer, probably for testing
@@ -186,7 +177,6 @@ if __name__ == "__main__":
 	#      There is no control of the reported time for TCP. [epp] This may or may not be OK for the final implementation.
   #   The templates below do *not* do DNS cookies [ujj] because they are optional and are not necessarily supported by all instances.
   #      This is a divergence from RSSAC047.
-	
 	path_to_dig = "/home/metrics/Target/bin/dig"
 
 	# dot_soa_query_template uses +nodnssec +noauthority +noadditional in order to reduce the size of the responses
@@ -237,8 +227,8 @@ if __name__ == "__main__":
 		f.close()
 		# But set this to be modified at the beginning of time so it is immediately updated
 		os.utime(root_auth_file, (0,0))
-	# See if the file is more than 24 hours old [mow]
-	if time.time() - os.stat(root_auth_file).st_mtime > 86400:
+	# See if the file is more than 12 hours old [mow]
+	if time.time() - os.stat(root_auth_file).st_mtime > (60 * 60 * 12):
 		update_rr_list(root_auth_file)
 	try:
 		qname_qtype_pairs = open(root_auth_file, mode="rt").read().splitlines()
@@ -304,7 +294,7 @@ if __name__ == "__main__":
 					this_ret[1], this_ret[2] ]
 				all_dig_output.append(this_record)
 			else:
-				log(this_ret[1])
+				log(this_ret[2])
 	
 	# Finish with the scamper command to run traceroute-like queries for all targets [vno]
 	scamper_output = ""
@@ -341,7 +331,7 @@ if __name__ == "__main__":
 		"s": scamper_output
 	}
 	# Save the output in a file with start_time_string and vp_ident
-	output_dir = "/sftp/transfer/Output".format(vp_home_dir)
+	output_dir = "/sftp/transfer/Output"
 	if not os.path.exists(output_dir):
 		die("{} did not exist. Exiting.".format(output_dir))
 	try:
@@ -358,20 +348,3 @@ if __name__ == "__main__":
 	# Log the finish
 	log("Finishing run, wrote out {}.gz, elapsed was {} seconds".format(os.path.basename(out_run_file_name), int(commands_clock_stop - commands_clock_start)))
 	exit()
-
-'''
-	# Try pushing the new file to c00.mtric.net
-	tempfname = "{}/sftptemp".format(output_dir)
-	tempf = open(tempfname, mode="wt")
-	tempf.write("cd /transfer-{}/Output\nput {}.gz\nexit".format(vp_ident, out_run_file_name))
-	tempf.close()
-	try:
-		sftp_p = subprocess.run("/usr/bin/sftp -i /home/metrics/transfer-{} -b {} transfer-{}@c00.mtric.net".format(vp_ident, tempfname, vp_ident),\
-			capture_output=True, shell=True, check=True)
-	except Exception as e:
-		log("Running sftp had the exception '{}'; continuing.".format(e))
-	try:
-		os.unlink(tempfname)
-	except:
-		pass # Not worth alerting on this
-'''

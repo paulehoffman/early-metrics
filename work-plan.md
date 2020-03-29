@@ -22,13 +22,15 @@
 ## Vantage points
 
 - Each VP should have more than one core if possible
+- All programs run as "metrics" user
+- Also has "tranfer" user for for the collector to copy data
 
 - `vantage_point_metrics.py`
 	- Is run from cron job every 5 minutes on 0, 5, ... `[wyn]` `[mba]` `[wca]`
 	- Use `dig + yaml` from BIND 9.16
+	- Checks for new root zone every 12 hours
 	- Run `scamper` after queries to each source for both IPv4 and IPv6
-	- Results of each run are saved as .pickle.gz to ~/Output
-	- Also pushed to collector during run
+	- Results of each run are saved as .pickle.gz to /sftp/transfer/Output for later pulling
 	- Logs to ~/Logs/nnn-log.txt
 
 - `watch_fp.py`
@@ -59,7 +61,8 @@
 ## Collector
 
 - Run on a VM with lots of cores and memory
-- All programs run as metrics user
+- All programs run as "metrics" user
+- Also has "tranfer" user for others to copy data
 
 - `get_root_zone.py`
 	- Stores zones in ~/Output/RootZones
@@ -68,8 +71,9 @@
 	- If not already there, name new file _soa_.root.txt
 
 - `update_measurments.py`
-	- Run from cron job every 5 minutes on 4, 9, ...
-	- For each .gz file in /sftp/transfer-nnn
+	- Run from cron job every 30 minutes on 29, 59
+	- Use sftp to pull from all VPs to ~/Incoming
+	- For each .gz file in ~/Incoming
 		- Open file, store results in the database
 		- Move file to ~/Originals/yyyymm/
 
@@ -78,11 +82,11 @@
 	-`--style _n_` to say what style of report (weekly, monthly)
 
 - `watch_collector.py`
-	- Run from cron job every 30 minutes on 1, 31
+	- Run from cron job every 30 minutes on 20, 50
 	- Alerts if ~/Output/Originals is not fuller than on the last run
 	- Alerts if ~/Output/root_zones is not fuller than it was 24 hours ago
 	- Check for disk usage > 80%, alert if found
 
 - Data distribution
-	- Raw responses (.pickle.gz) files available for a month or longer
+	- Raw responses (.pickle.gz) files available for a month or longer in ~transport
 	- Available by read-only rsync or maybe HTTPS

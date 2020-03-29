@@ -52,11 +52,11 @@
   become_user: transfer
   become: yes
   tasks:
-  -name: Set up authorized_keys for transfer
+  - name: Set up authorized_keys for transfer
     authorized_key:
       user: transfer
       key: '{{lookup("file", "../Local/transfer-id_rsa.pub") }}'
-  -name: Create Output/
+  - name: Create Output/
     file:
       path: /sftp/transfer/Output
       mode: go+w
