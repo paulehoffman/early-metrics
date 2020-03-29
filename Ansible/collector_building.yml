@@ -11,7 +11,8 @@
       force: true
   - name: Install all the needed packages
     apt:
-      pkg: [build-essential, curl, git, man, postgresql, pyflakes3, python-psycopg2, rsync, unzip]
+      pkg: [build-essential, curl, git, libcap-dev, libssl-dev, libuv1-dev, man,
+        pkg-config, postgresql, pyflakes3, python-ply, python-psycopg2, rsync, unzip]
   - name: Put .bashrc for root
     copy:
       src: bashrc-for-root

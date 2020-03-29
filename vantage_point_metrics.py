@@ -91,11 +91,6 @@ def update_rr_list(file_to_write):
 # Main program starts here
 
 if __name__ == "__main__":
-	# Get the base for the log directory
-	log_dir = "{}/Logs".format(os.path.expanduser("~"))
-	if not os.path.exists(log_dir):
-		exit("Could not create '{}': {}. Exiting.".format(log_dir))
-
 	# Get the vantage point identifier from the short-host-name.txt file
 	#   vp_ident of 999 is special: it means this is running on a local computer, probably for testing
 	#   This has to be done before setting up logging, so "exit" is needed if it fails
@@ -106,6 +101,11 @@ if __name__ == "__main__":
 		exit("Could not read {}. Exiting.".format(vp_ident_file_name))
 	if vp_ident == None or vp_ident == "":
 		exit("The vp_ident gotten from {} was bad: '{}'. Exiting.".format(vp_ident_file_name, vp_ident))
+
+	# Get the base for the log directory
+	log_dir = "{}/Logs".format(os.path.expanduser("~"))
+	if not os.path.exists(log_dir):
+		os.mkdir(log_dir)
 
 	# Set up the logging and alert mechanisms
 	#   Requires log_dir and vp_ident to have been defined above 
