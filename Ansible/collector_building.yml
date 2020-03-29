@@ -83,5 +83,25 @@
       columns:
         - id bigserial primary key
         - things text
+  - name: make Source/
+    file:
+      path: /home/metrics/Source
+      mode: u+wrx,go+rx
+      state: directory
+  - name: make Target/
+    file:
+      path: /home/metrics/Target
+      mode: u+wrx,go+rx
+      state: directory
+  - name: Put local BIND tarball and expand it
+    unarchive: 
+      src: bind-9.16.1.tar.xz
+      dest: /home/metrics/Source
+      creates: /home/metrics/Source/bind-9.16.1
+  - name: Make BIND
+    shell:
+      chdir: /home/metrics/Source/bind-9.16.1
+      cmd: "./configure --prefix=/home/metrics/Target; make install"
+      creates: /home/metrics/Target/bin/dig
 
       
