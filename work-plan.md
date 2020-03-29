@@ -68,9 +68,12 @@
 	- Run from cron job every 30 minutes
 	- Stores zones in ~/Output/RootZones for every SOA seen
 
-- `update_measurments.py`
-	- Run from cron job every 30 minutes on 29, 59
+- `pull_from-vps.py`
+	- Run from cron job every 30 minutes
 	- Use sftp to pull from all VPs to ~/Incoming
+
+- `update_measurments.py`
+	- Run from cron job every 30 minutes
 	- For each .gz file in ~/Incoming
 		- Open file, store results in the database
 		- Move file to ~/Originals/yyyymm/

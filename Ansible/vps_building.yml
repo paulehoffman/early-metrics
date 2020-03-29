@@ -15,7 +15,7 @@
         pyflakes3, python-ply, rsync, scamper, traceroute, unzip]
   - name: Put .bashrc for root
     copy:
-      src: bashrc-for-metrics-and-root
+      src: ../bashrc-for-metrics-and-root
       dest: /root/.bashrc
   - name: Make /sftp for transfer user
     file:
@@ -24,7 +24,7 @@
       mode: go-w
   - name: Replace sshd_config
     copy:
-      src: sshd_config-shorter
+      src: ../sshd_config-shorter
       dest: /etc/ssh/sshd_config
   - name: Restart sshd after changing the config
     systemd:
@@ -68,7 +68,7 @@
   tasks:
   - name: Put .bashrc for metrics
     copy:
-      src: bashrc-for-metrics-and-root
+      src: ../bashrc-for-metrics-and-root
       dest: /home/metrics/.bashrc
   - name: Put short-host-name.txt
     template:
@@ -91,7 +91,7 @@
       state: directory
   - name: Put local BIND tarball and expand it
     unarchive: 
-      src: bind-9.16.1.tar.xz
+      src: ../bind-9.16.1.tar.xz
       dest: /home/metrics/Source
       creates: /home/metrics/Source/bind-9.16.1
   - name: Make BIND
