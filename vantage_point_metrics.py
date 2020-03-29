@@ -14,7 +14,7 @@ def do_one_command(command_dict):
 		command_to_give = command_dict["command"]
 	except:
 		die("No 'command' in '{}' in do_one_command.".format(command_dict))
-	command_p = subprocess.run(command_to_give, shell=True, capture_output=True, text=True, check=True)
+	command_p = subprocess.run(command_to_give, shell=True, capture_output=True, text=True, check=False)
 	one_command_elapsed = time.time() - one_command_start
 	this_command_text = command_p.stdout
 	if not command_p.returncode == 0:
