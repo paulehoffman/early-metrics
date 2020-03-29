@@ -17,7 +17,8 @@ def do_one_command(command_dict):
 	try:
 		command_p = subprocess.run(command_to_give, shell=True, capture_output=True, text=True, check=True)
 	except Exception as e:
-		return (False, 0, "Running '{}' got exception '{}'.".format(command_to_give, e))
+		this_command_text = command_p.stdout
+		return (False, 0, "Running '{}' got exception '{}' and output '{}'.".format(command_to_give, e, this_command_text))
 	one_command_elapsed = time.time() - one_command_start
 	this_command_text = command_p.stdout
 	if len(this_command_text) == 0:

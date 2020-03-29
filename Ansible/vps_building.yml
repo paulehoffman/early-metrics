@@ -100,7 +100,6 @@
       cmd: "./configure --prefix=/home/metrics/Target; make install"
       creates: /home/metrics/Target/bin/dig
   - name: Pull or freshen the Github repo
-  - name: Clone the repo
     git:
       repo: 'https://github.com/paulehoffman/early-metrics.git'
       dest: /home/metrics/repo
