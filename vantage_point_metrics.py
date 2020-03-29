@@ -14,12 +14,15 @@ def do_one_command(command_dict):
 		command_to_give = command_dict["command"]
 	except:
 		die("No 'command' in '{}' in do_one_command.".format(command_dict))
-	command_p = subprocess.run(command_to_give, shell=True, capture_output=True, text=True, check=False)
+	try:
+		command_p = subprocess.run(command_to_give, shell=True, capture_output=True, text=True, check=True)
+	except Exception as e:
+		return (False, "# Exception '{}'\n# Command {}".format(e, command_to_give))
 	one_command_elapsed = time.time() - one_command_start
 	this_command_text = command_p.stdout
 	if not command_p.returncode == 0:
-		return (False, one_command_elapsed, "# Return code {}\n{}".format(command_p.returncode, this_command_text))
-	if len(this_command_text) == 0:
+		return (False, one_command_elapsed, "# Return code {}\n# Command {}\n{}".format(command_p.returncode, command_to_give, this_command_text))
+	elif len(this_command_text) == 0:
 		return (False, one_command_elapsed, "Running '{}' got a zero-length response, stderr was '{}'".format(command_to_give, command_p.stderr))
 	else:
 		return (True, one_command_elapsed, this_command_text)
