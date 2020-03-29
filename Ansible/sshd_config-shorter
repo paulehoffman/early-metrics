@@ -6,8 +6,8 @@ AcceptEnv LANG LC_*
 Subsystem sftp  /usr/lib/openssh/sftp-server
 PasswordAuthentication no
 
-# New for transfer-xxx user
-Match User transfer*
+# New for transfer user
+Match User transfer
 ForceCommand internal-sftp
 ChrootDirectory /sftp
 PermitTunnel no

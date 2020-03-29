@@ -90,7 +90,7 @@ def update_rr_list(file_to_write):
 # Main program starts here
 
 if __name__ == "__main__":
-	# Get the base for the log and output directories
+	# Get the base for the log directorie
 	#   This has to be done before setting up logging, so "exit" is needed if they fail
 	if "VP_HOME_DIR" in os.environ:
 		vp_home_dir = os.environ["VP_HOME_DIR"]
@@ -103,12 +103,6 @@ if __name__ == "__main__":
 			os.mkdir(log_dir)
 		except Exception as e:
 			exit("Could not create '{}': {}. Exiting.".format(log_dir, e))
-	output_dir = "{}/Output".format(vp_home_dir)
-	if not os.path.exists(output_dir):
-		try:
-			os.mkdir(output_dir)
-		except Exception as e:
-			exit("Could not create '{}': {}. Exiting.".format(output_dir, e))
 
 	# Get the vantage point identifier from the short-host-name.txt file
 	#   vp_ident of 999 is special: it means this is running on a local computer, probably for testing
@@ -347,6 +341,9 @@ if __name__ == "__main__":
 		"s": scamper_output
 	}
 	# Save the output in a file with start_time_string and vp_ident
+	output_dir = "/sftp/transfer/Output".format(vp_home_dir)
+	if not os.path.exists(output_dir):
+		die("{} did not exist. Exiting.".format(output_dir))
 	try:
 		out_run_file_name = "{}/{}-{}.pickle".format(output_dir, start_time_string, vp_ident)
 		out_f = open(out_run_file_name, mode="wb")
@@ -358,6 +355,11 @@ if __name__ == "__main__":
 		subprocess.run("/usr/bin/gzip '{}'".format(out_run_file_name), shell=True, check=True)
 	except Exception as e:
 		die("Could not gzip '{}': '{}'".format(out_run_file_name, e))
+	# Log the finish
+	log("Finishing run, wrote out {}.gz, elapsed was {} seconds".format(os.path.basename(out_run_file_name), int(commands_clock_stop - commands_clock_start)))
+	exit()
+
+'''
 	# Try pushing the new file to c00.mtric.net
 	tempfname = "{}/sftptemp".format(output_dir)
 	tempf = open(tempfname, mode="wt")
@@ -372,7 +374,4 @@ if __name__ == "__main__":
 		os.unlink(tempfname)
 	except:
 		pass # Not worth alerting on this
-	# Log the finish
-	log("Finishing run, wrote out {}.gz, elapsed was {} seconds".format(os.path.basename(out_run_file_name), int(commands_clock_stop - commands_clock_start)))
-	exit()
-
+'''

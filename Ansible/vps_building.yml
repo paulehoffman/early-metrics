@@ -17,29 +17,55 @@
     copy:
       src: bashrc-for-root
       dest: /root/.bashrc
+  - name: Make /sftp for transfer user
+    file:
+      path: /sftp
+      state: directory
+      mode: go-w
+  - name: Replace sshd_config
+    copy:
+      src: sshd_config-shorter
+      dest: /etc/ssh/sshd_config
+  - name: Restart sshd after changing the config
+    systemd:
+      state: restarted
+      name: sshd.service
+      daemon_reload: yes      
+  - name: Make user 'transfer'
+    user:
+      name: transfer
+      home: /sftp/transfer
+      shell: /bin/bash
   - name: Make user 'metrics'
     user:
       name: metrics
       home: /home/metrics
       shell: /bin/bash
-      generate_ssh_key: yes
-      ssh_key_bits: 2048
-      ssh_key_comment: Key for {{ inventory_hostname_short }}
+- name: Set up transfer user
+  hosts: new_vps
+  remote_user: "{{ superuser }}"
+  become_user: transfer
+  become: yes
+  tasks:
+  -name: Set up authorized_keys for transfer
+    authorized_key:
+      user: transfer
+      key: '{{lookup("file", "../Local/transfer-id_rsa.pub") }}'
+  -name: Create Output/
+    file:
+      path: /sftp/transfer/Output
+      mode: go+w
+      state: directory
+  - name: Put the known_hosts for c00 on transfer
+    known_hosts:
+      name: c00.mtric.net
+      key: '{{ lookup("file", "../Local/key-for-c00.txt") }}'
 - name: Set up metrics user
   hosts: new_vps
   remote_user: "{{ superuser }}"
   become_user: metrics
   become: yes
   tasks:
-  - name: Get the generated public key for metrics
-    fetch:
-      src: /home/metrics/.ssh/id_rsa.pub
-      dest: ../Local/VP-keys/{{ inventory_hostname_short }}-id_rsa.pub
-      flat: yes
-  - name: Put the known_hosts for c00
-    known_hosts:
-      name: c00.mtric.net
-      key: '{{ lookup("file", "../Local/key-for-c00.txt") }}'
   - name: Put .bashrc for metrics
     copy:
       src: bashrc-for-metrics
@@ -48,15 +74,6 @@
     template:
       src: short-host-name.txt
       dest: /home/metrics/short-host-name.txt
-  - name: Generate an SSH key for nnn-transfer on the conroller
-    command:
-      cmd: ssh-keygen -q -t rsa -b 2048 -N "" -C "for transfer-{{ inventory_hostname_short }}" -f /home/metrics/transfer-{{ inventory_hostname_short }}
-      creates: /home/metrics/transfer-{{ inventory_hostname_short }}
-  - name: Get the public key for transfer-nnn
-    fetch:
-      src: /home/metrics/transfer-{{ inventory_hostname_short }}.pub
-      dest: ../Local/Transfer-public-keys/{{ inventory_hostname_short }}
-      flat: yes
   - name: make Source/
     file:
       path: /home/metrics/Source
@@ -89,4 +106,3 @@
       name: Get measurements
       minute: "0-59/5"
       job: "/home/metrics/repo/vantage_point_metrics.py >>/home/metrics/Logs/cron-alert.txt 2>&1"
-  
