@@ -17,7 +17,7 @@ def do_one_command(command_dict):
 	command_p = subprocess.run(command_to_give, shell=True, capture_output=True, text=True, check=False)
 	one_command_elapsed = time.time() - one_command_start
 	this_command_text = command_p.stdout
-	# Return code 9 means timeut
+	# Return code 9 means timeout
 	if command_p.returncode == 9:
 		return(True, -1, this_command_text)
 	elif not command_p.returncode == 0:
@@ -295,6 +295,9 @@ if __name__ == "__main__":
 					this_command["target"], this_command["internet"], this_command["transport"], this_command["ip_addr"], this_command["test_type"],
 					this_ret[1], this_ret[2] ]
 				all_dig_output.append(this_record)
+				# Log timeouts
+				if this_record[5] == -1:
+					log("Timeout for {}".format("/".join(this_record)))
 			else:
 				log(this_ret[2])
 	
