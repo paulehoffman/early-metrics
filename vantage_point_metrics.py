@@ -297,7 +297,7 @@ if __name__ == "__main__":
 				all_dig_output.append(this_record)
 				# Log timeouts
 				if this_record[5] == -1:
-					log("Timeout for {}".format("/".join(this_record)))
+					log("Timeout for {}".format(this_record))
 			else:
 				log(this_ret[2])
 	
