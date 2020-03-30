@@ -52,6 +52,7 @@
 	- Linode
 	- Digital Ocean
 	- AWS
+	- Azure
 	- Google Cloud
 	- OVH
 	- Vultr.com

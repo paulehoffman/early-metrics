@@ -11,8 +11,8 @@
       force: true
   - name: Install all the needed packages
     apt:
-      pkg: [build-essential, curl, git, libcap-dev, libssl-dev, libuv1-dev, man,
-        pkg-config, postgresql, pyflakes3, python-ply, python-psycopg2, rsync, unzip]
+      pkg: [build-essential, curl, git, libcap-dev, libssl-dev, libuv1-dev, man, pkg-config, 
+        postgresql, pyflakes3, python-ply, python-psycopg2, python3-psycopg2, python3-paramiko, rsync, unzip]
   - name: Put .bashrc for root
     copy:
       src: ../bashrc-for-metrics-and-root
@@ -72,18 +72,6 @@
     template:
       src: ../bashrc-for-metrics-and-root
       dest: /home/metrics/.bashrc
-  - name: Create first database
-    postgresql_db:
-      login_user: metrics
-      name: metrics
-  - name: Create first table
-    postgresql_table:
-      login_user: metrics
-      db: metrics
-      name: first_table
-      columns:
-        - id bigserial primary key
-        - things text
   - name: make Source/
     file:
       path: /home/metrics/Source
@@ -104,8 +92,31 @@
       chdir: /home/metrics/Source/bind-9.16.1
       cmd: "./configure --prefix=/home/metrics/Target; make install"
       creates: /home/metrics/Target/bin/dig
+  - name: Put vp_list.txt
+    copy:
+      src: ../vp_list.txt
+      dest: /home/metrics/vp_list.txt
   - name: Give the crontab entry for get_root_zone.py
     cron:   # [mba] [wca]
       name: Get the new root zone
       minute: "3,33"
       job: "/home/metrics/repo/get_root_zone.py >>/home/metrics/Logs/cron-alert.txt 2>&1"
+- name: Do Postgres stuff
+  hosts: c00.mtric.net  
+  remote_user: "{{ superuser }}"
+  become: true
+  become_user: metrics
+  tasks:
+  - name: Create first database
+    postgresql_db:
+      login_user: metrics
+      name: metrics
+  - name: Create table for VP names
+    postgresql_table:
+      login_user: metrics
+      db: metrics
+      name: vp_names
+      columns:
+      - name text primary key
+      - last_checked timestamp
+  
