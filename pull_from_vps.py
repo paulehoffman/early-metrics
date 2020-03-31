@@ -55,17 +55,19 @@ if __name__ == "__main__":
 	except Exception as e:
 		die("Could not open {} and split the lines: '{}'".format(vp_list_filename, e))
 	all_vps_from_db = []
-	print(all_vps_from_db) ##############
 	try:
-		cur.execuite("select name from vp_names;")
+		cur.execute("select name from vp_names;")
 		all_vp_tuples_from_db = cur.fetchall()
 	except Exception as e:
 		die("Could not fetch all the names from vp_names: '{}'".format(e))
-	print(all_vp_tuples_from_db) #################
+	all_vps_from_db = []
+	for this_tuple in all_vp_tuples_from_db:
+		all_vps_from_db.append(this_tuple[0])
+	print("{}\n{}".format(all_vps_from_file, all_vps_from_db))
 	
 	exit() ##################################
 	
 	# Find the last file received from each VP
 	for this_vp in all_vps:
-		# pass ####################
+		pass ####################
 		
