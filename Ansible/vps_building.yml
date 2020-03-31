@@ -56,6 +56,11 @@
       path: /sftp/transfer/Output
       mode: go+w
       state: directory
+  - name: Create AlreadySeen/
+    file:
+      path: /sftp/transfer/AlreadySeen
+      mode: go+w
+      state: directory
   - name: Put the known_hosts for c00 on transfer
     known_hosts:
       name: c00.mtric.net

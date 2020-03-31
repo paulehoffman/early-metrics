@@ -117,6 +117,15 @@
       db: metrics
       name: vp_names
       columns:
-      - name text primary key
+      - name text
       - last_checked timestamp
-  
+  - name: Create table for files seen
+    postgresql_table:
+      login_user: metrics
+      db: metrics
+      name: files_seen
+      columns:
+      - filename_full text
+      - filename_time_only text
+      - vp text
+      - seen_at timestamp

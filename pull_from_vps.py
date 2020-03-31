@@ -56,18 +56,44 @@ if __name__ == "__main__":
 		die("Could not open {} and split the lines: '{}'".format(vp_list_filename, e))
 	all_vps_from_db = []
 	try:
-		cur.execute("select name from vp_names;")
+		cur.execute("select vp from vp_names;")
 		all_vp_tuples_from_db = cur.fetchall()
 	except Exception as e:
 		die("Could not fetch all the names from vp_names: '{}'".format(e))
 	all_vps_from_db = []
 	for this_tuple in all_vp_tuples_from_db:
 		all_vps_from_db.append(this_tuple[0])
-	print("{}\n{}".format(all_vps_from_file, all_vps_from_db))
-	
-	exit() ##################################
-	
+	for this_vp in all_vps_from_file:
+		if not this_vp in all_vps_from_db:
+			try:
+				cur.execute("insert into vp_names (vp) values (%s);", (this_vp,))
+			except Exception as e:
+				die("Could not insert '{}' into vp_names: {}".format(this_vp, e))
+	try:
+		conn.commit()
+	except Exception as e:
+		die("Could not commit inserting into vp_names: {}".format(e))
+
 	# Find the last file received from each VP
-	for this_vp in all_vps:
+	for this_vp in all_vps_from_file:
 		pass ####################
-		
+
+
+"""
+metrics=> \d files_seen
+                             Table "public.files_seen"
+       Column       |            Type             | Collation | Nullable | Default
+--------------------+-----------------------------+-----------+----------+---------
+ filename_full      | text                        |           |          |
+ filename_time_only | text                        |           |          |
+ vp                 | text                        |           |          |
+ seen_at            | timestamp without time zone |           |          |
+
+metrics=> \d vp_names
+                           Table "public.vp_names"
+    Column    |            Type             | Collation | Nullable | Default
+--------------+-----------------------------+-----------+----------+---------
+ vp           | text                        |           |          |
+ last_checked | timestamp without time zone |           |          |
+ """
+ 
