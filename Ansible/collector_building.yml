@@ -73,15 +73,20 @@
       path: /home/metrics/.ssh
       state: directory
       mode: go-rwx
-  - name: Copy public key for metrics
+  - name: Copy public key for transfer
     copy:
       src: ../Local/transfer-id_rsa.pub
       dest: /home/metrics/.ssh/id_rsa.pub
       mode: go-rwx
-  - name: Copy private key for metrics
+  - name: Copy private key for transfer
     copy:
       src: ../Local/transfer-id_rsa
       dest: /home/metrics/.ssh/id_rsa
+      mode: go-rwx
+  - name: Turn off hashing of names in known_hosts
+    copy:
+      src: ../home_ssh_config
+      dest: /home/metrics/.ssh/ssh_config
       mode: go-rwx
   - name: make Source/
     file:
