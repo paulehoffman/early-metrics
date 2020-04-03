@@ -88,6 +88,11 @@
       src: ../home_ssh_config
       dest: /home/metrics/.ssh/ssh_config
       mode: go-rwx
+  - name: Get our version of known_hosts
+    copy:
+      src: ../vp_known_hosts
+      dest: /home/metrics/.ssh/known_hosts
+      mode: go-rwx
   - name: make Source/
     file:
       path: /home/metrics/Source
