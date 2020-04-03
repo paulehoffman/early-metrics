@@ -46,6 +46,7 @@
 
 - Maintenance
 	- Be sure NTP is updating properly  `[ugt]`
+	  - Maybe use time-a-g.nist.gov
 	
 - Possible VP providers
 	- hertzner.com

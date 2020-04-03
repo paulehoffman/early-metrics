@@ -24,7 +24,7 @@
       mode: go-w
   - name: Replace sshd_config
     copy:
-      src: ../sshd_config-shorter
+      src: ../etc_sshd_config_shorter
       dest: /etc/ssh/sshd_config
   - name: Restart sshd after changing the config
     systemd:
@@ -53,10 +53,6 @@
   become_user: transfer
   become: yes
   tasks:
-  - name: Set up authorized_keys for transfer
-    authorized_key:
-      user: transfer
-      key: '{{lookup("file", "../Local/transfer-id_rsa.pub") }}'
   - name: Create Output/
     file:
       path: /sftp/transfer/Output
@@ -72,6 +68,21 @@
     template:
       src: ../bashrc-for-metrics-and-root
       dest: /home/metrics/.bashrc
+  - name: Make .ssh for metrics
+    file:
+      path: /home/metrics/.ssh
+      state: directory
+      mode: go-rwx
+  - name: Copy public key for metrics
+    copy:
+      src: ../Local/transfer-id_rsa.pub
+      dest: /home/metrics/.ssh/id_rsa.pub
+      mode: go-rwx
+  - name: Copy private key for metrics
+    copy:
+      src: ../Local/transfer-id_rsa
+      dest: /home/metrics/.ssh/id_rsa
+      mode: go-rwx
   - name: make Source/
     file:
       path: /home/metrics/Source

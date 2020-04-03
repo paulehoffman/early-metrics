@@ -49,6 +49,7 @@ if __name__ == "__main__":
 		os.mkdir(input_dir)
 
 	# Update the vp_names table to have everything in ~/vp_list.txt
+	#    vp_list.txt is the names of each VP, as a full FQDN, one per line
 	vp_list_filename = os.path.expanduser("~/vp_list.txt")
 	try:
 		all_vps_from_file = open(vp_list_filename, mode="rt").read().splitlines()

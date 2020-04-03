@@ -24,7 +24,7 @@
       mode: go-w
   - name: Replace sshd_config
     copy:
-      src: ../sshd_config-shorter
+      src: ../etc_sshd_config_shorter
       dest: /etc/ssh/sshd_config
   - name: Restart sshd after changing the config
     systemd:
@@ -47,24 +47,20 @@
   become_user: transfer
   become: yes
   tasks:
-  - name: Set up authorized_keys for transfer
+  - name: Set up authorized_key for metrics
     authorized_key:
       user: transfer
       key: "{{ lookup('file', '../Local/transfer-id_rsa.pub') }}"
-  - name: Create Output/
+  - name: Create Output/ for transfer
     file:
       path: /sftp/transfer/Output
       mode: go+w
       state: directory
-  - name: Create AlreadySeen/
+  - name: Create AlreadySeen/ for transfer
     file:
       path: /sftp/transfer/AlreadySeen
       mode: go+w
       state: directory
-  - name: Put the known_hosts for c00 on transfer
-    known_hosts:
-      name: c00.mtric.net
-      key: '{{ lookup("file", "../Local/key-for-c00.txt") }}'
 - name: Set up metrics user
   hosts: new_vps
   remote_user: "{{ superuser }}"
