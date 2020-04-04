@@ -49,32 +49,12 @@ if __name__ == "__main__":
 	if not os.path.exists(input_dir):
 		os.mkdir(input_dir)
 
-	# Update the vps_access table to have everything in ~/vp_list.txt
-	#    vp_list.txt is the names of each VP, as a full FQDN, one per line
+	# Get the list of VPs
 	vp_list_filename = os.path.expanduser("~/vp_list.txt")
 	try:
 		all_vps_from_file = open(vp_list_filename, mode="rt").read().splitlines()
 	except Exception as e:
 		die("Could not open {} and split the lines: '{}'".format(vp_list_filename, e))
-	all_vps_from_db = []
-	try:
-		cur.execute("select vp_fqdn from vps_access;")
-		all_vp_tuples_from_db = cur.fetchall()
-	except Exception as e:
-		die("Could not fetch all the names from vps_access: '{}'".format(e))
-	all_vps_from_db = []
-	for this_tuple in all_vp_tuples_from_db:
-		all_vps_from_db.append(this_tuple[0])
-	for this_vp in all_vps_from_file:
-		if not this_vp in all_vps_from_db:
-			try:
-				cur.execute("insert into vps_access (vp_fqdn) values (%s);", (this_vp,))
-			except Exception as e:
-				die("Could not insert '{}' into vps_access: {}".format(this_vp, e))
-	try:
-		conn.commit()
-	except Exception as e:
-		die("Could not commit inserting into vp_names: {}".format(e))
 
 	# For each VP, find the files in /sftp/transfer/Output and get them one by one
 	#   For each file, after getting, move it to /sftp/transfer/AlreadySeen
@@ -119,7 +99,8 @@ if __name__ == "__main__":
 				exit("Running rename for {} ended with '{}'".format(this_filename, e))
 			pulled_count += 1
 			cur.execute("insert into files_gotten (filename_full, retrieved_at) values (%s, %s);", (this_filename, datetime.datetime.now(datetime.timezone.utc)))
+		try:
 			conn.commit()
-		cur.execute("insert into vps_access (vp_fqdn, last_checked) values (%s, %s);", (this_vp, datetime.datetime.now(datetime.timezone.utc)))
-		conn.commit()
+		except Exception as e:
+			die("Could not commit at end of file getting: '{}'".format(e))
 	log("Finished pulling; got {} files".format(pulled_count))

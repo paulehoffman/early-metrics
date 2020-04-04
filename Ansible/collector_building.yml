@@ -132,14 +132,6 @@
     postgresql_db:
       login_user: metrics
       name: metrics
-  - name: Create table for VP names
-    postgresql_table:
-      login_user: metrics
-      db: metrics
-      name: vps_access
-      columns:
-      - vp_fqdn text
-      - last_checked timestamp
   - name: Create table for files gotten
     postgresql_table:
       login_user: metrics
