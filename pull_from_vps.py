@@ -96,9 +96,20 @@ if __name__ == "__main__":
 			try:
 				p = subprocess.run("sftp -b {} transfer@{}".format(move_batch_filename, this_vp), shell=True, capture_output=True, text=True, check=True)
 			except Exception as e:
+				try:
+					conn.commit()
+				except Exception as inside_e:
+					die("Inside exception '{}', could not commit: '{}'".format(e, inside_e))
 				exit("Running rename for {} ended with '{}'".format(this_filename, e))
 			pulled_count += 1
-			cur.execute("insert into files_gotten (filename_full, retrieved_at) values (%s, %s);", (this_filename, datetime.datetime.now(datetime.timezone.utc)))
+			try:
+				cur.execute("insert into files_gotten (filename_full, retrieved_at) values (%s, %s);", (this_filename, datetime.datetime.now(datetime.timezone.utc)))
+			except Exception as e:
+				try:
+					conn.commit()
+				except Exception as inside_e:
+					die("Inside exception '{}', could not commit: '{}'".format(e, inside_e))
+				die("Could not insert '{}' into files_gotten.".format(this_filename))
 		try:
 			conn.commit()
 		except Exception as e:
