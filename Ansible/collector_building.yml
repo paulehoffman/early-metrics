@@ -122,6 +122,11 @@
       name: Get the new root zone
       minute: "3,33"
       job: "/home/metrics/repo/get_root_zone.py >>/home/metrics/Logs/cron-alert.txt 2>&1"
+  - name: Give the crontab entry for pull_from_vps.py
+    cron:
+      name: Pull data from the VPs
+      minute: "4,34"
+      job: "/home/metrics/repo/pull_from_vps.py >>/home/metrics/Logs/cron-alert.txt 2>&1"
 - name: Do Postgres stuff
   hosts: c00.mtric.net  
   remote_user: "{{ superuser }}"

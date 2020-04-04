@@ -43,6 +43,10 @@ if __name__ == "__main__":
 		cur = conn.cursor()
 	except Exception as e:
 		die("Unable to get database cursor: '{}'".format(e))
+	try:
+		conn.set_session(autocommit=True)
+	except Exception as e:
+		die("Unable to turn on autocommit: '{}'".format(e))
 	
 	# Where to save the incoming files
 	input_dir = os.path.expanduser("~/Incoming")
@@ -96,22 +100,10 @@ if __name__ == "__main__":
 			try:
 				p = subprocess.run("sftp -b {} transfer@{}".format(move_batch_filename, this_vp), shell=True, capture_output=True, text=True, check=True)
 			except Exception as e:
-				try:
-					conn.commit()
-				except Exception as inside_e:
-					die("Inside exception '{}', could not commit: '{}'".format(e, inside_e))
 				exit("Running rename for {} ended with '{}'".format(this_filename, e))
 			pulled_count += 1
 			try:
 				cur.execute("insert into files_gotten (filename_full, retrieved_at) values (%s, %s);", (this_filename, datetime.datetime.now(datetime.timezone.utc)))
 			except Exception as e:
-				try:
-					conn.commit()
-				except Exception as inside_e:
-					die("Inside exception '{}', could not commit: '{}'".format(e, inside_e))
 				die("Could not insert '{}' into files_gotten.".format(this_filename))
-		try:
-			conn.commit()
-		except Exception as e:
-			die("Could not commit at end of file getting: '{}'".format(e))
 	log("Finished pulling; got {} files".format(pulled_count))
