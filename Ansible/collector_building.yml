@@ -136,17 +136,15 @@
     postgresql_table:
       login_user: metrics
       db: metrics
-      name: vp_names
+      name: vps_access
       columns:
-      - name text
+      - vp_fqdn text
       - last_checked timestamp
-  - name: Create table for files seen
+  - name: Create table for files gotten
     postgresql_table:
       login_user: metrics
       db: metrics
-      name: files_seen
+      name: files_gotten
       columns:
       - filename_full text
-      - filename_time_only text
-      - vp text
-      - seen_at timestamp
+      - retrieved_at timestamp
