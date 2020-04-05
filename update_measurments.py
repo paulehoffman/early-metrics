@@ -161,7 +161,7 @@ if __name__ == "__main__":
 				update_string = "insert into correctness_info (file_prefix, date_derived, vp, rsi, internet, transport, is_correct, source_pickle) "\
 					+ "values (%s, %s, %s, %s, %s, %s, %s, %s)"
 				# Set is_correct to NULL because it will be evaluated later
-				update_vales = (short_file, file_date, file_vp, this_resp[0], this_resp[1], this_resp[2], None, this_resp_obj) 
+				update_vales = (short_file, file_date, file_vp, this_resp[0], this_resp[1], this_resp[2], None, pickle.dumps(this_resp_obj))
 				try:
 					cur.execute(update_string, update_vales)
 				except Exception as e:
