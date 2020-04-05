@@ -60,11 +60,10 @@ if __name__ == "__main__":
 
 	# Go throug the files in ~/Incoming
 	for full_file in glob.glob("{}/*".format(incoming_dir)):
-		this_file = os.path.basename(full_file)
-		log("Processing {}".format(this_file))
-		if not this_file.endswith(".pickle.gz"):
-			vp_alert.critical("Found {} that did not end in .pickle.gz".format(this_file))
+		if not full_file.endswith(".pickle.gz"):
+			vp_alert.critical("Found {} that did not end in .pickle.gz".format(full_file))
 			continue
+		short_file = os.path.basename(full_file)
 		# Ungz it
 		try:
 			with gzip.open(full_file, mode="rb") as pf:
@@ -76,15 +75,30 @@ if __name__ == "__main__":
 			in_obj = pickle.loads(in_pickle)
 		except Exception as e:
 			die("Could not unpickle {}: '{}'".format(full_file, e))
-		# Log the metadata
+		# Sanity check the record
 		if not ("d" in in_obj) and ("e" in in_obj) and ("r" in in_obj) and ("s" in in_obj) and ("v" in in_obj):
 			die("Object in {} did not contain keys d, e, r, s, and v".format(full_file))
+		# Log the metadata
 		update_string = "update files_gotten set processed_at=%s, version=%s, delay=%s, elapsed=%s where filename_full=%s"
-		update_vales = (datetime.datetime.now(datetime.timezone.utc), in_obj["v"], in_obj["d"], in_obj["e"], this_file) 
+		update_vales = (datetime.datetime.now(datetime.timezone.utc), in_obj["v"], in_obj["d"], in_obj["e"], short_file+".pickle.gz") 
 		try:
 			cur.execute(update_string, update_vales)
 		except Exception as e:
-			die("Could not insert '{}' into files_gotten: '{}'".format(this_file, e))
+			die("Could not update {} in files_gotten: '{}'".format(short_file, e))
+		# Get the derived date and VP name from the file name
+		(file_date_text, file_vp) = short_file.split("-")
+		try:
+			file_date = datetime.datetime(int(file_date_text[0:4]), int(file_date_text[4:6]), int(file_date_text[6:8]),\
+				int(file_date_text[8:10]), int(file_date_text[10:12]))
+		except Exception as e:
+			die("Could not split the file name '{}' into a datetime: '{}'".format(short_file, e))
+		# Log the route information
+		update_string = "insert into route_info (file_prefix, date_derived, vp, route_string) values ()"
+		update_vales = (short_file, file_date, file_vp, in_obj["s"]) 
+		try:
+			cur.execute(update_string, update_vales)
+		except Exception as e:
+			die("Could not insert into {}: '{}'".format(short_file, e))
 	log("Finished measurements")
 	exit()
 
