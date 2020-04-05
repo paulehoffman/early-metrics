@@ -22,12 +22,14 @@
 ## Vantage points
 
 - Each VP should have more than one core if possible
+- All are running latest Debian
+	- Thus automatically running NTP  `[ugt]`
 - All programs run as "metrics" user
 - Also has "tranfer" user for for the collector to copy data
 
 - `vantage_point_metrics.py`
 	- Is run from cron job every 5 minutes on 0, 5, ... `[wyn]` `[mba]` `[wca]`
-	- Use `dig + yaml` from BIND 9.16
+	- Use `dig + yaml` from BIND 9.16.1
 	- Checks for new root zone every 12 hours
 	- Run `scamper` after queries to each source for both IPv4 and IPv6
 	- Results of each run are saved as .pickle.gz to /sftp/transfer/Output for later pulling
@@ -44,10 +46,6 @@
 	- Do traceroutes to two places
 	- Ask if they need more or, if not, which to use
 
-- Maintenance
-	- Be sure NTP is updating properly  `[ugt]`
-	  - Maybe use time-a-g.nist.gov
-	
 - Possible VP providers
 	- hertzner.com
 	- Linode
@@ -63,6 +61,8 @@
 ## Collector
 
 - Run on a VM with lots of cores and memory
+- Running latest Debian
+	- Thus automatically running NTP  `[ugt]`
 - All programs run as "metrics" user
 - Also has "tranfer" user for others to copy data
 

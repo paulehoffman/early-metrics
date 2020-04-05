@@ -49,21 +49,21 @@ if __name__ == "__main__":
 		die("Unable to turn on autocommit: '{}'".format(e))
 	
 	# Where to save the incoming files
-	input_dir = os.path.expanduser("~/Incoming")
-	if not os.path.exists(input_dir):
-		os.mkdir(input_dir)
+	incoming_dir = os.path.expanduser("~/Incoming")
+	if not os.path.exists(incoming_dir):
+		os.mkdir(incoming_dir)
 
 	# Get the list of VPs
 	vp_list_filename = os.path.expanduser("~/vp_list.txt")
 	try:
-		all_vps_from_file = open(vp_list_filename, mode="rt").read().splitlines()
+		all_vps = open(vp_list_filename, mode="rt").read().splitlines()
 	except Exception as e:
 		die("Could not open {} and split the lines: '{}'".format(vp_list_filename, e))
 
 	# For each VP, find the files in /sftp/transfer/Output and get them one by one
 	#   For each file, after getting, move it to /sftp/transfer/AlreadySeen
 	pulled_count = 0
-	for this_vp in all_vps_from_file:
+	for this_vp in all_vps:
 		# Make a batch file for sftp that gets the directory
 		dir_batch_filename = "{}/dirbatchfile.txt".format(log_dir)
 		dir_f = open(dir_batch_filename, mode="wt")
@@ -83,7 +83,7 @@ if __name__ == "__main__":
 			get_batch_filename = "{}/getbatchfile.txt".format(log_dir)
 			get_f = open(get_batch_filename, mode="wt")
 			# Get the file
-			get_cmd = "get transfer/Output/{0}\n".format(this_filename)
+			get_cmd = "get transfer/Output/{} {}\n".format(this_filename, incoming_dir)
 			get_f.write(get_cmd)
 			get_f.close()
 			try:
@@ -106,4 +106,4 @@ if __name__ == "__main__":
 				cur.execute("insert into files_gotten (filename_full, retrieved_at) values (%s, %s);", (this_filename, datetime.datetime.now(datetime.timezone.utc)))
 			except Exception as e:
 				die("Could not insert '{}' into files_gotten.".format(this_filename))
-	log("Finished pulling; got {} files".format(pulled_count))
+	log("Finished pulling; got {} files from {} VPs".format(pulled_count, len(all_vps))
