@@ -59,9 +59,11 @@ if __name__ == "__main__":
 		os.mkdir(originals_dir)
 
 	# Go throug the files in ~/Incoming
-	for this_file in glob.glob("{}/*".format(incoming_dir)):
-		if not this_file.endswith(".gz"):
-			vp_alert.critical("Found {} that did not end in .gz".format(this_file))
+	for full_file in glob.glob("{}/*".format(incoming_dir)):
+		this_file = os.path.basename(full_file)
+		log("Processing {}".format(this_file))
+		if not this_file.endswith(".pickle.gz"):
+			vp_alert.critical("Found {} that did not end in .pickle.gz".format(this_file))
 			continue
 		# Ungz it
 		try:
@@ -83,7 +85,6 @@ if __name__ == "__main__":
 			cur.execute(update_string, update_vales)
 		except Exception as e:
 			die("Could not insert '{}' into files_gotten: '{}'".format(this_file, e))
-
 	log("Finished measurements")
 	exit()
 
