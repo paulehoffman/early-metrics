@@ -145,3 +145,47 @@
       columns:
       - filename_full text
       - retrieved_at timestamp
+      - processed_at timestamp
+      - version int
+      - delay int
+      - elapsed int
+  - name: Create table for route information
+    postgresql_table:
+      login_user: metrics
+      db: metrics
+      name: route_info
+      columns:
+      - file_prefix text
+      - date_derived timestamp
+      - vp text
+      - route_string text
+  - name: Create table for SOA records
+    postgresql_table:
+      login_user: metrics
+      db: metrics
+      name: soa_info
+      columns:
+      - file_prefix text
+      - date_derived timestamp
+      - vp text
+      - rsi text
+      - internet text
+      - transport text
+      - prog_elapsed real
+      - dig_elapsed real
+      - timeout boolean
+      - soa text
+  - name: Create table for correctness records
+    postgresql_table:
+      login_user: metrics
+      db: metrics
+      name: correctness_info
+      columns:
+      - file_prefix text
+      - date_derived timestamp without time zone
+      - vp text
+      - rsi text
+      - internet text
+      - transport text
+      - is_correct boolean
+      - source_pickle bytea
