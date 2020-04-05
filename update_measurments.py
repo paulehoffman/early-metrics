@@ -127,7 +127,7 @@ if __name__ == "__main__":
 					soa_record_parts = this_soa_record.split(" ")
 					this_soa = soa_record_parts[6]
 				elif this_resp_obj[0]["type"] == "DIG_ERROR":
-					if not ("timed out" in this_resp_obj[0]["message"]) or ("communications error" in this_resp_obj[0]["message"]):
+					if not (("timed out" in this_resp_obj[0]["message"]) or ("communications error" in this_resp_obj[0]["message"])):
 						die("Found unexpected dig error message '{}' in record {} of {}".format(this_resp_obj[0]["message"], response_count, full_file))
 					this_dig_elapsed = None
 					this_timeout = True
