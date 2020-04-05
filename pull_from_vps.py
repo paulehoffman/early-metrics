@@ -107,3 +107,4 @@ if __name__ == "__main__":
 			except Exception as e:
 				die("Could not insert '{}' into files_gotten: '{}'".format(this_filename, e))
 	log("Finished pulling; got {} files from {} VPs".format(pulled_count, len(all_vps)))
+	exit()

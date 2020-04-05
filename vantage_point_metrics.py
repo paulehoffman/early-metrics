@@ -349,13 +349,3 @@ if __name__ == "__main__":
 	# Log the finish
 	log("Finishing run, wrote out {}, elapsed was {} seconds".format(os.path.basename(out_run_file_name), int(commands_clock_stop - commands_clock_start)))
 	exit()
-
-"""
-	pickle.dump(output_dict, out_f)
-	out_f.close()
-	try:
-		subprocess.run("/usr/bin/gzip '{}'".format(out_run_file_name), shell=True, check=True)
-	except Exception as e:
-		die("Could not gzip '{}': '{}'".format(out_run_file_name, e))
-
-"""

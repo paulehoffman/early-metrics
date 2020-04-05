@@ -58,7 +58,34 @@ if __name__ == "__main__":
 	if not os.path.exists(originals_dir):
 		os.mkdir(originals_dir)
 
+	# Go throug the files in ~/Incoming
+	for this_file in glob.glob("{}/*".format(incoming_dir_):
+		if not this_file.endswith(".gz"):
+			vp_alert.critical("Found {} that did not end in .gz".format(this_file))
+			continue
+		# Ungz it
+		try:
+			with gzip.open(this_file, mode="rb") as pf:
+				in_pickle = pf.read()
+		except Exception as e:
+			die("Could not unzip {}: '{}'".format(this_file, e))
+		# Unpickle it
+		try:
+			in_obj = pickle.loads(in_pickle)
+		except Exception as e:
+			die("Could not unpickle {}: '{}'".format(this_file, e))
+		# Log the metadata
+		if not ("d" in in_obj) and ("e" in in_obj) and ("r" in in_obj) and ("s" in in_obj) and ("v" in in_obj):
+			die("Object in {} did not contain keys d, e, r, s, and v".format(this_file))
+		update_string = "update files_gotten set processed_at=%s, version=%s, delay=%s, elapsed=%s where filename_full=%s"
+		update_vales = (datetime.datetime.now(datetime.timezone.utc), in_obj["v"], in_obj["d"], in_obj["e"], this_file) 
+		try:
+			cur.execute(update_string, update_vales)
+		except Exception as e:
+			die("Could not insert '{}' into files_gotten: '{}'".format(this_filename, e))
+
 	log("Finished measurements")
+	exit()
 
 """
 files_gotten
