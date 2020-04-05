@@ -109,6 +109,8 @@ if __name__ == "__main__":
 			except:
 				die("Could not interpret YAML from {} of {}".format(response_count, full_file))
 			# Sanity check the structure of the object
+			if not this_resp_obj:
+				die("Found no object in record {} of {}".format(response_count, full_file))
 			if not this_resp_obj[0].get("type"):
 				die("Found no dig type in record {} of {}".format(response_count, full_file))
 			if not this_resp_obj[0].get("message"):
