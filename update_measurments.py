@@ -59,7 +59,8 @@ if __name__ == "__main__":
 		os.mkdir(originals_dir)
 
 	# Go through the files in ~/Incoming
-	for full_file in glob.glob("{}/*".format(incoming_dir)):
+	all_files = list(glob.glob("{}/*".format(incoming_dir)))
+	for full_file in all_files:
 		if not full_file.endswith(".pickle.gz"):
 			vp_alert.critical("Found {} that did not end in .pickle.gz".format(full_file))
 			continue
@@ -126,7 +127,7 @@ if __name__ == "__main__":
 					soa_record_parts = this_soa_record.split(" ")
 					this_soa = soa_record_parts[6]
 				elif this_resp_obj[0]["type"] == "DIG_ERROR":
-					if not "timed out" in this_resp_obj[0]["message"]:
+					if not ("timed out" in this_resp_obj[0]["message"]) or ("communications error" in this_resp_obj[0]["message"]):
 						die("Found unexpected dig error message '{}' in record {} of {}".format(this_resp_obj[0]["message"], response_count, full_file))
 					this_dig_elapsed = None
 					this_timeout = True
@@ -145,7 +146,7 @@ if __name__ == "__main__":
 				pass ###########
 			else:
 				die("Found a response type {}, which is not S or C, in record {} of {}".format(this_resp[4], response_count, full_file))
-	log("Finished measurements")
+	log("Finished measurements, processed {} files".format(len(all_files)))
 	exit()
 
 """
