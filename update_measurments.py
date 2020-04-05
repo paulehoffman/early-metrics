@@ -123,6 +123,7 @@ if __name__ == "__main__":
 			if not this_resp_obj[0].get("message"):
 				alert("Found no message in record {} of {}".format(response_count, full_file))
 				continue
+			# Records for SOA checking
 			if this_resp[4] == "S":
 				# Get the this_dig_elapsed, this_timeout, this_soa for the response
 				if this_resp_obj[0]["type"] == "MESSAGE":
@@ -156,24 +157,11 @@ if __name__ == "__main__":
 					cur.execute(update_string, update_vales)
 				except Exception as e:
 					die("Could not insert into soa_info for {}: '{}'".format(short_file, e))
-			elif this_resp[4] == "C":
-				# Less data neede than for SOA, but still need to do sanity check
-				if this_resp_obj[0]["type"] == "MESSAGE":
-					this_yaml = this_resp_obj[0]
-					try:
-						source_pickle = yaml.load(this_yaml)
-					except:
-						alert("Could not interpret YAML from {} of {}".format(response_count, full_file))
-						continue
-				elif this_resp_obj[0]["type"] == "DIG_ERROR":
-					source_pickle = None
-				else:
-					alert("Found an unexpected dig type {} in record {} of {}".format(this_resp_obj[0]["type"], response_count, full_file))
-					continue
+			elif this_resp[4] == "C": # Records for correctness checking
 				update_string = "insert into correctness_info (file_prefix, date_derived, vp, rsi, internet, transport, is_correct, source_pickle) "\
 					+ "values (%s, %s, %s, %s, %s, %s, %s, %s)"
 				# Set is_correct to NULL because it will be evaluated later
-				update_vales = (short_file, file_date, file_vp, this_resp[0], this_resp[1], this_resp[2], None, source_pickle) 
+				update_vales = (short_file, file_date, file_vp, this_resp[0], this_resp[1], this_resp[2], None, this_resp_obj) 
 				try:
 					cur.execute(update_string, update_vales)
 				except Exception as e:
