@@ -1,4 +1,4 @@
-#/usr/bin/env python3
+#!/usr/bin/env python3
 import gzip, pickle, sys, yaml
 
 ''' For debugging input files that are found to have issues '''
