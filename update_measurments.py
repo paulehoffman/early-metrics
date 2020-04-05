@@ -111,7 +111,8 @@ if __name__ == "__main__":
 			try:
 				this_resp_obj = yaml.load(this_resp[6])
 			except:
-				die("Could not interpret YAML from {} of {}".format(response_count, full_file))
+				alert("Could not interpret YAML from {} of {}".format(response_count, full_file))
+				continue
 			# Sanity check the structure of the object
 			if not this_resp_obj:
 				alert("Found no object in record {} of {}".format(response_count, full_file))
@@ -156,10 +157,31 @@ if __name__ == "__main__":
 				except Exception as e:
 					die("Could not insert into soa_info for {}: '{}'".format(short_file, e))
 			elif this_resp[4] == "C":
-				pass ###########
+				# Less data neede than for SOA, but still need to do sanity check
+				if this_resp_obj[0]["type"] == "MESSAGE":
+					this_yaml = this_resp_obj[0]
+					try:
+						source_pickle = yaml.load(this_yaml)
+					except:
+						alert("Could not interpret YAML from {} of {}".format(response_count, full_file))
+						continue
+				elif this_resp_obj[0]["type"] == "DIG_ERROR":
+					source_pickle = None
+				else:
+					alert("Found an unexpected dig type {} in record {} of {}".format(this_resp_obj[0]["type"], response_count, full_file))
+					continue
+				update_string = "insert into correctness_info (file_prefix, date_derived, vp, rsi, internet, transport, is_correct, source_pickle) "\
+					+ "values (%s, %s, %s, %s, %s, %s, %s, %s)"
+				# Set is_correct to NULL because it will be evaluated later
+				update_vales = (short_file, file_date, file_vp, this_resp[0], this_resp[1], this_resp[2], None, source_pickle) 
+				try:
+					cur.execute(update_string, update_vales)
+				except Exception as e:
+					die("Could not insert into correctness_info for {}: '{}'".format(short_file, e))
 			else:
 				alert("Found a response type {}, which is not S or C, in record {} of {}".format(this_resp[4], response_count, full_file))
 				continue
+	###### Still need to move the file to AlreadySeen
 	log("Finished measurements, processed {} files".format(len(all_files)))
 	exit()
 
