@@ -7,7 +7,7 @@
 
 # Three-letter items in square brackets (such as [xyz]) refer to parts of rssac-047.md
 
-import datetime, glob, gzip, logging, os, pickle, psycopg2
+import datetime, glob, gzip, logging, os, pickle, psycopg2, yaml
 
 if __name__ == "__main__":
 	# Get the base for the log directory
@@ -58,7 +58,7 @@ if __name__ == "__main__":
 	if not os.path.exists(originals_dir):
 		os.mkdir(originals_dir)
 
-	# Go throug the files in ~/Incoming
+	# Go through the files in ~/Incoming
 	for full_file in glob.glob("{}/*".format(incoming_dir)):
 		if not full_file.endswith(".pickle.gz"):
 			vp_alert.critical("Found {} that did not end in .pickle.gz".format(full_file))
@@ -98,7 +98,53 @@ if __name__ == "__main__":
 		try:
 			cur.execute(update_string, update_vales)
 		except Exception as e:
-			die("Could not insert into {}: '{}'".format(short_file, e))
+			die("Could not insert into route_info for {}: '{}'".format(short_file, e))
+		# Walk through the response items
+		response_count = 0
+		for this_resp in in_obj["r"]:
+			response_count += 1
+			try:
+				this_resp_obj = yaml.load(this_resp[6])
+			except:
+				die("Could not interpret YAML from {} of {}".format(response_count, full_file))
+			# Sanity check the structure of the object
+			if not this_resp_obj[0].get("type"):
+				die("Found no dig type in {} of {}".format(response_count, full_file))
+			if not this_resp_obj[0].get("message"):
+				die("Found no message in {} of {}".format(response_count, full_file))
+			# Get this_dig_elapsed, this_timeout, this_soa for SOA queries (ignored for correctness queries)
+			if this_resp_obj[0]["type"] == "MESSAGE":
+				if (not this_resp_obj[0]["message"].get("response_time")) or (not this_resp_obj[0]["message"].get("query_time")):
+					die("Found a message without response_time or query_time in {} of {}".format(response_count, full_file))
+				dig_elapsed_as_delta = this_resp_obj[0]["message"]["response_time"] - this_resp_obj[0]["message"]["query_time"]
+				this_dig_elapsed = datetime.timedelta.total_seconds(dig_elapsed_as_delta)
+				this_timeout = False
+				if not this_resp_obj[0]["message"].get("response_message_data").get("ANSWER_SECTION"):
+					die("Found a message without an answer in {} of {}".format(response_count, full_file))
+				this_soa_record = this_resp_obj[0]["message"]["response_message_data"]["ANSWER_SECTION"][0]
+				soa_record_parts = this_soa_record.split(" ")
+				this_soa = soa_record_parts[6]
+			elif this_resp_obj[0]["type"] == "DIG_ERROR":
+				if not "timed out" in this_resp_obj[0]["message"]:
+					die("Found unexpected dig error message '{}' in {} of {}".format(this_resp_obj[0]["message"], response_count, full_file))
+				this_dig_elapsed = None
+				this_timeout = True
+				this_soa = None
+			else:
+				die("Found an unexpected dig type {} in {} of {}".format(this_resp_obj[0]["type"], response_count, full_file))
+			if this_resp[4] == "S":
+				# Log the SOA information
+				update_string = "insert into soa_info (file_prefix, date_derived, vp, rsi, internet, transport, prog_elapsed, dig_elapsed, timeout, soa) "\
+					+ "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+				update_vales = (short_file, file_date, file_vp, this_resp[0], this_resp[1], this_resp[2], this_resp[5], this_dig_elapsed. this_timeout, this_soa) 
+				try:
+					cur.execute(update_string, update_vales)
+				except Exception as e:
+					die("Could not insert into soa_info for {}: '{}'".format(short_file, e))
+			elif this_resp[4] == "C":
+				pass ###########
+			else:
+				die("Found a response type {}, which is not S or C, in {} of {}".format(this_resp[4], response_count, full_file))
 	log("Finished measurements")
 	exit()
 
@@ -140,4 +186,3 @@ correctness_info
  source_pickle | bytes
 
 """
-
