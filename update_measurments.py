@@ -29,6 +29,8 @@ if __name__ == "__main__":
 	vp_alert.addHandler(alert_handler)
 	def log(log_message):
 		vp_log.info(log_message)
+	def alert(alert_message):
+		vp_alert.critical(alert_message)
 	def die(error_message):
 		vp_alert.critical(error_message)
 		log("Died with '{}'".format(error_message))
@@ -110,11 +112,14 @@ if __name__ == "__main__":
 				die("Could not interpret YAML from {} of {}".format(response_count, full_file))
 			# Sanity check the structure of the object
 			if not this_resp_obj:
-				die("Found no object in record {} of {}".format(response_count, full_file))
+				alert("Found no object in record {} of {}".format(response_count, full_file))
+				continue
 			if not this_resp_obj[0].get("type"):
-				die("Found no dig type in record {} of {}".format(response_count, full_file))
+				alert("Found no dig type in record {} of {}".format(response_count, full_file))
+				continue
 			if not this_resp_obj[0].get("message"):
-				die("Found no message in record {} of {}".format(response_count, full_file))
+				alert("Found no message in record {} of {}".format(response_count, full_file))
+				continue
 			if this_resp[4] == "S":
 				# Get the this_dig_elapsed, this_timeout, this_soa for the response
 				if this_resp_obj[0]["type"] == "MESSAGE":
