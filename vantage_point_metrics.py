@@ -3,7 +3,7 @@
 
 # Three-letter items in square brackets (such as [xyz]) refer to parts of rssac-047.md
 
-import argparse, logging, os, pickle, random, re, requests, subprocess, time
+import argparse, gzip, logging, os, pickle, random, re, requests, subprocess, time
 from concurrent import futures
 
 # Run one command; to be used under concurrent.futures
@@ -340,16 +340,22 @@ if __name__ == "__main__":
 	if not os.path.exists(output_dir):
 		die("{} did not exist. Exiting.".format(output_dir))
 	try:
-		out_run_file_name = "{}/{}-{}.pickle".format(output_dir, start_time_string, vp_ident)
-		out_f = open(out_run_file_name, mode="wb")
+		out_run_file_name = "{}/{}-{}.pickle.gz".format(output_dir, start_time_string, vp_ident)
+		with gzip.open(out_run_file_name, mode="wb") as gzf:
+			gzf.write(pickle.dumps(output_dict))
+			gzf.close()
 	except:
 		die("Could not create {}".format(out_run_file_name))
+	# Log the finish
+	log("Finishing run, wrote out {}, elapsed was {} seconds".format(os.path.basename(out_run_file_name), int(commands_clock_stop - commands_clock_start)))
+	exit()
+
+"""
 	pickle.dump(output_dict, out_f)
 	out_f.close()
 	try:
 		subprocess.run("/usr/bin/gzip '{}'".format(out_run_file_name), shell=True, check=True)
 	except Exception as e:
 		die("Could not gzip '{}': '{}'".format(out_run_file_name, e))
-	# Log the finish
-	log("Finishing run, wrote out {}.gz, elapsed was {} seconds".format(os.path.basename(out_run_file_name), int(commands_clock_stop - commands_clock_start)))
-	exit()
+
+"""

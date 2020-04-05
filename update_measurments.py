@@ -3,10 +3,11 @@
 ''' Read files from ~/Incoming, add data to the database, move them to ~/Originals/yyyymm/ '''
 # Run as the metrics user
 # Run from cron job every 30 minutes
+# Note that this does not perform the correctness calculations
 
 # Three-letter items in square brackets (such as [xyz]) refer to parts of rssac-047.md
 
-import datetime, logging, os, psycopg2, subprocess
+import datetime, gzip, logging, os, psycopg2, subprocess
 
 if __name__ == "__main__":
 	# Get the base for the log directory
