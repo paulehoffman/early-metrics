@@ -136,7 +136,7 @@ if __name__ == "__main__":
 				# Log the SOA information
 				update_string = "insert into soa_info (file_prefix, date_derived, vp, rsi, internet, transport, prog_elapsed, dig_elapsed, timeout, soa) "\
 					+ "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
-				update_vales = (short_file, file_date, file_vp, this_resp[0], this_resp[1], this_resp[2], this_resp[5], this_dig_elapsed. this_timeout, this_soa) 
+				update_vales = (short_file, file_date, file_vp, this_resp[0], this_resp[1], this_resp[2], this_resp[5], this_dig_elapsed, this_timeout, this_soa) 
 				try:
 					cur.execute(update_string, update_vales)
 				except Exception as e:
