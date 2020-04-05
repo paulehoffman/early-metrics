@@ -93,7 +93,7 @@ if __name__ == "__main__":
 		except Exception as e:
 			die("Could not split the file name '{}' into a datetime: '{}'".format(short_file, e))
 		# Log the route information
-		update_string = "insert into route_info (file_prefix, date_derived, vp, route_string) values ()"
+		update_string = "insert into route_info (file_prefix, date_derived, vp, route_string) values (%s, %s, %s, %s)"
 		update_vales = (short_file, file_date, file_vp, in_obj["s"]) 
 		try:
 			cur.execute(update_string, update_vales)
