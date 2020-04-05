@@ -63,7 +63,7 @@ if __name__ == "__main__":
 		if not full_file.endswith(".pickle.gz"):
 			vp_alert.critical("Found {} that did not end in .pickle.gz".format(full_file))
 			continue
-		short_file = os.path.basename(full_file)
+		short_file = os.path.basename(full_file).replace(".pickle.gz", "")
 		# Ungz it
 		try:
 			with gzip.open(full_file, mode="rb") as pf:
