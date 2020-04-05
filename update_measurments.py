@@ -7,7 +7,7 @@
 
 # Three-letter items in square brackets (such as [xyz]) refer to parts of rssac-047.md
 
-import datetime, gzip, logging, os, psycopg2, subprocess
+import datetime, glob, gzip, logging, os, pickle, psycopg2
 
 if __name__ == "__main__":
 	# Get the base for the log directory
@@ -59,7 +59,7 @@ if __name__ == "__main__":
 		os.mkdir(originals_dir)
 
 	# Go throug the files in ~/Incoming
-	for this_file in glob.glob("{}/*".format(incoming_dir_):
+	for this_file in glob.glob("{}/*".format(incoming_dir)):
 		if not this_file.endswith(".gz"):
 			vp_alert.critical("Found {} that did not end in .gz".format(this_file))
 			continue
@@ -82,7 +82,7 @@ if __name__ == "__main__":
 		try:
 			cur.execute(update_string, update_vales)
 		except Exception as e:
-			die("Could not insert '{}' into files_gotten: '{}'".format(this_filename, e))
+			die("Could not insert '{}' into files_gotten: '{}'".format(this_file, e))
 
 	log("Finished measurements")
 	exit()
