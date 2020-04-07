@@ -188,4 +188,5 @@
       - internet text
       - transport text
       - is_correct boolean
+      - failure_reason text
       - source_pickle bytea

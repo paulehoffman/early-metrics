@@ -158,10 +158,10 @@ if __name__ == "__main__":
 				except Exception as e:
 					die("Could not insert into soa_info for {}: '{}'".format(short_file, e))
 			elif this_resp[4] == "C": # Records for correctness checking
-				update_string = "insert into correctness_info (file_prefix, date_derived, vp, rsi, internet, transport, is_correct, source_pickle) "\
+				update_string = "insert into correctness_info (file_prefix, date_derived, vp, rsi, internet, transport, is_correct, failure_reason, source_pickle) "\
 					+ "values (%s, %s, %s, %s, %s, %s, %s, %s)"
 				# Set is_correct to NULL because it will be evaluated later
-				update_vales = (short_file, file_date, file_vp, this_resp[0], this_resp[1], this_resp[2], None, pickle.dumps(this_resp_obj))
+				update_vales = (short_file, file_date, file_vp, this_resp[0], this_resp[1], this_resp[2], None, None, pickle.dumps(this_resp_obj))
 				try:
 					cur.execute(update_string, update_vales)
 				except Exception as e:
@@ -174,40 +174,48 @@ if __name__ == "__main__":
 	exit()
 
 """
-files_gotten
- filename_full | text                       
- retrieved_at  | timestamp without time zone
- + processed_at | timestamp without time zone
- + version | int
- + delay | int
- + elapsed | int
+                        Table "public.correctness_info"
+     Column     |            Type             | Collation | Nullable | Default
+----------------+-----------------------------+-----------+----------+---------
+ file_prefix    | text                        |           |          |
+ date_derived   | timestamp without time zone |           |          |
+ vp             | text                        |           |          |
+ rsi            | text                        |           |          |
+ internet       | text                        |           |          |
+ transport      | text                        |           |          |
+ is_correct     | boolean                     |           |          |
+ source_pickle  | bytea                       |           |          |
+ failure_reason | text                        |           |          |
 
-route_info
- file_prefix | text
- date_derived | timestamp without time zone
- vp | text
- route_string | text
+                         Table "public.files_gotten"
+    Column     |            Type             | Collation | Nullable | Default
+---------------+-----------------------------+-----------+----------+---------
+ filename_full | text                        |           |          |
+ retrieved_at  | timestamp without time zone |           |          |
+ processed_at  | timestamp without time zone |           |          |
+ version       | integer                     |           |          |
+ delay         | integer                     |           |          |
+ elapsed       | integer                     |           |          |
 
-soa_info
- file_prefix | text
- date_derived | timestamp without time zone
- vp | text
- rsi | text
- internet | text
- transport | text
- prog_elapsed | real
- dig_elapsed | real
- timeout | boolean
- soa | text
+                          Table "public.route_info"
+    Column    |            Type             | Collation | Nullable | Default
+--------------+-----------------------------+-----------+----------+---------
+ file_prefix  | text                        |           |          |
+ date_derived | timestamp without time zone |           |          |
+ vp           | text                        |           |          |
+ route_string | text                        |           |          |
 
-correctness_info
- file_prefix | text
- date_derived | timestamp without time zone
- vp | text
- rsi | text
- internet | text
- transport | text
- is_correct | boolean
- source_pickle | bytes
-
+                           Table "public.soa_info"
+    Column    |            Type             | Collation | Nullable | Default
+--------------+-----------------------------+-----------+----------+---------
+ file_prefix  | text                        |           |          |
+ date_derived | timestamp without time zone |           |          |
+ vp           | text                        |           |          |
+ rsi          | text                        |           |          |
+ internet     | text                        |           |          |
+ transport    | text                        |           |          |
+ prog_elapsed | real                        |           |          |
+ dig_elapsed  | real                        |           |          |
+ timeout      | boolean                     |           |          |
+ soa          | text                        |           |          |
 """
