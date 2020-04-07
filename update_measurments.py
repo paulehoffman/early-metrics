@@ -3,7 +3,7 @@
 ''' Read files from ~/Incoming, add data to the database, move them to ~/Originals/yyyymm/ '''
 # Run as the metrics user
 # Run from cron job every 30 minutes
-# Note that this does not perform the correctness calculations
+# Note that this does not perform the correctness calculations; that is done in check_correctness.py
 
 # Three-letter items in square brackets (such as [xyz]) refer to parts of rssac-047.md
 
@@ -169,7 +169,19 @@ if __name__ == "__main__":
 			else:
 				alert("Found a response type {}, which is not S or C, in record {} of {}".format(this_resp[4], response_count, full_file))
 				continue
-	###### Still need to move the file to AlreadySeen
+		# Move the file to ~/Originals/yyyymm
+		year_from_short_file = short_file[0:4]
+		month_from_short_file = short_file[4:6]
+		original_dir_target = os.path.expanduser("~/Originals/{}{}".format(year_from_short_file, month_from_short_file))
+		if not os.path.exists(original_dir_target):
+			try:
+				os.mkdir(original_dir_target)
+			except Exception as e:
+				die("Could not create {}: '{}'".format(original_dir_target, e))
+		try:
+			os.rename(full_file, original_dir_target)
+		except Exception as e:
+				die("Could not move {} to {}: '{}'".format(full_file, original_dir_target, e))
 	log("Finished measurements, processed {} files".format(len(all_files)))
 	exit()
 

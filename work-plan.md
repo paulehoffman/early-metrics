@@ -80,6 +80,10 @@
 		- Open file, store results in the database
 		- Move file to ~/Originals/yyyymm/
 
+- `check_correctness.py`
+	- Run from cron job every 30 minutes
+	- For record in the correctness table, find all that have not been checked and start checking them
+
 - `produce_reports.py`
 	- Run from cron job every week, and on the first of each month
 	-`--style _n_` to say what style of report (weekly, monthly)
