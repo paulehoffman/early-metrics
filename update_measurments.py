@@ -159,7 +159,7 @@ if __name__ == "__main__":
 					die("Could not insert into soa_info for {}: '{}'".format(short_file, e))
 			elif this_resp[4] == "C": # Records for correctness checking
 				update_string = "insert into correctness_info (file_prefix, date_derived, vp, rsi, internet, transport, is_correct, failure_reason, source_pickle) "\
-					+ "values (%s, %s, %s, %s, %s, %s, %s, %s)"
+					+ "values (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
 				# Set is_correct to NULL because it will be evaluated later
 				update_vales = (short_file, file_date, file_vp, this_resp[0], this_resp[1], this_resp[2], None, None, pickle.dumps(this_resp_obj))
 				try:
