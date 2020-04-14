@@ -98,7 +98,7 @@ if __name__ == "__main__":
 		out_f.close()
 		log("Got a root zone with new SOA {}".format(this_soa))
 		# Also create a file of the tuples for matching
-		matching_file_name = "{}/{}.matching.pickle".format(saved_root_zone_dir, this_soa)
+		matching_file_name = "{}/{}.matching.pickle".format(saved_matching_dir, this_soa)
 		out_f = open(matching_file_name, mode="wb")
 		pickle.dump(root_name_and_types, out_f)
 		out_f.close()
