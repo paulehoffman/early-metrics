@@ -103,6 +103,14 @@
       path: /home/metrics/Target
       mode: u+wrx,go+rx
       state: directory
+  - name: make Incoming/
+    file:
+      path: /home/metrics/Incoming
+      state: directory
+  - name: make Originals/
+    file:
+      path: /home/metrics/Originals
+      state: directory
   - name: Put local BIND tarball and expand it
     unarchive: 
       src: ../bind-9.16.1.tar.xz
@@ -143,6 +151,7 @@
       db: metrics
       name: files_gotten
       columns:
+      - id integer generated always as identity
       - filename_full text
       - retrieved_at timestamp
       - processed_at timestamp
@@ -155,6 +164,7 @@
       db: metrics
       name: route_info
       columns:
+      - id integer generated always as identity
       - file_prefix text
       - date_derived timestamp
       - vp text
@@ -165,6 +175,7 @@
       db: metrics
       name: soa_info
       columns:
+      - id integer generated always as identity
       - file_prefix text
       - date_derived timestamp
       - vp text
@@ -181,6 +192,7 @@
       db: metrics
       name: correctness_info
       columns:
+      - id integer generated always as identity
       - file_prefix text
       - date_derived timestamp without time zone
       - vp text

@@ -3,11 +3,12 @@
 ''' Read files from ~/Incoming, add data to the database, move them to ~/Originals/yyyymm/ '''
 # Run as the metrics user
 # Run from cron job every 30 minutes
-# Note that this does not perform the correctness calculations; that is done in check_correctness.py
+# Find records in the correctness table that have not been checked, and check them
+# Reports why any failure happens
 
 # Three-letter items in square brackets (such as [xyz]) refer to parts of rssac-047.md
 
-import datetime, glob, gzip, logging, os, pickle, psycopg2, yaml
+import datetime, logging, os, pickle, psycopg2
 
 if __name__ == "__main__":
 	# Get the base for the log directory
@@ -179,7 +180,7 @@ if __name__ == "__main__":
 			except Exception as e:
 				die("Could not create {}: '{}'".format(original_dir_target, e))
 		try:
-			os.rename(full_file, original_dir_target)
+			shutil.move(full_file, original_dir_target)
 		except Exception as e:
 				die("Could not move {} to {}: '{}'".format(full_file, original_dir_target, e))
 	log("Finished measurements, processed {} files".format(len(all_files)))

@@ -82,7 +82,8 @@
 
 - `check_correctness.py`
 	- Run from cron job every 30 minutes
-	- For record in the correctness table, find all that have not been checked and start checking them
+	- Find records in the correctness table that have not been checked, and check them
+	- Reports why any failure happens
 
 - `produce_reports.py`
 	- Run from cron job every week, and on the first of each month
