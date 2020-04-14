@@ -9,7 +9,7 @@
 
 # Three-letter items in square brackets (such as [xyz]) refer to parts of rssac-047.md
 
-import logging, os, re, requests, subprocess
+import logging, os, pickle, re, requests, subprocess
 
 if __name__ == "__main__":
 	# Get the base for the log directory
@@ -43,6 +43,9 @@ if __name__ == "__main__":
 	saved_root_zone_dir = "{}/RootZones".format(output_dir)
 	if not os.path.exists(saved_root_zone_dir):
 		os.mkdir(saved_root_zone_dir)
+	saved_matching_dir = "{}/RootMatching".format(output_dir)
+	if not os.path.exists(saved_matching_dir):
+		os.mkdir(saved_matching_dir)
 	# Get the current root zone
 	internic_url = "https://www.internic.net/domain/root.zone"
 	try:
@@ -88,11 +91,16 @@ if __name__ == "__main__":
 	except Exception as e:
 		die("Splitting the SOA from the root zone just received failed with '{}'".format(e))
 	# Check if this SOA has already been seen
-	proposed_file_name = "{}/{}.root.txt".format(saved_root_zone_dir, this_soa)
-	if not os.path.exists(proposed_file_name):
-		out_f = open(proposed_file_name, mode="wt")
+	full_root_file_name = "{}/{}.root.txt".format(saved_root_zone_dir, this_soa)
+	if not os.path.exists(full_root_file_name):
+		out_f = open(full_root_file_name, mode="wt")
 		out_f.write(new_root_text)
 		out_f.close()
 		log("Got a root zone with new SOA {}".format(this_soa))
+		# Also create a file of the tuples for matching
+		matching_file_name = "{}/{}.matching.pickle".format(saved_root_zone_dir, this_soa)
+		out_f = open(matching_file_name, mode="wb")
+		pickle.dump(root_name_and_types, out_f)
+		out_f.close()
 	exit()
 	
