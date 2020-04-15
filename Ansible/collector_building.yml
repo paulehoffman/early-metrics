@@ -199,6 +199,7 @@
       - rsi text
       - internet text
       - transport text
+      - recent_soa text
       - is_correct boolean
       - failure_reason text
       - source_pickle bytea

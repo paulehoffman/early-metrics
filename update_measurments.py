@@ -124,7 +124,10 @@ if __name__ == "__main__":
 			if not this_resp_obj[0].get("message"):
 				alert("Found no message in record {} of {}".format(response_count, full_file))
 				continue
-			# Records for SOA checking
+			# Each record is "S" for an SOA record or "C" for a correctness test
+			#   Four SOA records should appear before the correctness test; this is good because we need to know which SOA to use
+			#      to test correctness
+			soa_for_correctness = ""
 			if this_resp[4] == "S":
 				# Get the this_dig_elapsed, this_timeout, this_soa for the response
 				if this_resp_obj[0]["type"] == "MESSAGE":
@@ -158,11 +161,12 @@ if __name__ == "__main__":
 					cur.execute(update_string, update_vales)
 				except Exception as e:
 					die("Could not insert into soa_info for {}: '{}'".format(short_file, e))
+				soa_for_correctness = this_soa
 			elif this_resp[4] == "C": # Records for correctness checking
-				update_string = "insert into correctness_info (file_prefix, date_derived, vp, rsi, internet, transport, is_correct, failure_reason, source_pickle) "\
-					+ "values (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
+				update_string = "insert into correctness_info (file_prefix, date_derived, vp, rsi, internet, transport, recent_soa, is_correct, failure_reason, source_pickle) "\
+					+ "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
 				# Set is_correct to NULL because it will be evaluated later
-				update_vales = (short_file, file_date, file_vp, this_resp[0], this_resp[1], this_resp[2], None, None, pickle.dumps(this_resp_obj))
+				update_vales = (short_file, file_date, file_vp, this_resp[0], this_resp[1], this_soa, this_resp[2], None, None, pickle.dumps(this_resp_obj))
 				try:
 					cur.execute(update_string, update_vales)
 				except Exception as e:
@@ -196,6 +200,7 @@ if __name__ == "__main__":
  rsi            | text                        |           |          |
  internet       | text                        |           |          |
  transport      | text                        |           |          |
+ recent_soa     | text                        |           |          |
  is_correct     | boolean                     |           |          |
  source_pickle  | bytea                       |           |          |
  failure_reason | text                        |           |          |

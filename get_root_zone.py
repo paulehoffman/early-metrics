@@ -73,15 +73,17 @@ if __name__ == "__main__":
 	# Remove the comments
 	for this_line in new_root_text_in.splitlines():
 		if not this_line.startswith(";"):
-			new_root_text += this_line + "\n"	
+			new_root_text += this_line + "\n"
+	# Keep track of all the records, both to find the SOA but also to save for later matching comparisons
 	root_name_and_types = {}
-	for (line_num, this_line) in enumerate(new_root_text.splitlines()):
+	for his_line in new_root_text.splitlines():
 		(this_name, _, _, this_type, rdata) = this_line.split(" ", maxsplit=4)
 		this_key = "{}/{}".format(this_name, this_type)
 		if this_key in root_name_and_types:
 			root_name_and_types[this_key].append(rdata)
 		else:
 			root_name_and_types[this_key] = [ rdata ]
+	# Find the SOA record
 	try:
 		this_soa_record = root_name_and_types[("./SOA")][0]
 	except:
