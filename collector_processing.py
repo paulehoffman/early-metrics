@@ -34,7 +34,7 @@ if __name__ == "__main__":
 		log("Died with '{}'".format(error_message))
 		exit()
 	
-	log("Started measurements")
+	log("Started overall collector processing")
 
 	# Set up directories
 	
@@ -51,9 +51,13 @@ if __name__ == "__main__":
 	if not os.path.exists(output_dir):
 		os.mkdir(output_dir)
 	
+	###############################################################
+	
 	# Steps to keep the set of root zones up to date
 	#   If there is a new root zone, save it and also process it for matching tests later
 	
+	log("Started root zone collecting")
+
 	# Subdirectories of ~/Output for root zones
 	saved_root_zone_dir = "{}/RootZones".format(output_dir)
 	if not os.path.exists(saved_root_zone_dir):
@@ -123,6 +127,8 @@ if __name__ == "__main__":
 		pickle.dump(root_name_and_types, out_f)
 		out_f.close()
 	
+	###############################################################
+
 	# Connect to the database
 	try:
 		conn = psycopg2.connect(dbname="metrics", user="metrics")
@@ -137,8 +143,12 @@ if __name__ == "__main__":
 	except Exception as e:
 		die("Unable to turn on autocommit: '{}'".format(e))
 	
+	###############################################################
+
 	# Pull all new files from the VPs
 	#   Use sftp to pull from all VPs to ~/Incoming
+	
+	log("Started pulling from the VPs")
 
 	# Get the list of VPs
 	vp_list_filename = os.path.expanduser("~/vp_list.txt")
@@ -193,7 +203,9 @@ if __name__ == "__main__":
 				cur.execute("insert into files_gotten (filename_full, retrieved_at) values (%s, %s);", (this_filename, datetime.datetime.now(datetime.timezone.utc)))
 			except Exception as e:
 				die("Could not insert '{}' into files_gotten: '{}'".format(this_filename, e))
-	log("Finished pulling; got {} files from {} VPs".format(pulled_count, len(all_vps)))
+	log("Finished pulling from the VPs; got {} files from {} VPs".format(pulled_count, len(all_vps)))
+
+	###############################################################
 
 	# Go through the files in ~/Incoming
 	#   File-lever errors cause "die", record-level errors cause "alert" and skipping the record
@@ -354,7 +366,7 @@ if __name__ == "__main__":
 			pass ################################
 
 
-	log("Finished measurements, processed {} files".format(len(all_files)))
+	log("Finished overall collector processing")
 	exit()
 
 """
