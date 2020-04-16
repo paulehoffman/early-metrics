@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
 
-''' Read files from ~/Incoming, add data to the database, move them to ~/Originals/yyyymm/ '''
+''' Do all tasks on the collector to get data from the VPs, process it, and put the results in the database tables '''
 # Run as the metrics user
-# Run from cron job every 30 minutes
-# Find records in the correctness table that have not been checked, and check them
-# Reports why any failure happens
-
 # Three-letter items in square brackets (such as [xyz]) refer to parts of rssac-047.md
 
-import datetime, logging, os, pickle, psycopg2
+import datetime, glob, gzip, logging, os, pickle, psycopg2, re, requests, subprocess, shutil, yaml
 
 if __name__ == "__main__":
 	# Get the base for the log directory
@@ -39,6 +35,94 @@ if __name__ == "__main__":
 		exit()
 	
 	log("Started measurements")
+
+	# Set up directories
+	
+	# Where to get the incoming files
+	incoming_dir = os.path.expanduser("~/Incoming")
+	if not os.path.exists(incoming_dir):
+		os.mkdir(incoming_dir)
+	# Where to put the processed files files
+	originals_dir = os.path.expanduser("~/Originals")
+	if not os.path.exists(originals_dir):
+		os.mkdir(originals_dir)
+	# Where to save things long-term
+	output_dir = os.path.expanduser("~/Output")
+	if not os.path.exists(output_dir):
+		os.mkdir(output_dir)
+	
+	# Steps to keep the set of root zones up to date
+	#   If there is a new root zone, save it and also process it for matching tests later
+	
+	# Subdirectories of ~/Output for root zones
+	saved_root_zone_dir = "{}/RootZones".format(output_dir)
+	if not os.path.exists(saved_root_zone_dir):
+		os.mkdir(saved_root_zone_dir)
+	saved_matching_dir = "{}/RootMatching".format(output_dir)
+	if not os.path.exists(saved_matching_dir):
+		os.mkdir(saved_matching_dir)
+	
+	# Get the current root zone
+	internic_url = "https://www.internic.net/domain/root.zone"
+	try:
+		root_zone_request = requests.get(internic_url)
+	except Exception as e:
+		die("Could not do the requests.get on {}: '{}'".format(internic_url, e))
+	# Save it as a temp file to use named-compilezone
+	temp_latest_zone_name = "{}/temp_latest_zone".format(log_dir)
+	temp_latest_zone_f = open(temp_latest_zone_name, mode="wt")
+	temp_latest_zone_f.write(root_zone_request.text)
+	temp_latest_zone_f.close()
+	# Give the named-compilezone command, then post-process
+	try:
+		named_compilezone_p = subprocess.run("/home/metrics/Target/sbin/named-compilezone -q -i none -r ignore -o - . '{}'".format(temp_latest_zone_name),
+			shell=True, text=True, check=True, capture_output=True)
+	except Exception as e:
+		die("named-compilezone failed with '{}'".format(e))
+	new_root_text_in = named_compilezone_p.stdout
+	# Turn tabs into spaces
+	new_root_text_in = re.sub("\t", " ", new_root_text_in)
+	# Turn runs of spaces into a single space
+	new_root_text_in = re.sub(" +", " ", new_root_text_in)
+	# Get the output after removing comments
+	new_root_text = ""
+	# Remove the comments
+	for this_line in new_root_text_in.splitlines():
+		if not this_line.startswith(";"):
+			new_root_text += this_line + "\n"
+
+	# Keep track of all the records in this temporary root zone, both to find the SOA but also to save for later matching comparisons
+	root_name_and_types = {}
+	for his_line in new_root_text.splitlines():
+		(this_name, _, _, this_type, rdata) = this_line.split(" ", maxsplit=4)
+		this_key = "{}/{}".format(this_name, this_type)
+		if this_key in root_name_and_types:
+			root_name_and_types[this_key].append(rdata)
+		else:
+			root_name_and_types[this_key] = [ rdata ]
+	# Find the SOA record
+	try:
+		this_soa_record = root_name_and_types[("./SOA")][0]
+	except:
+		die("The root zone just received didn't have an SOA record.")
+	try:
+		this_soa = this_soa_record.split(" ")[2]
+	except Exception as e:
+		die("Splitting the SOA from the root zone just received failed with '{}'".format(e))
+
+	# Check if this SOA has already been seen
+	full_root_file_name = "{}/{}.root.txt".format(saved_root_zone_dir, this_soa)
+	if not os.path.exists(full_root_file_name):
+		out_f = open(full_root_file_name, mode="wt")
+		out_f.write(root_zone_request.text)
+		out_f.close()
+		log("Got a root zone with new SOA {}".format(this_soa))
+		# Also create a file of the tuples for matching
+		matching_file_name = "{}/{}.matching.pickle".format(saved_matching_dir, this_soa)
+		out_f = open(matching_file_name, mode="wb")
+		pickle.dump(root_name_and_types, out_f)
+		out_f.close()
+	
 	# Connect to the database
 	try:
 		conn = psycopg2.connect(dbname="metrics", user="metrics")
@@ -53,21 +137,70 @@ if __name__ == "__main__":
 	except Exception as e:
 		die("Unable to turn on autocommit: '{}'".format(e))
 	
-	# Where to get the incoming files
-	incoming_dir = os.path.expanduser("~/Incoming")
-	if not os.path.exists(incoming_dir):
-		os.mkdir(incoming_dir)
-	# Where to put the processed files files
-	originals_dir = os.path.expanduser("~/Originals")
-	if not os.path.exists(originals_dir):
-		os.mkdir(originals_dir)
+	# Pull all new files from the VPs
+	#   Use sftp to pull from all VPs to ~/Incoming
+
+	# Get the list of VPs
+	vp_list_filename = os.path.expanduser("~/vp_list.txt")
+	try:
+		all_vps = open(vp_list_filename, mode="rt").read().splitlines()
+	except Exception as e:
+		die("Could not open {} and split the lines: '{}'".format(vp_list_filename, e))
+
+	# For each VP, find the files in /sftp/transfer/Output and get them one by one
+	#   For each file, after getting, move it to /sftp/transfer/AlreadySeen
+	pulled_count = 0
+	for this_vp in all_vps:
+		# Make a batch file for sftp that gets the directory
+		dir_batch_filename = "{}/dirbatchfile.txt".format(log_dir)
+		dir_f = open(dir_batch_filename, mode="wt")
+		dir_f.write("cd transfer/Output\ndir -1\n")
+		dir_f.close()
+		# Execuite sftp with the directory batch file
+		try:
+			p = subprocess.run("sftp -b {} transfer@{}".format(dir_batch_filename, this_vp), shell=True, capture_output=True, text=True, check=True)
+		except Exception as e:
+			die("Getting directory for {} ended with '{}'".format(dir_batch_filename, e))
+		dir_lines = p.stdout.splitlines()
+		# Get the filenames that end in .gz; some lines will be other cruft such as ">"
+		for this_filename in dir_lines:
+			if not this_filename.endswith(".gz"):
+				continue
+			# Create an sftp batch file for each file to get
+			get_batch_filename = "{}/getbatchfile.txt".format(log_dir)
+			get_f = open(get_batch_filename, mode="wt")
+			# Get the file
+			get_cmd = "get transfer/Output/{} {}\n".format(this_filename, incoming_dir)
+			get_f.write(get_cmd)
+			get_f.close()
+			try:
+				p = subprocess.run("sftp -b {} transfer@{}".format(get_batch_filename, this_vp), shell=True, capture_output=True, text=True, check=True)
+			except Exception as e:
+				exit("Running get for {} ended with '{}'".format(this_filename, e))
+			# Create an sftp batch file for each file to move
+			move_batch_filename = "{}/getbatchfile.txt".format(log_dir)
+			move_f = open(move_batch_filename, mode="wt")
+			# Get the file
+			move_cmd = "rename transfer/Output/{0} transfer/AlreadySeen/{0}\n".format(this_filename)
+			move_f.write(move_cmd)
+			move_f.close()
+			try:
+				p = subprocess.run("sftp -b {} transfer@{}".format(move_batch_filename, this_vp), shell=True, capture_output=True, text=True, check=True)
+			except Exception as e:
+				exit("Running rename for {} ended with '{}'".format(this_filename, e))
+			pulled_count += 1
+			try:
+				cur.execute("insert into files_gotten (filename_full, retrieved_at) values (%s, %s);", (this_filename, datetime.datetime.now(datetime.timezone.utc)))
+			except Exception as e:
+				die("Could not insert '{}' into files_gotten: '{}'".format(this_filename, e))
+	log("Finished pulling; got {} files from {} VPs".format(pulled_count, len(all_vps)))
 
 	# Go through the files in ~/Incoming
 	#   File-lever errors cause "die", record-level errors cause "alert" and skipping the record
 	all_files = list(glob.glob("{}/*".format(incoming_dir)))
 	for full_file in all_files:
 		if not full_file.endswith(".pickle.gz"):
-			vp_alert.critical("Found {} that did not end in .pickle.gz".format(full_file))
+			alert("Found {} that did not end in .pickle.gz".format(full_file))
 			continue
 		short_file = os.path.basename(full_file).replace(".pickle.gz", "")
 		# Ungz it
@@ -83,14 +216,30 @@ if __name__ == "__main__":
 			die("Could not unpickle {}: '{}'".format(full_file, e))
 		# Sanity check the record
 		if not ("d" in in_obj) and ("e" in in_obj) and ("r" in in_obj) and ("s" in in_obj) and ("v" in in_obj):
-			die("Object in {} did not contain keys d, e, r, s, and v".format(full_file))
+			alert("Object in {} did not contain keys d, e, r, s, and v".format(full_file))
+
+		# Move the file to ~/Originals/yyyymm so it doesn't get processed again
+		year_from_short_file = short_file[0:4]
+		month_from_short_file = short_file[4:6]
+		original_dir_target = os.path.expanduser("~/Originals/{}{}".format(year_from_short_file, month_from_short_file))
+		if not os.path.exists(original_dir_target):
+			try:
+				os.mkdir(original_dir_target)
+			except Exception as e:
+				die("Could not create {}: '{}'".format(original_dir_target, e))
+		try:
+			shutil.move(full_file, original_dir_target)
+		except Exception as e:
+				die("Could not move {} to {}: '{}'".format(full_file, original_dir_target, e))
+
 		# Log the metadata
 		update_string = "update files_gotten set processed_at=%s, version=%s, delay=%s, elapsed=%s where filename_full=%s"
 		update_vales = (datetime.datetime.now(datetime.timezone.utc), in_obj["v"], in_obj["d"], in_obj["e"], short_file+".pickle.gz") 
 		try:
 			cur.execute(update_string, update_vales)
 		except Exception as e:
-			die("Could not update {} in files_gotten: '{}'".format(short_file, e))
+			alert("Could not update {} in files_gotten: '{}'".format(short_file, e))
+
 		# Get the derived date and VP name from the file name
 		(file_date_text, file_vp) = short_file.split("-")
 		try:
@@ -98,17 +247,23 @@ if __name__ == "__main__":
 				int(file_date_text[8:10]), int(file_date_text[10:12]))
 		except Exception as e:
 			die("Could not split the file name '{}' into a datetime: '{}'".format(short_file, e))
-		# Log the route information
-		update_string = "insert into route_info (file_prefix, date_derived, vp, route_string) values (%s, %s, %s, %s)"
-		update_vales = (short_file, file_date, file_vp, in_obj["s"]) 
-		try:
-			cur.execute(update_string, update_vales)
-		except Exception as e:
-			die("Could not insert into route_info for {}: '{}'".format(short_file, e))
-		# Walk through the response items
+
+		# Log the route information from in_obj["s"]
+		if not in_obj.get("s"):
+			alert("File {} did not have a route information record".format(full_file))
+		else:
+			update_string = "insert into route_info (file_prefix, date_derived, vp, route_string) values (%s, %s, %s, %s)"
+			update_vales = (short_file, file_date, file_vp, in_obj["s"]) 
+			try:
+				cur.execute(update_string, update_vales)
+			except Exception as e:
+				alert("Could not insert into route_info for {}: '{}'".format(short_file, e))
+
+		# Walk through the response items from the unpickled file
 		response_count = 0
 		for this_resp in in_obj["r"]:
 			response_count += 1
+			# Get it out of YAML and do basic sanity checks
 			try:
 				this_resp_obj = yaml.load(this_resp[6])
 			except:
@@ -124,10 +279,8 @@ if __name__ == "__main__":
 			if not this_resp_obj[0].get("message"):
 				alert("Found no message in record {} of {}".format(response_count, full_file))
 				continue
-			# Each record is "S" for an SOA record or "C" for a correctness test
-			#   Four SOA records should appear before the correctness test; this is good because we need to know which SOA to use
-			#      to test correctness
 			soa_for_correctness = ""
+			# Each record is "S" for an SOA record or "C" for a correctness test
 			if this_resp[4] == "S":
 				# Get the this_dig_elapsed, this_timeout, this_soa for the response
 				if this_resp_obj[0]["type"] == "MESSAGE":
@@ -153,6 +306,8 @@ if __name__ == "__main__":
 				else:
 					alert("Found an unexpected dig type {} in record {} of {}".format(this_resp_obj[0]["type"], response_count, full_file))
 					continue
+				# Save the SOA for the correctness checking
+				soa_for_correctness = this_soa
 				# Log the SOA information
 				update_string = "insert into soa_info (file_prefix, date_derived, vp, rsi, internet, transport, prog_elapsed, dig_elapsed, timeout, soa) "\
 					+ "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
@@ -160,33 +315,45 @@ if __name__ == "__main__":
 				try:
 					cur.execute(update_string, update_vales)
 				except Exception as e:
-					die("Could not insert into soa_info for {}: '{}'".format(short_file, e))
-				soa_for_correctness = this_soa
+					alert("Could not insert into soa_info for {}: '{}'".format(short_file, e))
 			elif this_resp[4] == "C": # Records for correctness checking
-				update_string = "insert into correctness_info (file_prefix, date_derived, vp, rsi, internet, transport, recent_soa, is_correct, failure_reason, source_pickle) "\
+				# Here, we are writing the record out with None for the is_correct value; the correctness is check is done later in this pass
+				update_string = "insert into correctness_info (file_prefix, date_derived, vp, rsi, internet, transport, recent_soa, "\
+					+ " is_correct, failure_reason, source_pickle) "\
 					+ "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
 				# Set is_correct to NULL because it will be evaluated later
 				update_vales = (short_file, file_date, file_vp, this_resp[0], this_resp[1], this_soa, this_resp[2], None, None, pickle.dumps(this_resp_obj))
 				try:
 					cur.execute(update_string, update_vales)
 				except Exception as e:
-					die("Could not insert into correctness_info for {}: '{}'".format(short_file, e))
+					alert("Could not insert into correctness_info for {}: '{}'".format(short_file, e))
 			else:
 				alert("Found a response type {}, which is not S or C, in record {} of {}".format(this_resp[4], response_count, full_file))
 				continue
-		# Move the file to ~/Originals/yyyymm
-		year_from_short_file = short_file[0:4]
-		month_from_short_file = short_file[4:6]
-		original_dir_target = os.path.expanduser("~/Originals/{}{}".format(year_from_short_file, month_from_short_file))
-		if not os.path.exists(original_dir_target):
-			try:
-				os.mkdir(original_dir_target)
-			except Exception as e:
-				die("Could not create {}: '{}'".format(original_dir_target, e))
+
+	# Now that all the measurements are in, go through all records in correctness_info where is_correct is NULL
+	#   This is done separately in order to catch all earlier attempts where there was not a good root zone file to compare
+	#   This does not log or alert; that is left for a different program checking when is_correct is not null
+	cur.execute("select (id, recent_soa, source_pickle) from correctness_info where is_correct is null")
+	for (this_id, this_soa, this_resp_pickle) in cur:
+		# See if it is a timeout; if so, set is_correct but move on [lbl]
 		try:
-			shutil.move(full_file, original_dir_target)
+			this_resp_obj = pickle.loads(this_resp_pickle)
 		except Exception as e:
-				die("Could not move {} to {}: '{}'".format(full_file, original_dir_target, e))
+			alert("Could not unpickle in correctness_info for {}: '{}'".format(this_id, e))
+			continue
+		if this_resp_obj[0]["type"] == "DIG_ERROR":
+			try:
+				cur.execute("update correctness_info set (is_correct, failure_reason) = (%s, %s) where id = this_id", (True, ""))
+			except Exception as e:
+				alert("Could not update correctness_info for {}: '{}'".format(this_id, e))
+		elif not this_resp_obj[0]["type"] == "MESSAGE":
+			alert("Found an unexpected dig type '{}' in correctness_info for {}".format(this_resp_obj[0]["type"], this_id))
+			continue
+		else:  # Here if it is a dig MESSAGE type
+			pass ################################
+
+
 	log("Finished measurements, processed {} files".format(len(all_files)))
 	exit()
 
@@ -194,6 +361,7 @@ if __name__ == "__main__":
                         Table "public.correctness_info"
      Column     |            Type             | Collation | Nullable | Default
 ----------------+-----------------------------+-----------+----------+---------
+ id             | integer                     |           |          | generated always as identity
  file_prefix    | text                        |           |          |
  date_derived   | timestamp without time zone |           |          |
  vp             | text                        |           |          |
@@ -208,6 +376,7 @@ if __name__ == "__main__":
                          Table "public.files_gotten"
     Column     |            Type             | Collation | Nullable | Default
 ---------------+-----------------------------+-----------+----------+---------
+ id            | integer                     |           |          | generated always as identity
  filename_full | text                        |           |          |
  retrieved_at  | timestamp without time zone |           |          |
  processed_at  | timestamp without time zone |           |          |
@@ -218,6 +387,7 @@ if __name__ == "__main__":
                           Table "public.route_info"
     Column    |            Type             | Collation | Nullable | Default
 --------------+-----------------------------+-----------+----------+---------
+ id           | integer                     |           |          | generated always as identity
  file_prefix  | text                        |           |          |
  date_derived | timestamp without time zone |           |          |
  vp           | text                        |           |          |
@@ -226,6 +396,7 @@ if __name__ == "__main__":
                            Table "public.soa_info"
     Column    |            Type             | Collation | Nullable | Default
 --------------+-----------------------------+-----------+----------+---------
+ id           | integer                     |           |          | generated always as identity
  file_prefix  | text                        |           |          |
  date_derived | timestamp without time zone |           |          |
  vp           | text                        |           |          |
