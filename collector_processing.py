@@ -52,82 +52,6 @@ if __name__ == "__main__":
 		os.mkdir(output_dir)
 	
 	###############################################################
-	
-	# Steps to keep the set of root zones up to date
-	#   If there is a new root zone, save it and also process it for matching tests later
-	
-	log("Started root zone collecting")
-
-	# Subdirectories of ~/Output for root zones
-	saved_root_zone_dir = "{}/RootZones".format(output_dir)
-	if not os.path.exists(saved_root_zone_dir):
-		os.mkdir(saved_root_zone_dir)
-	saved_matching_dir = "{}/RootMatching".format(output_dir)
-	if not os.path.exists(saved_matching_dir):
-		os.mkdir(saved_matching_dir)
-	
-	# Get the current root zone
-	internic_url = "https://www.internic.net/domain/root.zone"
-	try:
-		root_zone_request = requests.get(internic_url)
-	except Exception as e:
-		die("Could not do the requests.get on {}: '{}'".format(internic_url, e))
-	# Save it as a temp file to use named-compilezone
-	temp_latest_zone_name = "{}/temp_latest_zone".format(log_dir)
-	temp_latest_zone_f = open(temp_latest_zone_name, mode="wt")
-	temp_latest_zone_f.write(root_zone_request.text)
-	temp_latest_zone_f.close()
-	# Give the named-compilezone command, then post-process
-	try:
-		named_compilezone_p = subprocess.run("/home/metrics/Target/sbin/named-compilezone -q -i none -r ignore -o - . '{}'".format(temp_latest_zone_name),
-			shell=True, text=True, check=True, capture_output=True)
-	except Exception as e:
-		die("named-compilezone failed with '{}'".format(e))
-	new_root_text_in = named_compilezone_p.stdout
-	# Turn tabs into spaces
-	new_root_text_in = re.sub("\t", " ", new_root_text_in)
-	# Turn runs of spaces into a single space
-	new_root_text_in = re.sub(" +", " ", new_root_text_in)
-	# Get the output after removing comments
-	new_root_text = ""
-	# Remove the comments
-	for this_line in new_root_text_in.splitlines():
-		if not this_line.startswith(";"):
-			new_root_text += this_line + "\n"
-
-	# Keep track of all the records in this temporary root zone, both to find the SOA but also to save for later matching comparisons
-	root_name_and_types = {}
-	for his_line in new_root_text.splitlines():
-		(this_name, _, _, this_type, rdata) = this_line.split(" ", maxsplit=4)
-		this_key = "{}/{}".format(this_name, this_type)
-		if this_key in root_name_and_types:
-			root_name_and_types[this_key].append(rdata)
-		else:
-			root_name_and_types[this_key] = [ rdata ]
-	# Find the SOA record
-	try:
-		this_soa_record = root_name_and_types[("./SOA")][0]
-	except:
-		die("The root zone just received didn't have an SOA record.")
-	try:
-		this_soa = this_soa_record.split(" ")[2]
-	except Exception as e:
-		die("Splitting the SOA from the root zone just received failed with '{}'".format(e))
-
-	# Check if this SOA has already been seen
-	full_root_file_name = "{}/{}.root.txt".format(saved_root_zone_dir, this_soa)
-	if not os.path.exists(full_root_file_name):
-		out_f = open(full_root_file_name, mode="wt")
-		out_f.write(root_zone_request.text)
-		out_f.close()
-		log("Got a root zone with new SOA {}".format(this_soa))
-		# Also create a file of the tuples for matching
-		matching_file_name = "{}/{}.matching.pickle".format(saved_matching_dir, this_soa)
-		out_f = open(matching_file_name, mode="wb")
-		pickle.dump(root_name_and_types, out_f)
-		out_f.close()
-	
-	###############################################################
 
 	# Connect to the database
 	try:
@@ -143,68 +67,6 @@ if __name__ == "__main__":
 	except Exception as e:
 		die("Unable to turn on autocommit: '{}'".format(e))
 	
-	###############################################################
-
-	# Pull all new files from the VPs
-	#   Use sftp to pull from all VPs to ~/Incoming
-	
-	log("Started pulling from the VPs")
-
-	# Get the list of VPs
-	vp_list_filename = os.path.expanduser("~/vp_list.txt")
-	try:
-		all_vps = open(vp_list_filename, mode="rt").read().splitlines()
-	except Exception as e:
-		die("Could not open {} and split the lines: '{}'".format(vp_list_filename, e))
-
-	# For each VP, find the files in /sftp/transfer/Output and get them one by one
-	#   For each file, after getting, move it to /sftp/transfer/AlreadySeen
-	pulled_count = 0
-	for this_vp in all_vps:
-		# Make a batch file for sftp that gets the directory
-		dir_batch_filename = "{}/dirbatchfile.txt".format(log_dir)
-		dir_f = open(dir_batch_filename, mode="wt")
-		dir_f.write("cd transfer/Output\ndir -1\n")
-		dir_f.close()
-		# Execuite sftp with the directory batch file
-		try:
-			p = subprocess.run("sftp -b {} transfer@{}".format(dir_batch_filename, this_vp), shell=True, capture_output=True, text=True, check=True)
-		except Exception as e:
-			die("Getting directory for {} ended with '{}'".format(dir_batch_filename, e))
-		dir_lines = p.stdout.splitlines()
-		# Get the filenames that end in .gz; some lines will be other cruft such as ">"
-		for this_filename in dir_lines:
-			if not this_filename.endswith(".gz"):
-				continue
-			# Create an sftp batch file for each file to get
-			get_batch_filename = "{}/getbatchfile.txt".format(log_dir)
-			get_f = open(get_batch_filename, mode="wt")
-			# Get the file
-			get_cmd = "get transfer/Output/{} {}\n".format(this_filename, incoming_dir)
-			get_f.write(get_cmd)
-			get_f.close()
-			try:
-				p = subprocess.run("sftp -b {} transfer@{}".format(get_batch_filename, this_vp), shell=True, capture_output=True, text=True, check=True)
-			except Exception as e:
-				exit("Running get for {} ended with '{}'".format(this_filename, e))
-			# Create an sftp batch file for each file to move
-			move_batch_filename = "{}/getbatchfile.txt".format(log_dir)
-			move_f = open(move_batch_filename, mode="wt")
-			# Get the file
-			move_cmd = "rename transfer/Output/{0} transfer/AlreadySeen/{0}\n".format(this_filename)
-			move_f.write(move_cmd)
-			move_f.close()
-			try:
-				p = subprocess.run("sftp -b {} transfer@{}".format(move_batch_filename, this_vp), shell=True, capture_output=True, text=True, check=True)
-			except Exception as e:
-				exit("Running rename for {} ended with '{}'".format(this_filename, e))
-			pulled_count += 1
-			try:
-				cur.execute("insert into files_gotten (filename_full, retrieved_at) values (%s, %s);", (this_filename, datetime.datetime.now(datetime.timezone.utc)))
-			except Exception as e:
-				die("Could not insert '{}' into files_gotten: '{}'".format(this_filename, e))
-	log("Finished pulling from the VPs; got {} files from {} VPs".format(pulled_count, len(all_vps)))
-
 	###############################################################
 
 	# Go through the files in ~/Incoming
@@ -343,11 +205,105 @@ if __name__ == "__main__":
 				alert("Found a response type {}, which is not S or C, in record {} of {}".format(this_resp[4], response_count, full_file))
 				continue
 
+	###############################################################
+	
+	# Keep the set of root zones up to date
+	#   If there is a new root zone, save it and also process it for matching tests later
+	#   This is done after pulling the VP data to increase the chance that we'll get the latest zone before matching
+	
+	log("Started root zone collecting")
+
+	# Subdirectories of ~/Output for root zones
+	saved_root_zone_dir = "{}/RootZones".format(output_dir)
+	if not os.path.exists(saved_root_zone_dir):
+		os.mkdir(saved_root_zone_dir)
+	saved_matching_dir = "{}/RootMatching".format(output_dir)
+	if not os.path.exists(saved_matching_dir):
+		os.mkdir(saved_matching_dir)
+	
+	# Get the current root zone
+	internic_url = "https://www.internic.net/domain/root.zone"
+	try:
+		root_zone_request = requests.get(internic_url)
+	except Exception as e:
+		die("Could not do the requests.get on {}: '{}'".format(internic_url, e))
+	# Save it as a temp file to use named-compilezone
+	temp_latest_zone_name = "{}/temp_latest_zone".format(log_dir)
+	temp_latest_zone_f = open(temp_latest_zone_name, mode="wt")
+	temp_latest_zone_f.write(root_zone_request.text)
+	temp_latest_zone_f.close()
+	# Give the named-compilezone command, then post-process
+	try:
+		named_compilezone_p = subprocess.run("/home/metrics/Target/sbin/named-compilezone -q -i none -r ignore -o - . '{}'".format(temp_latest_zone_name),
+			shell=True, text=True, check=True, capture_output=True)
+	except Exception as e:
+		die("named-compilezone failed with '{}'".format(e))
+	new_root_text_in = named_compilezone_p.stdout
+	# Turn tabs into spaces
+	new_root_text_in = re.sub("\t", " ", new_root_text_in)
+	# Turn runs of spaces into a single space
+	new_root_text_in = re.sub(" +", " ", new_root_text_in)
+	# Get the output after removing comments
+	new_root_text = ""
+	# Remove the comments
+	for this_line in new_root_text_in.splitlines():
+		if not this_line.startswith(";"):
+			new_root_text += this_line + "\n"
+
+	# Keep track of all the records in this temporary root zone, both to find the SOA but also to save for later matching comparisons
+	root_name_and_types = {}
+	for his_line in new_root_text.splitlines():
+		(this_name, _, _, this_type, rdata) = this_line.split(" ", maxsplit=4)
+		this_key = "{}/{}".format(this_name, this_type)
+		if this_key in root_name_and_types:
+			root_name_and_types[this_key].append(rdata)
+		else:
+			root_name_and_types[this_key] = [ rdata ]
+	# Find the SOA record
+	try:
+		this_soa_record = root_name_and_types[("./SOA")][0]
+	except:
+		die("The root zone just received didn't have an SOA record.")
+	try:
+		this_soa = this_soa_record.split(" ")[2]
+	except Exception as e:
+		die("Splitting the SOA from the root zone just received failed with '{}'".format(e))
+
+	# Check if this SOA has already been seen
+	full_root_file_name = "{}/{}.root.txt".format(saved_root_zone_dir, this_soa)
+	if not os.path.exists(full_root_file_name):
+		out_f = open(full_root_file_name, mode="wt")
+		out_f.write(root_zone_request.text)
+		out_f.close()
+		log("Got a root zone with new SOA {}".format(this_soa))
+		# Also create a file of the tuples for matching
+		matching_file_name = "{}/{}.matching.pickle".format(saved_matching_dir, this_soa)
+		out_f = open(matching_file_name, mode="wb")
+		pickle.dump(root_name_and_types, out_f)
+		out_f.close()
+
+	###############################################################
+
 	# Now that all the measurements are in, go through all records in correctness_info where is_correct is NULL
 	#   This is done separately in order to catch all earlier attempts where there was not a good root zone file to compare
 	#   This does not log or alert; that is left for a different program checking when is_correct is not null
+
+	# See if a record is in a specified root zone or one near the time
+	def FAKE_check_record_against_root_zones(record_to_check, soa_of_recent_root):
+		# Returns (failure_text, soa_used) where soa_used is the SOA that got this to pass
+		# If this is one of the record types we don't care about, return immediately
+		##### More goes here #####
+		
+
+	# See if a record is in a specified root zone or one near the time; return text if it is not
+	def FAKE_check_RRset_signature(list_of_records):
+		# See if this list of records has an RRSIG and associated record
+		##### More goes here #####
+		return("")
+
+	# Iterate over the records where is_correct is null
 	cur.execute("select (id, recent_soa, source_pickle) from correctness_info where is_correct is null")
-	for (this_id, this_soa, this_resp_pickle) in cur:
+	for (this_id, this_recent_soa, this_resp_pickle) in cur:
 		# See if it is a timeout; if so, set is_correct but move on [lbl]
 		try:
 			this_resp_obj = pickle.loads(this_resp_pickle)
@@ -356,18 +312,138 @@ if __name__ == "__main__":
 			continue
 		if this_resp_obj[0]["type"] == "DIG_ERROR":
 			try:
-				cur.execute("update correctness_info set (is_correct, failure_reason) = (%s, %s) where id = this_id", (True, ""))
+				cur.execute("update correctness_info set (is_correct, failure_reason) = (%s, %s) where id = %s", (True, "", this_id))
 			except Exception as e:
-				alert("Could not update correctness_info for {}: '{}'".format(this_id, e))
+				alert("Could not update correctness_info for timed-out {}: '{}'".format(this_id, e))
+			continue
 		elif not this_resp_obj[0]["type"] == "MESSAGE":
 			alert("Found an unexpected dig type '{}' in correctness_info for {}".format(this_resp_obj[0]["type"], this_id))
 			continue
-		else:  # Here if it is a dig MESSAGE type
-			pass ################################
 
+		# Here if it is a dig MESSAGE type
+		#   failure_reason_list holds an expanding set of reasons; if it is empty at the end of testing, then all correctness tests passed
+		failure_reason_list = []
+		resp = this_resp_obj[0]["message"]["response_message_data"]
 
+		# Check that each of the RRsets in the Answer, Authority, and Additional sections match RRsets found in the zone [vnk]
+		#   Send each record to the function that will check it against the zones
+		for this_section_name in [ "ANSWER_SECTION", "AUTHORITY_SECTION", "ADDITIONAL_SECTION" ]:
+			if resp.get(this_section_name):
+				for this_record in resp[this_section_name]:
+					(failure_text, usable_soa) = FAKE_check_record_against_root_zones(this_record, this_recent_soa)
+					if not failure_text == "":
+					failure_reason_list.append(failure_text)
+
+		# Check that each of the RRsets that are signed have their signatures validated. [yds]
+		#   Send all the records in each section to the function that checks for validity
+		for this_section_name in [ "ANSWER_SECTION", "AUTHORITY_SECTION", "ADDITIONAL_SECTION" ]:
+			if resp.get(this_section_name):
+				 = FAKE_check_RRset_signature(resp[this_section_name])
+				failure_reason_list.append()
+
+		# Check that all the parts of the resp structure are correct, based on the type of answer
+		question_record = resp["QUESTION_SECTION"][0]
+		(this_qname, _, this_qtype) = question_record.split(" ")
+		if resp["status"] == "NOERROR":
+			if (this_qname != ".") and (this_qtype == "NS"):  # Processing for TLD / NS [hmk]
+				if "aa" in resp["flags"]: # [ujy]
+					failure_reason_list.append("AA flag was set")
+				if resp.get("ANSWER_SECTION"):  # [aeg]
+					failure_reason_list.append("Answer section was not empty")
+				##### More goes here
+				##### - If the DS RRset for the query name exists in the zone:`[hue]`
+				##### Last step here
+			elif (this_qname != ".") and (this_qtype == "DS"):  # Processing for TLD / DS
+			elif (this_qname == ".") and (this_qtype == "SOA"):  # Processing for . / SOA
+			elif (this_qname == ".") and (this_qtype == "NS"):  # Processing for . / NS
+			elif (this_qname == ".") and (this_qtype == "DNSKEY"):  # Processing for . / DNSKEY
+			else:
+				failure_reason_list.append("Not matched: when checking NOERROR statuses, found unexpected name/type of {}/{}".format(this_qname, this_qtype))
+		elif resp["status"] == "NXDOMAIN":  # Processing for negative responses
+		else:
+			failure_reason_list.append("Response had a status other than NOERROR and NXDOMAIN")
+		
+		# See if the results were all positive
+		failure_reason_text = "\n".join(failure_reason_list)
+		make_is_correct = (failure_reason_text == "")
+		try:
+			cur.execute("update correctness_info set (is_correct, failure_reason) = (%s, %s) where id = %s", (make_is_correct, failure_reason_text, this_id))
+		except Exception as e:
+			alert("Could not update correctness_info after processing record {}: '{}'".format(this_id, e))
 	log("Finished overall collector processing")
 	exit()
+
+"""
+    response_message_data:
+      opcode: QUERY
+      status: NOERROR
+      id: 24783
+      flags: qr aa
+      QUESTION: 1
+      ANSWER: 2
+      AUTHORITY: 0
+      ADDITIONAL: 1
+      OPT_PSEUDOSECTION:
+        EDNS:
+          version: 0
+          flags: do
+          udp: 4096
+          NSID: 4d 2d 53 4a 43 2d 34 ("M-SJC-4")
+      QUESTION_SECTION:
+        - honda. IN DS
+      ANSWER_SECTION:
+        - honda. 86400 IN DS 25744 8 2 4214B1E2FFB881035440B32CB3C90675E1051A23AB5424FC07111EB9 17643338
+        - honda. 86400 IN RRSIG DS 8 1 86400 20200415170000 20200402160000 48903 . sa4+qbyBLh3RY1vmxUDptQuDiXon+ltQXKxPqpv20aGjkcKO/JCl8br2 XbrvanshnYaL0CLbVC1pyIzUggasyVM/mheyGUGurCD6dwElUQO+iK8+ bB3mvhbHA3PLtqZGnz+VSkBkYXfstvnvykMqKT3/WA1Dny1Lth191ILx noinZMSDCfgKhR/CJx2tMQMYgpwzN7AFFZUUzR3VQ695EibTtlIgSsgj YKPC7HOGBR5icKviZe21CCFQZiiez+Y/3OVTG/4DoDiKimRoIJs834h6 pBJJYuPVU6P7z0mNJrU8nJG8lKgue0bp94y/cSyBM5DCMj92cy1Hleia DmAtgg==
+"""
+
+"""
+For positive responses with QNAME = <TLD> and QTYPE = NS, a correct result requires all of the following: `[hmk]`
+
+- The header AA bit is not set. `[ujy]`
+- The Answer section is empty. `[aeg]`
+- The Authority section contains the entire NS RRset for the query name. `[pdd]`
+- If the DS RRset for the query name exists in the zone:`[hue]`
+  - The Authority section contains the signed DS RRset for the query name. `[kbd]`
+- If the DS RRset for the query name does not exist in the zone: `[fot]`
+  - The Authority section contains no DS RRset. `[bgr]`
+  - The Authority section contains a signed NSEC RRset covering the query name. `[mkl]`
+- The Additional section contains at least one A or AAAA record found in the zone associated with at least one NS record found in the Authority section. `[cjm]`
+
+For positive responses where QNAME = <TLD> and QTYPE = DS, a correct result requires all of the following: `[dru]`
+
+- The header AA bit is set. `[yot]`
+- The Answer section contains the signed DS RRset for the query name. `[cpf]`
+- The Authority section is empty. `[xdu]`
+- The Additional section is empty. `[mle]`
+
+For positive responses for QNAME = . and QTYPE = SOA, a correct result requires all of the following: `[owf]`
+
+- The header AA bit is set. `[xhr]`
+- The Answer section contains the signed SOA record for the root. `[obw]`
+- The Authority section contains the signed NS RRset for the root. `[ktm]`
+
+For positive responses for QNAME = . and QTYPE = NS, a correct result requires all of the following: `[amj]`
+
+- The header AA bit is set. `[csz]`
+- The Answer section contains the signed NS RRset for the root. `[wal]`
+- The Authority section is empty. `[eyk]`
+
+For positive responses for QNAME = . and QTYPE = DNSKEY, a correct result requires all of the following: `[djd]`
+
+- The header AA bit is set. `[occ]`
+- The Answer section contains the signed DNSKEY RRset for the root. `[eou]`
+- The Authority section is empty. `[kka]`
+- The Additional section is empty. `[jws]`
+
+For negative responses, a correct result requires all of the following: `[vcu]`
+
+- The header AA bit is set. `[gpl]`
+- The Answer section is empty. `[dvh]`
+- The Authority section contains the signed . / SOA record. `[axj]`
+- The Authority section contains a signed NSEC record covering the query name. `[czb]`
+- The Authority section contains a signed NSEC record with owner name “.” proving no wildcard exists in the zone. `[jhz]`
+- The Additional section is empty. `[trw]`
+"""
 
 """
                         Table "public.correctness_info"

@@ -216,7 +216,7 @@ Correctness checking is based on the actual response data, rather than what was 
 
 For all matching testing:
 
-- All of the RRsets in the Answer, Authority, and Additional sections match RRsets found in the zone. `[vnk]` This check does not include any OPT RRset found in the Additional section, `[pvz]` nor does it include any RRSIG RRsets that are not named in the matching tests below. `[ygx]`
+- All of the RRsets in the Answer, Authority, and Additional sections match RRsets found in the zone. `[vnk]` This check does not include any OPT RRset found in the Additional section `[pvz]`, nor does it include any RRSIG RRsets that are not named in the matching tests below. `[ygx]`
 - All RRsets that are signed have their signatures validated. `[yds]`
 
 For positive responses with QNAME = <TLD> and QTYPE = NS, a correct result requires all of the following: `[hmk]`
