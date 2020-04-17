@@ -347,19 +347,52 @@ if __name__ == "__main__":
 		if resp["status"] == "NOERROR":
 			if (this_qname != ".") and (this_qtype == "NS"):  # Processing for TLD / NS [hmk]
 				if "aa" in resp["flags"]: # [ujy]
-					failure_reason_list.append("AA flag was set")
+					failure_reason_list.append("AA bit was set")
 				if resp.get("ANSWER_SECTION"):  # [aeg]
 					failure_reason_list.append("Answer section was not empty")
-				##### More goes here
-				##### - If the DS RRset for the query name exists in the zone:`[hue]`
-				##### Last step here
-			elif (this_qname != ".") and (this_qtype == "DS"):  # Processing for TLD / DS
+				##### The Authority section contains the entire NS RRset for the query name. `[pdd]`
+				##### If the DS RRset for the query name exists in the zone:`[hue]`
+				##### If the DS RRset for the query name does not exist in the zone: `[fot]`
+				##### Additional section contains at least one A or AAAA record found in the zone associated with at least one NS record found in the Authority section. `[cjm]`
+			elif (this_qname != ".") and (this_qtype == "DS"):  # Processing for TLD / DS [dru]
+				if not "aa" in resp["flags"]: # [yot]
+					failure_reason_list.append("AA bit was not set")
+				### The Answer section contains the signed DS RRset for the query name. `[cpf]`
+				if resp.get("AUTHORITY_SECTION"):  # [xdu]
+					failure_reason_list.append("Authority section was not empty")
+				if resp.get("ADDITIONAL_SECTION"):  # [mle]
+					failure_reason_list.append("Additional section was not empty")
 			elif (this_qname == ".") and (this_qtype == "SOA"):  # Processing for . / SOA
-			elif (this_qname == ".") and (this_qtype == "NS"):  # Processing for . / NS
-			elif (this_qname == ".") and (this_qtype == "DNSKEY"):  # Processing for . / DNSKEY
+				if not "aa" in resp["flags"]: # [xhr]
+					failure_reason_list.append("AA bit was not set")
+				##### The Answer section contains the signed SOA record for the root. `[obw]`
+				##### The Authority section contains the signed NS RRset for the root. `[ktm]`
+			elif (this_qname == ".") and (this_qtype == "NS"):  # Processing for . / NS [amj]
+				if not "aa" in resp["flags"]: # [csz]
+					failure_reason_list.append("AA bit was not set")
+				##### The Answer section contains the signed NS RRset for the root. `[wal]`
+				if resp.get("AUTHORITY_SECTION"):  # [eyk]
+					failure_reason_list.append("Authority section was not empty")
+			elif (this_qname == ".") and (this_qtype == "DNSKEY"):  # Processing for . / DNSKEY [djd]
+				if not "aa" in resp["flags"]: # [occ]
+					failure_reason_list.append("AA bit was not set")
+				##### The Answer section contains the signed DNSKEY RRset for the root. `[eou]`
+				if resp.get("AUTHORITY_SECTION"):  # [kka]
+					failure_reason_list.append("Authority section was not empty")
+				if resp.get("ADDITIONAL_SECTION"):  # [jws]
+					failure_reason_list.append("Additional section was not empty")
 			else:
 				failure_reason_list.append("Not matched: when checking NOERROR statuses, found unexpected name/type of {}/{}".format(this_qname, this_qtype))
-		elif resp["status"] == "NXDOMAIN":  # Processing for negative responses
+		elif resp["status"] == "NXDOMAIN":  # Processing for negative responses [vcu]
+			if not "aa" in resp["flags"]: # [gpl]
+				failure_reason_list.append("AA bit was not set")
+			if resp.get("ANSWER_SECTION"):  # [dvh]
+				failure_reason_list.append("Answer section was not empty")
+			##### The Authority section contains the signed . / SOA record. `[axj]`  #### Same as [[obw]]
+			##### The Authority section contains a signed NSEC record covering the query name. `[czb]`
+			##### The Authority section contains a signed NSEC record with owner name “.” proving no wildcard exists in the zone. `[jhz]`
+			if resp.get("ADDITIONAL_SECTION"):  # [trw]
+				failure_reason_list.append("Additional section was not empty")
 		else:
 			failure_reason_list.append("Response had a status other than NOERROR and NXDOMAIN")
 		
