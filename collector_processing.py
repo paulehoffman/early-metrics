@@ -69,8 +69,67 @@ if __name__ == "__main__":
 	
 	###############################################################
 
+	# Get the list of VPs
+	log("Started pulling from VPs")
+	vp_list_filename = os.path.expanduser("~/vp_list.txt")
+	try:
+		all_vps = open(vp_list_filename, mode="rt").read().splitlines()
+	except Exception as e:
+		die("Could not open {} and split the lines: '{}'".format(vp_list_filename, e))
+
+	# For each VP, find the files in /sftp/transfer/Output and get them one by one
+	#   For each file, after getting, move it to /sftp/transfer/AlreadySeen
+	pulled_count = 0
+	for this_vp in all_vps:
+		# Make a batch file for sftp that gets the directory
+		dir_batch_filename = "{}/dirbatchfile.txt".format(log_dir)
+		dir_f = open(dir_batch_filename, mode="wt")
+		dir_f.write("cd transfer/Output\ndir -1\n")
+		dir_f.close()
+		# Execuite sftp with the directory batch file
+		try:
+			p = subprocess.run("sftp -b {} transfer@{}".format(dir_batch_filename, this_vp), shell=True, capture_output=True, text=True, check=True)
+		except Exception as e:
+			die("Getting directory for {} ended with '{}'".format(dir_batch_filename, e))
+		dir_lines = p.stdout.splitlines()
+		# Get the filenames that end in .gz; some lines will be other cruft such as ">"
+		for this_filename in dir_lines:
+			if not this_filename.endswith(".gz"):
+				continue
+			# Create an sftp batch file for each file to get
+			get_batch_filename = "{}/getbatchfile.txt".format(log_dir)
+			get_f = open(get_batch_filename, mode="wt")
+			# Get the file
+			get_cmd = "get transfer/Output/{} {}\n".format(this_filename, incoming_dir)
+			get_f.write(get_cmd)
+			get_f.close()
+			try:
+				p = subprocess.run("sftp -b {} transfer@{}".format(get_batch_filename, this_vp), shell=True, capture_output=True, text=True, check=True)
+			except Exception as e:
+				exit("Running get for {} ended with '{}'".format(this_filename, e))
+			# Create an sftp batch file for each file to move
+			move_batch_filename = "{}/getbatchfile.txt".format(log_dir)
+			move_f = open(move_batch_filename, mode="wt")
+			# Get the file
+			move_cmd = "rename transfer/Output/{0} transfer/AlreadySeen/{0}\n".format(this_filename)
+			move_f.write(move_cmd)
+			move_f.close()
+			try:
+				p = subprocess.run("sftp -b {} transfer@{}".format(move_batch_filename, this_vp), shell=True, capture_output=True, text=True, check=True)
+			except Exception as e:
+				exit("Running rename for {} ended with '{}'".format(this_filename, e))
+			pulled_count += 1
+			try:
+				cur.execute("insert into files_gotten (filename_full, retrieved_at) values (%s, %s);", (this_filename, datetime.datetime.now(datetime.timezone.utc)))
+			except Exception as e:
+				die("Could not insert '{}' into files_gotten: '{}'".format(this_filename, e))
+	log("Finished pulling from VPs; got {} files from {} VPs".format(pulled_count, len(all_vps)))
+
+	###############################################################
+
 	# Go through the files in ~/Incoming
 	#   File-lever errors cause "die", record-level errors cause "alert" and skipping the record
+	log("Started going through Incoming")
 	all_files = list(glob.glob("{}/*".format(incoming_dir)))
 	for full_file in all_files:
 		if not full_file.endswith(".pickle.gz"):
@@ -204,6 +263,7 @@ if __name__ == "__main__":
 			else:
 				alert("Found a response type {}, which is not S or C, in record {} of {}".format(this_resp[4], response_count, full_file))
 				continue
+	log("Finished processing {} files".format(len(all_files)))
 
 	###############################################################
 	
@@ -301,6 +361,8 @@ if __name__ == "__main__":
 		# See if this list of records has an RRSIG and associated record
 		##### More goes here #####
 		return("")
+
+	log("Started correctness checking")
 
 	# Iterate over the records where is_correct is null
 	cur.execute("select (id, recent_soa, source_pickle) from correctness_info where is_correct is null")
@@ -432,59 +494,10 @@ if __name__ == "__main__":
 """
 
 """
-For positive responses with QNAME = <TLD> and QTYPE = NS, a correct result requires all of the following: `[hmk]`
-
-- The header AA bit is not set. `[ujy]`
-- The Answer section is empty. `[aeg]`
-- The Authority section contains the entire NS RRset for the query name. `[pdd]`
-- If the DS RRset for the query name exists in the zone:`[hue]`
-  - The Authority section contains the signed DS RRset for the query name. `[kbd]`
-- If the DS RRset for the query name does not exist in the zone: `[fot]`
-  - The Authority section contains no DS RRset. `[bgr]`
-  - The Authority section contains a signed NSEC RRset covering the query name. `[mkl]`
-- The Additional section contains at least one A or AAAA record found in the zone associated with at least one NS record found in the Authority section. `[cjm]`
-
-For positive responses where QNAME = <TLD> and QTYPE = DS, a correct result requires all of the following: `[dru]`
-
-- The header AA bit is set. `[yot]`
-- The Answer section contains the signed DS RRset for the query name. `[cpf]`
-- The Authority section is empty. `[xdu]`
-- The Additional section is empty. `[mle]`
-
-For positive responses for QNAME = . and QTYPE = SOA, a correct result requires all of the following: `[owf]`
-
-- The header AA bit is set. `[xhr]`
-- The Answer section contains the signed SOA record for the root. `[obw]`
-- The Authority section contains the signed NS RRset for the root. `[ktm]`
-
-For positive responses for QNAME = . and QTYPE = NS, a correct result requires all of the following: `[amj]`
-
-- The header AA bit is set. `[csz]`
-- The Answer section contains the signed NS RRset for the root. `[wal]`
-- The Authority section is empty. `[eyk]`
-
-For positive responses for QNAME = . and QTYPE = DNSKEY, a correct result requires all of the following: `[djd]`
-
-- The header AA bit is set. `[occ]`
-- The Answer section contains the signed DNSKEY RRset for the root. `[eou]`
-- The Authority section is empty. `[kka]`
-- The Additional section is empty. `[jws]`
-
-For negative responses, a correct result requires all of the following: `[vcu]`
-
-- The header AA bit is set. `[gpl]`
-- The Answer section is empty. `[dvh]`
-- The Authority section contains the signed . / SOA record. `[axj]`
-- The Authority section contains a signed NSEC record covering the query name. `[czb]`
-- The Authority section contains a signed NSEC record with owner name “.” proving no wildcard exists in the zone. `[jhz]`
-- The Additional section is empty. `[trw]`
-"""
-
-"""
-                        Table "public.correctness_info"
-     Column     |            Type             | Collation | Nullable | Default
-----------------+-----------------------------+-----------+----------+---------
- id             | integer                     |           |          | generated always as identity
+                                  Table "public.correctness_info"
+     Column     |            Type             | Collation | Nullable |           Default
+----------------+-----------------------------+-----------+----------+------------------------------
+ id             | integer                     |           | not null | generated always as identity
  file_prefix    | text                        |           |          |
  date_derived   | timestamp without time zone |           |          |
  vp             | text                        |           |          |
@@ -493,13 +506,13 @@ For negative responses, a correct result requires all of the following: `[vcu]`
  transport      | text                        |           |          |
  recent_soa     | text                        |           |          |
  is_correct     | boolean                     |           |          |
- source_pickle  | bytea                       |           |          |
  failure_reason | text                        |           |          |
+ source_pickle  | bytea                       |           |          |
 
-                         Table "public.files_gotten"
-    Column     |            Type             | Collation | Nullable | Default
----------------+-----------------------------+-----------+----------+---------
- id            | integer                     |           |          | generated always as identity
+                                    Table "public.files_gotten"
+    Column     |            Type             | Collation | Nullable |           Default
+---------------+-----------------------------+-----------+----------+------------------------------
+ id            | integer                     |           | not null | generated always as identity
  filename_full | text                        |           |          |
  retrieved_at  | timestamp without time zone |           |          |
  processed_at  | timestamp without time zone |           |          |
@@ -507,19 +520,19 @@ For negative responses, a correct result requires all of the following: `[vcu]`
  delay         | integer                     |           |          |
  elapsed       | integer                     |           |          |
 
-                          Table "public.route_info"
-    Column    |            Type             | Collation | Nullable | Default
---------------+-----------------------------+-----------+----------+---------
- id           | integer                     |           |          | generated always as identity
+                                    Table "public.route_info"
+    Column    |            Type             | Collation | Nullable |           Default
+--------------+-----------------------------+-----------+----------+------------------------------
+ id           | integer                     |           | not null | generated always as identity
  file_prefix  | text                        |           |          |
  date_derived | timestamp without time zone |           |          |
  vp           | text                        |           |          |
  route_string | text                        |           |          |
 
-                           Table "public.soa_info"
-    Column    |            Type             | Collation | Nullable | Default
---------------+-----------------------------+-----------+----------+---------
- id           | integer                     |           |          | generated always as identity
+                                     Table "public.soa_info"
+    Column    |            Type             | Collation | Nullable |           Default
+--------------+-----------------------------+-----------+----------+------------------------------
+ id           | integer                     |           | not null | generated always as identity
  file_prefix  | text                        |           |          |
  date_derived | timestamp without time zone |           |          |
  vp           | text                        |           |          |
@@ -530,4 +543,4 @@ For negative responses, a correct result requires all of the following: `[vcu]`
  dig_elapsed  | real                        |           |          |
  timeout      | boolean                     |           |          |
  soa          | text                        |           |          |
-"""
+ """
