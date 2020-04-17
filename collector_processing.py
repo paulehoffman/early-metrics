@@ -293,6 +293,7 @@ if __name__ == "__main__":
 		# Returns (failure_text, soa_used) where soa_used is the SOA that got this to pass
 		# If this is one of the record types we don't care about, return immediately
 		##### More goes here #####
+		return("", soa_of_recent_root)
 		
 
 	# See if a record is in a specified root zone or one near the time; return text if it is not
@@ -332,14 +333,15 @@ if __name__ == "__main__":
 				for this_record in resp[this_section_name]:
 					(failure_text, usable_soa) = FAKE_check_record_against_root_zones(this_record, this_recent_soa)
 					if not failure_text == "":
-					failure_reason_list.append(failure_text)
+						failure_reason_list.append(failure_text)
 
 		# Check that each of the RRsets that are signed have their signatures validated. [yds]
 		#   Send all the records in each section to the function that checks for validity
 		for this_section_name in [ "ANSWER_SECTION", "AUTHORITY_SECTION", "ADDITIONAL_SECTION" ]:
 			if resp.get(this_section_name):
-				 = FAKE_check_RRset_signature(resp[this_section_name])
-				failure_reason_list.append()
+				failure_text = FAKE_check_RRset_signature(resp[this_section_name])
+				if not failure_text == "":
+					failure_reason_list.append(failure_text)
 
 		# Check that all the parts of the resp structure are correct, based on the type of answer
 		question_record = resp["QUESTION_SECTION"][0]
