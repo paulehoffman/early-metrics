@@ -252,7 +252,7 @@ if __name__ == "__main__":
 
 	# Keep track of all the records in this temporary root zone, both to find the SOA but also to save for later matching comparisons
 	root_name_and_types = {}
-	for his_line in new_root_text.splitlines():
+	for this_line in new_root_text.splitlines():
 		(this_name, _, _, this_type, rdata) = this_line.split(" ", maxsplit=4)
 		this_key = "{}/{}".format(this_name, this_type)
 		if this_key in root_name_and_types:
