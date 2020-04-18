@@ -194,6 +194,7 @@
       - failure_reason text
       - source_pickle bytea
 
+# To nuke all the tables in psql: drop table correctness_info ; drop table files_gotten ; drop table route_info ; drop table soa_info ;
 
 #  - name: Give the crontab entry for get_root_zone.py
 #    cron:   # [mba] [wca]

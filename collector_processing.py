@@ -17,12 +17,12 @@ if __name__ == "__main__":
 	vp_log = logging.getLogger("logging")
 	vp_log.setLevel(logging.INFO)
 	log_handler = logging.FileHandler(log_file_name)
-	log_handler.setFormatter(logging.Formatter("%(created)d %(message)s"))
+	log_handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
 	vp_log.addHandler(log_handler)
 	vp_alert = logging.getLogger("alerts")
 	vp_alert.setLevel(logging.CRITICAL)
 	alert_handler = logging.FileHandler(alert_file_name)
-	alert_handler.setFormatter(logging.Formatter("%(created)d %(message)s"))
+	alert_handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
 	vp_alert.addHandler(alert_handler)
 	def log(log_message):
 		vp_log.info(log_message)
@@ -255,7 +255,7 @@ if __name__ == "__main__":
 					+ " is_correct, failure_reason, source_pickle) "\
 					+ "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
 				# Set is_correct to NULL because it will be evaluated later
-				update_vales = (short_file, file_date, file_vp, this_resp[0], this_resp[1], this_soa, this_resp[2], None, None, pickle.dumps(this_resp_obj))
+				update_vales = (short_file, file_date, file_vp, this_resp[0], this_resp[1], this_resp[2], this_soa, None, None, pickle.dumps(this_resp_obj))
 				try:
 					cur.execute(update_string, update_vales)
 				except Exception as e:
@@ -362,11 +362,11 @@ if __name__ == "__main__":
 		##### More goes here #####
 		return("")
 
-	log("Started correctness checking")
-
 	# Iterate over the records where is_correct is null
-	cur.execute("select (id, recent_soa, source_pickle) from correctness_info where is_correct is null")
-	for (this_id, this_recent_soa, this_resp_pickle) in cur:
+	cur.execute("select id, recent_soa, source_pickle from correctness_info where is_correct is null")
+	correct_to_check = cur.fetchall()
+	log("Started correctness checking on {} found".format(len(correct_to_check))
+	for (this_id, this_recent_soa, this_resp_pickle) in correct_to_check:
 		# See if it is a timeout; if so, set is_correct but move on [lbl]
 		try:
 			this_resp_obj = pickle.loads(this_resp_pickle)
