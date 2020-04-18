@@ -365,7 +365,7 @@ if __name__ == "__main__":
 	# Iterate over the records where is_correct is null
 	cur.execute("select id, recent_soa, source_pickle from correctness_info where is_correct is null")
 	correct_to_check = cur.fetchall()
-	log("Started correctness checking on {} found".format(len(correct_to_check))
+	log("Started correctness checking on {} found".format(len(correct_to_check)))
 	for (this_id, this_recent_soa, this_resp_pickle) in correct_to_check:
 		# See if it is a timeout; if so, set is_correct but move on [lbl]
 		try:
