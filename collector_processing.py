@@ -255,7 +255,7 @@ if __name__ == "__main__":
 					+ " is_correct, failure_reason, source_pickle) "\
 					+ "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
 				# Set is_correct to NULL because it will be evaluated later
-				update_vales = (short_file, file_date, file_vp, this_resp[0], this_resp[1], this_resp[2], this_soa, None, None, pickle.dumps(this_resp_obj))
+				update_vales = (short_file, file_date, file_vp, this_resp[0], this_resp[1], this_resp[2], [ this_soa ], None, None, pickle.dumps(this_resp_obj))
 				try:
 					cur.execute(update_string, update_vales)
 				except Exception as e:
@@ -349,18 +349,17 @@ if __name__ == "__main__":
 	#   This does not log or alert; that is left for a different program checking when is_correct is not null
 
 	# See if a record is in a specified root zone or one near the time
-	def FAKE_check_record_against_root_zones(record_to_check, soa_of_recent_root):
-		# Returns (failure_text, soa_used) where soa_used is the SOA that got this to pass
+	def FAKE_check_for_record_in_root_zone(record_to_check, soa_of_recent_root):
+		# Returns failure_text listing if the records was not found
 		# If this is one of the record types we don't care about, return immediately
 		##### More goes here #####
-		return("", soa_of_recent_root)
-		
+		return ""
 
 	# See if a record is in a specified root zone or one near the time; return text if it is not
 	def FAKE_check_RRset_signature(list_of_records):
 		# See if this list of records has an RRSIG and associated record
 		##### More goes here #####
-		return("")
+		return ""
 
 	# Iterate over the records where is_correct is null
 	cur.execute("select id, recent_soa, source_pickle from correctness_info where is_correct is null")
@@ -393,7 +392,7 @@ if __name__ == "__main__":
 		for this_section_name in [ "ANSWER_SECTION", "AUTHORITY_SECTION", "ADDITIONAL_SECTION" ]:
 			if resp.get(this_section_name):
 				for this_record in resp[this_section_name]:
-					(failure_text, usable_soa) = FAKE_check_record_against_root_zones(this_record, this_recent_soa)
+					failure_text = FAKE_check_for_record_in_root_zone(this_record, this_recent_soa)
 					if not failure_text == "":
 						failure_reason_list.append(failure_text)
 
@@ -469,6 +468,10 @@ if __name__ == "__main__":
 			alert("Could not update correctness_info after processing record {}: '{}'".format(this_id, e))
 	log("Finished overall collector processing")
 	exit()
+
+"""
+update temp1 set b = b || '{"ThrEE"}' where a = 'one';
+"""
 
 """
     response_message_data:
