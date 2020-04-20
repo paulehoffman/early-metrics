@@ -348,16 +348,22 @@ if __name__ == "__main__":
 	#   This is done separately in order to catch all earlier attempts where there was not a good root zone file to compare
 	#   This does not log or alert; that is left for a different program checking when is_correct is not null
 
-	# See if a record is in a specified root zone or one near the time
-	def FAKE_check_for_record_in_root_zone(record_to_check, soa_of_recent_root):
+	# See if a qname_and_qtype (example: "bank./NS") is in a specified root zone or one near the time
+	def FAKE_check_for_record_in_root_zone(qname_and_qtype, root_to_check):
 		# Returns failure_text listing if the records was not found
 		# If this is one of the record types we don't care about, return immediately
 		##### More goes here #####
 		return ""
 
-	# See if a record is in a specified root zone or one near the time; return text if it is not
-	def FAKE_check_RRset_signature(list_of_records):
+	# See if all RRset signatures in a section validate
+	def FAKE_check_RRset_signature_by_section(list_of_records, soa_root_filename):
 		# See if this list of records has an RRSIG and associated record
+		##### More goes here #####
+		return ""
+	
+	# See if the lisf of records is the complete list from the root zone
+	def FAKE_check_section_for_whole_rrset(list_of_records, name_of_RRtype, root_to_check):
+		# Returns failure_text if the list is not complete
 		##### More goes here #####
 		return ""
 
@@ -365,7 +371,7 @@ if __name__ == "__main__":
 	cur.execute("select id, recent_soa, source_pickle from correctness_info where is_correct is null")
 	correct_to_check = cur.fetchall()
 	log("Started correctness checking on {} found".format(len(correct_to_check)))
-	for (this_id, this_recent_soa, this_resp_pickle) in correct_to_check:
+	for (this_id, this_recent_soa_serial_array, this_resp_pickle) in correct_to_check:
 		# See if it is a timeout; if so, set is_correct but move on [lbl]
 		try:
 			this_resp_obj = pickle.loads(this_resp_pickle)
@@ -381,6 +387,18 @@ if __name__ == "__main__":
 		elif not this_resp_obj[0]["type"] == "MESSAGE":
 			alert("Found an unexpected dig type '{}' in correctness_info for {}".format(this_resp_obj[0]["type"], this_id))
 			continue
+		
+		# Convert this_recent_soa_serial_array into root_to_check by reading the file and unpickling it
+		recent_soa_pickle_filename = "{}/{}.matching.pickle".format(saved_matching_dir, this_recent_soa_serial_array[-1])
+		try:
+			soa_f = open(recent_soa_pickle_filename, mode="rb")
+		except:
+			alert("Found SOA {} in correctness checking for {} for which there was no file".format(this_id, this_recent_soa_serial_array[-1]))
+			continue
+		try:
+			root_to_check = pickle.load(soa_f)
+		except:
+			die("Could not unpickle {} while processing {} for correctness".format(recent_soa_pickle_filename, this_id))
 
 		# Here if it is a dig MESSAGE type
 		#   failure_reason_list holds an expanding set of reasons; if it is empty at the end of testing, then all correctness tests passed
@@ -391,16 +409,21 @@ if __name__ == "__main__":
 		#   Send each record to the function that will check it against the zones
 		for this_section_name in [ "ANSWER_SECTION", "AUTHORITY_SECTION", "ADDITIONAL_SECTION" ]:
 			if resp.get(this_section_name):
-				for this_record in resp[this_section_name]:
-					failure_text = FAKE_check_for_record_in_root_zone(this_record, this_recent_soa)
+				for this_full_record in resp[this_section_name]:
+					record_parts = this_full_record.split(" ")
+					qname_and_qtype = "{}/{}".format(record_parts[0], record_parts[3])
+					failure_text = FAKE_check_for_record_in_root_zone(qname_and_qtype, root_to_check)
 					if not failure_text == "":
 						failure_reason_list.append(failure_text)
 
 		# Check that each of the RRsets that are signed have their signatures validated. [yds]
 		#   Send all the records in each section to the function that checks for validity
+		# Need the root zone file for this
+		recent_soa_root_filename = "{}/{}.root.txt".format(saved_root_zone_dir, this_recent_soa_serial_array[-1])
+
 		for this_section_name in [ "ANSWER_SECTION", "AUTHORITY_SECTION", "ADDITIONAL_SECTION" ]:
 			if resp.get(this_section_name):
-				failure_text = FAKE_check_RRset_signature(resp[this_section_name])
+				failure_text = FAKE_check_RRset_signature_by_section(resp[this_section_name], recent_soa_root_filename)
 				if not failure_text == "":
 					failure_reason_list.append(failure_text)
 
@@ -409,14 +432,26 @@ if __name__ == "__main__":
 		(this_qname, _, this_qtype) = question_record.split(" ")
 		if resp["status"] == "NOERROR":
 			if (this_qname != ".") and (this_qtype == "NS"):  # Processing for TLD / NS [hmk]
-				if "aa" in resp["flags"]: # [ujy]
+				# The header AA bit is not set. [ujy]
+				if "aa" in resp["flags"]:
 					failure_reason_list.append("AA bit was set")
-				if resp.get("ANSWER_SECTION"):  # [aeg]
+				# The Answer section is empty. [aeg]
+				if resp.get("ANSWER_SECTION"):
 					failure_reason_list.append("Answer section was not empty")
-				##### The Authority section contains the entire NS RRset for the query name. `[pdd]`
-				##### If the DS RRset for the query name exists in the zone:`[hue]`
-				##### If the DS RRset for the query name does not exist in the zone: `[fot]`
-				##### Additional section contains at least one A or AAAA record found in the zone associated with at least one NS record found in the Authority section. `[cjm]`
+				# The Authority section contains the entire NS RRset for the query name. [pdd]
+				failure_text = FAKE_check_section_for_whole_rrset(resp["AUTHORITY_SECTION"], "NS", root_to_check)
+				if not failure_text == "":
+					failure_reason_list.append(failure_text)
+				# If the DS RRset for the query name exists in the zone: [hue]
+				failure_text = FAKE_check_for_record_in_root_zone("{}/DS".format(this_qname), root_to_check)
+				if not failure_text == "":
+					#####    - The Authority section contains the signed DS RRset for the query name. `[kbd]`
+					pass ####################
+				else:  # If the DS RRset for the query name does not exist in the zone: `[fot]`
+					##### - The Authority section contains no DS RRset. `[bgr]`
+					##### - The Authority section contains a signed NSEC RRset covering the query name. `[mkl]`
+					pass #####################
+				##### The Additional section contains at least one A or AAAA record found in the zone associated with at least one NS record found in the Authority section. `[cjm]`
 			elif (this_qname != ".") and (this_qtype == "DS"):  # Processing for TLD / DS [dru]
 				if not "aa" in resp["flags"]: # [yot]
 					failure_reason_list.append("AA bit was not set")
