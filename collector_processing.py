@@ -401,7 +401,9 @@ if __name__ == "__main__":
 			die("Could not unpickle {} while processing {} for correctness".format(recent_soa_pickle_filename, this_id))
 
 		# Here if it is a dig MESSAGE type
-		#   failure_reason_list holds an expanding set of reasons; if it is empty at the end of testing, then all correctness tests passed
+		#   failure_reason_list holds an expanding set of reasons
+		#   It is checked at the end of testing, and all "" entries eliminted
+		#   If it is empty, then all correctness tests passed
 		failure_reason_list = []
 		resp = this_resp_obj[0]["message"]["response_message_data"]
 
@@ -412,9 +414,7 @@ if __name__ == "__main__":
 				for this_full_record in resp[this_section_name]:
 					record_parts = this_full_record.split(" ")
 					qname_and_qtype = "{}/{}".format(record_parts[0], record_parts[3])
-					failure_text = FAKE_check_for_record_in_root_zone(qname_and_qtype, root_to_check)
-					if not failure_text == "":
-						failure_reason_list.append(failure_text)
+					failure_reason_list.append(FAKE_check_for_record_in_root_zone(qname_and_qtype, root_to_check))
 
 		# Check that each of the RRsets that are signed have their signatures validated. [yds]
 		#   Send all the records in each section to the function that checks for validity
@@ -423,9 +423,7 @@ if __name__ == "__main__":
 
 		for this_section_name in [ "ANSWER_SECTION", "AUTHORITY_SECTION", "ADDITIONAL_SECTION" ]:
 			if resp.get(this_section_name):
-				failure_text = FAKE_check_RRset_signature_by_section(resp[this_section_name], recent_soa_root_filename)
-				if not failure_text == "":
-					failure_reason_list.append(failure_text)
+				failure_reason_list.append(FAKE_check_RRset_signature_by_section(resp[this_section_name], recent_soa_root_filename))
 
 		# Check that all the parts of the resp structure are correct, based on the type of answer
 		question_record = resp["QUESTION_SECTION"][0]
@@ -439,9 +437,7 @@ if __name__ == "__main__":
 				if resp.get("ANSWER_SECTION"):
 					failure_reason_list.append("Answer section was not empty")
 				# The Authority section contains the entire NS RRset for the query name. [pdd]
-				failure_text = FAKE_check_section_for_whole_rrset(resp["AUTHORITY_SECTION"], "NS", root_to_check)
-				if not failure_text == "":
-					failure_reason_list.append(failure_text)
+				failure_reason_list.append(FAKE_check_section_for_whole_rrset(resp["AUTHORITY_SECTION"], "NS", root_to_check))
 				# If the DS RRset for the query name exists in the zone: [hue]
 				failure_text = FAKE_check_for_record_in_root_zone("{}/DS".format(this_qname), root_to_check)
 				if not failure_text == "":
@@ -495,7 +491,12 @@ if __name__ == "__main__":
 			failure_reason_list.append("Response had a status other than NOERROR and NXDOMAIN")
 		
 		# See if the results were all positive
-		failure_reason_text = "\n".join(failure_reason_list)
+		#    Remove all entries which are blank
+		pared_failure_reason_list = []
+		for this_element in failure_reason_list:
+			if not this_element == "":
+				pared_failure_reason_list.append(this_element)
+		failure_reason_text = "\n".join(pared_failure_reason_list)
 		make_is_correct = (failure_reason_text == "")
 		try:
 			cur.execute("update correctness_info set (is_correct, failure_reason) = (%s, %s) where id = %s", (make_is_correct, failure_reason_text, this_id))
