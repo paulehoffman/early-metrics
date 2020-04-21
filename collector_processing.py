@@ -447,45 +447,58 @@ if __name__ == "__main__":
 					##### - The Authority section contains no DS RRset. `[bgr]`
 					##### - The Authority section contains a signed NSEC RRset covering the query name. `[mkl]`
 					pass #####################
-				##### The Additional section contains at least one A or AAAA record found in the zone associated with at least one NS record found in the Authority section. `[cjm]`
+				##### The Additional section contains at least one A or AAAA record found in the zone
+				#####   associated with at least one NS record found in the Authority section. `[cjm]`
 			elif (this_qname != ".") and (this_qtype == "DS"):  # Processing for TLD / DS [dru]
-				if not "aa" in resp["flags"]: # [yot]
+				# The header AA bit is set. [yot]
+				if not "aa" in resp["flags"]:
 					failure_reason_list.append("AA bit was not set")
-				### The Answer section contains the signed DS RRset for the query name. `[cpf]`
-				if resp.get("AUTHORITY_SECTION"):  # [xdu]
+				##### The Answer section contains the signed DS RRset for the query name. `[cpf]`
+				# The Authority section is empty. [xdu]
+				if resp.get("AUTHORITY_SECTION"):
 					failure_reason_list.append("Authority section was not empty")
-				if resp.get("ADDITIONAL_SECTION"):  # [mle]
+				# The Additional section is empty. [mle]
+				if resp.get("ADDITIONAL_SECTION"):
 					failure_reason_list.append("Additional section was not empty")
 			elif (this_qname == ".") and (this_qtype == "SOA"):  # Processing for . / SOA
-				if not "aa" in resp["flags"]: # [xhr]
+				# The header AA bit is set. [xhr]
+				if not "aa" in resp["flags"]:
 					failure_reason_list.append("AA bit was not set")
 				##### The Answer section contains the signed SOA record for the root. `[obw]`
 				##### The Authority section contains the signed NS RRset for the root. `[ktm]`
 			elif (this_qname == ".") and (this_qtype == "NS"):  # Processing for . / NS [amj]
-				if not "aa" in resp["flags"]: # [csz]
+				# The header AA bit is set. [csz]
+				if not "aa" in resp["flags"]:
 					failure_reason_list.append("AA bit was not set")
 				##### The Answer section contains the signed NS RRset for the root. `[wal]`
-				if resp.get("AUTHORITY_SECTION"):  # [eyk]
+				# The Authority section is empty. [eyk]
+				if resp.get("AUTHORITY_SECTION"):
 					failure_reason_list.append("Authority section was not empty")
 			elif (this_qname == ".") and (this_qtype == "DNSKEY"):  # Processing for . / DNSKEY [djd]
-				if not "aa" in resp["flags"]: # [occ]
+				# The header AA bit is set. [occ]
+				if not "aa" in resp["flags"]:
 					failure_reason_list.append("AA bit was not set")
 				##### The Answer section contains the signed DNSKEY RRset for the root. `[eou]`
-				if resp.get("AUTHORITY_SECTION"):  # [kka]
+				# The Authority section is empty. [kka]
+				if resp.get("AUTHORITY_SECTION"):
 					failure_reason_list.append("Authority section was not empty")
-				if resp.get("ADDITIONAL_SECTION"):  # [jws]
+				# The Additional section is empty. [jws]
+				if resp.get("ADDITIONAL_SECTION"):
 					failure_reason_list.append("Additional section was not empty")
 			else:
 				failure_reason_list.append("Not matched: when checking NOERROR statuses, found unexpected name/type of {}/{}".format(this_qname, this_qtype))
 		elif resp["status"] == "NXDOMAIN":  # Processing for negative responses [vcu]
-			if not "aa" in resp["flags"]: # [gpl]
+			# The header AA bit is set. [gpl]
+			if not "aa" in resp["flags"]:
 				failure_reason_list.append("AA bit was not set")
-			if resp.get("ANSWER_SECTION"):  # [dvh]
+			# The Answer section is empty. [dvh]
+			if resp.get("ANSWER_SECTION"):
 				failure_reason_list.append("Answer section was not empty")
 			##### The Authority section contains the signed . / SOA record. `[axj]`  #### Same as [[obw]]
 			##### The Authority section contains a signed NSEC record covering the query name. `[czb]`
 			##### The Authority section contains a signed NSEC record with owner name “.” proving no wildcard exists in the zone. `[jhz]`
-			if resp.get("ADDITIONAL_SECTION"):  # [trw]
+			# The Additional section is empty. [trw]
+			if resp.get("ADDITIONAL_SECTION"):
 				failure_reason_list.append("Additional section was not empty")
 		else:
 			failure_reason_list.append("Response had a status other than NOERROR and NXDOMAIN")
