@@ -348,7 +348,7 @@ if __name__ == "__main__":
 	#   This is done separately in order to catch all earlier attempts where there was not a good root zone file to compare
 	#   This does not log or alert; that is left for a different program checking when is_correct is not null
 
-	# See if a qname_and_qtype (example: "bank./NS") is in a specified root zone or one near the time
+	# See if a qname_and_qtype (example: "bank./NS") is in a specified root zone
 	def FAKE_check_for_record_in_root_zone(qname_and_qtype, root_to_check):
 		# Returns failure_text listing if the records was not found
 		# If this is one of the record types we don't care about, return immediately
@@ -362,7 +362,7 @@ if __name__ == "__main__":
 		return ""
 	
 	# See if the lisf of records is the complete list from the root zone
-	def FAKE_check_section_for_whole_rrset(list_of_records, name_of_RRtype, root_to_check):
+	def FAKE_check_section_for_whole_rrset(list_of_records_from_section, name_of_RRtype, root_to_check):
 		# Returns failure_text if the list is not complete
 		##### More goes here #####
 		return ""
@@ -441,8 +441,8 @@ if __name__ == "__main__":
 				# If the DS RRset for the query name exists in the zone: [hue]
 				failure_text = FAKE_check_for_record_in_root_zone("{}/DS".format(this_qname), root_to_check)
 				if not failure_text == "":
-					#####    - The Authority section contains the signed DS RRset for the query name. `[kbd]`
-					pass ####################
+					# The Authority section contains the signed DS RRset for the query name. `[kbd]`
+					failure_reason_list.append(FAKE_check_section_for_whole_rrset(resp["AUTHORITY_SECTION"], "DS", root_to_check))
 				else:  # If the DS RRset for the query name does not exist in the zone: `[fot]`
 					##### - The Authority section contains no DS RRset. `[bgr]`
 					##### - The Authority section contains a signed NSEC RRset covering the query name. `[mkl]`
