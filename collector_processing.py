@@ -345,16 +345,30 @@ if __name__ == "__main__":
 
 	###############################################################
 
+	def check_for_signed_rr(list_of_records_from_section, name_of_rrtype):
+		# See if there is a record in the list of the given RRtype, and make sure there is also an RRSIG for that RRtype
+		found_rrtype = False
+		for this_full_record in list_of_records_from_section:
+			(rec_qname, _, _, rec_qtype, rec_rdata) = this_full_record.split(" ")
+			if rec_qtype == name_of_rrtype:
+				found_rrtype = True
+				break
+		if not found_rrtype:
+			return "No record of type {} was found in that section".format(name_of_rrtype)
+		found_rrsig = False
+		for this_full_record in list_of_records_from_section:
+			(rec_qname, _, _, rec_qtype, rec_rdata) = this_full_record.split(" ")
+			if rec_qtype == "RRSIG:
+				found_rrsig = True
+				break
+		if not found_rrsig:
+			return "One more more records of type {} were found in that section, but there was no RRSIG".format(name_of_rrtype)
+		return ""
+	
 	# Now that all the measurements are in, go through all records in correctness_info where is_correct is NULL
 	#   This is done separately in order to catch all earlier attempts where there was not a good root zone file to compare
 	#   This does not log or alert; that is left for a different program checking when is_correct is not null
 
-	# See if ther is a record in the list of the given RRtype, and make sure there is also an RRSIG for that RRtype
-	#############################
-	def FAKE_check_for_signed_rr(list_of_records_from_section, name_of_RRtype):
-		##### More goes here #####
-		return ""
-	
 	# Iterate over the records where is_correct is null
 	cur.execute("select id, recent_soa, source_pickle from correctness_info where is_correct is null")
 	correct_to_check = cur.fetchall()
@@ -458,7 +472,7 @@ if __name__ == "__main__":
 				# If the DS RRset for the query name exists in the zone: [hue]
 				if root_to_check.get("{}/DS".format(this_qname)):
 					# The Authority section contains the signed DS RRset for the query name. [kbd]
-					failure_reasons.append(FAKE_check_for_signed_rr(resp["AUTHORITY_SECTION"], "DS"))
+					failure_reasons.append(check_for_signed_rr(resp["AUTHORITY_SECTION"], "DS"))
 				else:  # If the DS RRset for the query name does not exist in the zone: [fot]
 					# The Authority section contains no DS RRset. [bgr]
 					for this_rec in resp["AUTHORITY_SECTION"]:
@@ -507,7 +521,7 @@ if __name__ == "__main__":
 						if rec_qtype == "DS":
 							if not rec_qname == this_qname:
 								failure_reasons.append("DS in Answer section had QNAME {} instead of {}".format(rec_qname, this_qname))
-					failure_reasons.append(FAKE_check_for_signed_rr(resp["ANSWER_SECTION"], "DS"))
+					failure_reasons.append(check_for_signed_rr(resp["ANSWER_SECTION"], "DS"))
 				# The Authority section is empty. [xdu]
 				if resp.get("AUTHORITY_SECTION"):
 					failure_reasons.append("Authority section was not empty")
@@ -519,15 +533,15 @@ if __name__ == "__main__":
 				if not "aa" in resp["flags"]:
 					failure_reasons.append("AA bit was not set")
 				# The Answer section contains the signed SOA record for the root. [obw]
-				failure_reasons.append(FAKE_check_for_signed_rr(resp["ANSWER_SECTION"], "SOA"))
+				failure_reasons.append(check_for_signed_rr(resp["ANSWER_SECTION"], "SOA"))
 				# The Authority section contains the signed NS RRset for the root. [ktm]
-				failure_reasons.append(FAKE_check_for_signed_rr(resp["AUTHORITY_SECTION"], "NS"))
+				failure_reasons.append(check_for_signed_rr(resp["AUTHORITY_SECTION"], "NS"))
 			elif (this_qname == ".") and (this_qtype == "NS"):  # Processing for . / NS [amj]
 				# The header AA bit is set. [csz]
 				if not "aa" in resp["flags"]:
 					failure_reasons.append("AA bit was not set")
 				# The Answer section contains the signed NS RRset for the root. [wal]
-				failure_reasons.append(FAKE_check_for_signed_rr(resp["ANSWER_SECTION"], "NS"))
+				failure_reasons.append(check_for_signed_rr(resp["ANSWER_SECTION"], "NS"))
 				# The Authority section is empty. [eyk]
 				if resp.get("AUTHORITY_SECTION"):
 					failure_reasons.append("Authority section was not empty")
@@ -536,7 +550,7 @@ if __name__ == "__main__":
 				if not "aa" in resp["flags"]:
 					failure_reasons.append("AA bit was not set")
 				# The Answer section contains the signed DNSKEY RRset for the root. [eou]
-				failure_reasons.append(FAKE_check_for_signed_rr(resp["ANSWER_SECTION"], "DNSKEY"))
+				failure_reasons.append(check_for_signed_rr(resp["ANSWER_SECTION"], "DNSKEY"))
 				# The Authority section is empty. [kka]
 				if resp.get("AUTHORITY_SECTION"):
 					failure_reasons.append("Authority section was not empty")
@@ -562,7 +576,7 @@ if __name__ == "__main__":
 					if rec_qtype == "SOA":
 						if not rec_qname == ".":
 							failure_reasons.append("SOA in Authority section had QNAME {} instead of '.'".format(rec_qname))
-				failure_reasons.append(FAKE_check_for_signed_rr(resp["AUTHORITY_SECTION"], "SOA"))
+				failure_reasons.append(check_for_signed_rr(resp["AUTHORITY_SECTION"], "SOA"))
 				# The Authority section contains a signed NSEC record covering the query name. [czb]
 				nsec_covers_query_name = False
 				for this_rec in resp["AUTHORITY_SECTION"]:
