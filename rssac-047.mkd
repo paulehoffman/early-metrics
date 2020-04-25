@@ -228,7 +228,7 @@ For positive responses with QNAME = <TLD> and QTYPE = NS, a correct result requi
   - The Authority section contains the signed DS RRset for the query name. `[kbd]`
 - If the DS RRset for the query name does not exist in the zone: `[fot]`
   - The Authority section contains no DS RRset. `[bgr]`
-  - The Authority section contains a signed NSEC RRset covering the query name. `[mkl]`
+  - The Authority section contains a signed NSEC RRset covering the query name. `[mkl]` __NOT GOOD WORDING HERE__
 - The Additional section contains at least one A or AAAA record found in the zone associated with at least one NS record found in the Authority section. `[cjm]`
 
 For positive responses where QNAME = <TLD> and QTYPE = DS, a correct result requires all of the following: `[dru]`

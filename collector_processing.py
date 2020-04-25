@@ -62,10 +62,6 @@ if __name__ == "__main__":
 		cur = conn.cursor()
 	except Exception as e:
 		die("Unable to get database cursor: '{}'".format(e))
-	try:
-		conn.set_session(autocommit=True)
-	except Exception as e:
-		die("Unable to turn on autocommit: '{}'".format(e))
 	
 	###############################################################
 
@@ -90,7 +86,7 @@ if __name__ == "__main__":
 		try:
 			p = subprocess.run("sftp -b {} transfer@{}".format(dir_batch_filename, this_vp), shell=True, capture_output=True, text=True, check=True)
 		except Exception as e:
-			die("Getting directory for {} ended with '{}'".format(dir_batch_filename, e))
+			alert("Getting directory for {} ended with '{}'".format(dir_batch_filename, e))
 		dir_lines = p.stdout.splitlines()
 		# Get the filenames that end in .gz; some lines will be other cruft such as ">"
 		for this_filename in dir_lines:
@@ -121,6 +117,7 @@ if __name__ == "__main__":
 			pulled_count += 1
 			try:
 				cur.execute("insert into files_gotten (filename_full, retrieved_at) values (%s, %s);", (this_filename, datetime.datetime.now(datetime.timezone.utc)))
+				conn.commit()
 			except Exception as e:
 				die("Could not insert '{}' into files_gotten: '{}'".format(this_filename, e))
 	log("Finished pulling from VPs; got {} files from {} VPs".format(pulled_count, len(all_vps)))
@@ -128,7 +125,7 @@ if __name__ == "__main__":
 	###############################################################
 
 	# Go through the files in ~/Incoming
-	#   File-lever errors cause "die", record-level errors cause "alert" and skipping the record
+	#   File-level errors cause "die", record-level errors cause "alert" and skipping the record
 	log("Started going through Incoming")
 	all_files = list(glob.glob("{}/*".format(incoming_dir)))
 	for full_file in all_files:
@@ -170,6 +167,7 @@ if __name__ == "__main__":
 		update_vales = (datetime.datetime.now(datetime.timezone.utc), in_obj["v"], in_obj["d"], in_obj["e"], short_file+".pickle.gz") 
 		try:
 			cur.execute(update_string, update_vales)
+			conn.commit()
 		except Exception as e:
 			alert("Could not update {} in files_gotten: '{}'".format(short_file, e))
 
@@ -189,6 +187,7 @@ if __name__ == "__main__":
 			update_vales = (short_file, file_date, file_vp, in_obj["s"]) 
 			try:
 				cur.execute(update_string, update_vales)
+				conn.commit()
 			except Exception as e:
 				alert("Could not insert into route_info for {}: '{}'".format(short_file, e))
 
@@ -263,6 +262,8 @@ if __name__ == "__main__":
 			else:
 				alert("Found a response type {}, which is not S or C, in record {} of {}".format(this_resp[4], response_count, full_file))
 				continue
+		# Commit the inserts for this file
+		conn.commit()
 	log("Finished processing {} files".format(len(all_files)))
 
 	###############################################################
@@ -354,13 +355,6 @@ if __name__ == "__main__":
 		##### More goes here #####
 		return ""
 	
-	# Check a list of records for a signed NSEC record that has the covered_name in the range covered
-	#############################
-	def FAKE_check_for_covered_nsec_from_list(list_of_records_from_section, covered_name):
-		##### More goes here #####
-		##### Make sure there is an RRSIG for the NSEC in the list #####
-		return ""
-
 	# Iterate over the records where is_correct is null
 	cur.execute("select id, recent_soa, source_pickle from correctness_info where is_correct is null")
 	correct_to_check = cur.fetchall()
@@ -392,8 +386,9 @@ if __name__ == "__main__":
 		try:
 			root_to_check = pickle.load(soa_f)
 		except:
-			die("Could not unpickle {} while processing {} for correctness".format(recent_soa_pickle_filename, this_id))
-
+			alert("Could not unpickle {} while processing {} for correctness".format(recent_soa_pickle_filename, this_id))
+			continue
+		
 		# Here if it is a dig MESSAGE type
 		#   failure_reasons holds an expanding set of reasons
 		#   It is checked at the end of testing, and all "" entries eliminted
@@ -450,6 +445,8 @@ if __name__ == "__main__":
 				if resp.get("ANSWER_SECTION"):
 					failure_reasons.append("Answer section was not empty")
 				# The Authority section contains the entire NS RRset for the query name. [pdd]
+				if not resp.get("AUTHORITY_SECTION"):
+					failure_reasons.append("Authority section was empty")
 				root_ns_for_qname = root_to_check["{}/NS".format(this_qname)]
 				auth_ns_for_qname = set()
 				for this_rec in resp["AUTHORITY_SECTION"]:
@@ -470,7 +467,15 @@ if __name__ == "__main__":
 							failure_reasons.append("Found DS in Authority section")
 							break
 					# The Authority section contains a signed NSEC RRset covering the query name. [mkl]
-					failure_reasons.append(FAKE_check_for_covered_nsec_from_list(resp["AUTHORITY_SECTION"], this_qname))
+					has_covering_nsec = False
+					for this_rec in resp["AUTHORITY_SECTION"]:
+						(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ")
+						if rec_qtype == "NSEC":
+							if rec_qname == this_qname:
+								has_covering_nsec = True
+								break
+					if not has_covering_nsec:
+						failure_reasons.append("Authority section had no covering NSEC record")
 				# Additional section contains at least one A or AAAA record found in the zone associated with at least one NS record found in the Authority section. [cjm]
 				#    Collect the NS records from the Authority section
 				found_NS_recs = []
@@ -559,9 +564,28 @@ if __name__ == "__main__":
 							failure_reasons.append("SOA in Authority section had QNAME {} instead of '.'".format(rec_qname))
 				failure_reasons.append(FAKE_check_for_signed_rr(resp["AUTHORITY_SECTION"], "SOA"))
 				# The Authority section contains a signed NSEC record covering the query name. [czb]
-				failure_reasons.append(FAKE_check_for_covered_nsec_from_list(resp["AUTHORITY_SECTION"], this_qname))
+				nsec_covers_query_name = False
+				for this_rec in resp["AUTHORITY_SECTION"]:
+					(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ")
+					if rec_qtype == "NSEC":
+						nsec_parts = rec_rdata.split(" ")
+						# Make a list of the three strings, then make sure the original QNAME is in the middle
+						test_sort = sorted([rec_qname, nsec_parts[0], this_qname])
+						if test_sort[1] == this_qname:
+							nsec_covers_query_name = True
+							break
+				if not 	nsec_covers_query_name:
+					failure_reasons.append("Authority section did not contain a signed NSEC record covering the query name")
 				# The Authority section contains a signed NSEC record with owner name “.” proving no wildcard exists in the zone. [jhz]
-				failure_reasons.append(FAKE_check_for_covered_nsec_from_list(resp["AUTHORITY_SECTION"], "."))
+				nsec_with_owner_dot = False
+				for this_rec in resp["AUTHORITY_SECTION"]:
+					(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ")
+					if rec_qtype == "NSEC":
+						if rec_qname == ".":
+							nsec_with_owner_dot = True
+							break;
+				if not 	nsec_with_owner_dot:
+					failure_reasons.append("Authority section did not contain a signed NSEC record with owner name '.'")
 			# The Additional section is empty. [trw]
 			if resp.get("ADDITIONAL_SECTION"):
 				failure_reasons.append("Additional section was not empty")
@@ -578,9 +602,10 @@ if __name__ == "__main__":
 		make_is_correct = (failure_reason_text == "")
 		try:
 			cur.execute("update correctness_info set (is_correct, failure_reason) = (%s, %s) where id = %s", (make_is_correct, failure_reason_text, this_id))
+			conn.commit()	
 		except Exception as e:
 			alert("Could not update correctness_info after processing record {}: '{}'".format(this_id, e))
-	log("Finished overall collector processing")
+	conn.commit()  # Just in case we forgot one
 	exit()
 
 """

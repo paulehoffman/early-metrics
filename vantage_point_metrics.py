@@ -13,7 +13,7 @@ def do_one_command(command_dict):
 	try:
 		command_to_give = command_dict["command"]
 	except:
-		die("No 'command' in '{}' in do_one_command.".format(command_dict))
+		alert("No 'command' in '{}' in do_one_command.".format(command_dict))
 	command_p = subprocess.run(command_to_give, shell=True, capture_output=True, text=True, check=False)
 	one_command_elapsed = time.time() - one_command_start
 	this_command_text = command_p.stdout
@@ -33,7 +33,7 @@ def update_rr_list(file_to_write):
 	try:
 		r = requests.get(internic_url)
 	except Exception as e:
-		die("Could not do the requests.get on {}: '{}'".format(internic_url, e))
+		alert("Could not do the requests.get on {}: '{}'".format(internic_url, e))
 	# Save it as a temp file to use named-compilezone
 	temp_latest_zone_name = "{}/temp_latest_zone".format(log_dir)
 	temp_latest_zone_f = open(temp_latest_zone_name, mode="wt")
@@ -44,7 +44,7 @@ def update_rr_list(file_to_write):
 		named_compilezone_p = subprocess.run("/home/metrics/Target/sbin/named-compilezone -q -i none -r ignore -o - . '{}'".format(temp_latest_zone_name),
 			shell=True, text=True, check=True, capture_output=True)
 	except Exception as e:
-		die("named-compilezone failed with '{}'".format(e))
+		alert("named-compilezone failed with '{}'".format(e))
 	new_root_text_in = named_compilezone_p.stdout
 	# Turn tabs into spaces
 	new_root_text_in = re.sub("\t", " ", new_root_text_in)
@@ -124,6 +124,9 @@ if __name__ == "__main__":
 	vp_alert.addHandler(alert_handler)
 	def log(log_message):
 		vp_log.info(log_message)
+	def alert(alert_message):
+		vp_alert.critical(alert_message)
+		log(alert_message)
 	def die(error_message):
 		vp_alert.critical(error_message)
 		log("Died with '{}'".format(error_message))
@@ -337,15 +340,13 @@ if __name__ == "__main__":
 	}
 	# Save the output in a file with start_time_string and vp_ident
 	output_dir = "/sftp/transfer/Output"
-	if not os.path.exists(output_dir):
-		die("{} did not exist. Exiting.".format(output_dir))
 	try:
 		out_run_file_name = "{}/{}-{}.pickle.gz".format(output_dir, start_time_string, vp_ident)
 		with gzip.open(out_run_file_name, mode="wb") as gzf:
 			gzf.write(pickle.dumps(output_dict))
 			gzf.close()
 	except:
-		die("Could not create {}".format(out_run_file_name))
+		alert("Could not create {}".format(out_run_file_name))
 	# Log the finish
 	log("Finishing run, wrote out {}, elapsed was {} seconds".format(os.path.basename(out_run_file_name), int(commands_clock_stop - commands_clock_start)))
 	exit()
