@@ -358,7 +358,7 @@ if __name__ == "__main__":
 		found_rrsig = False
 		for this_full_record in list_of_records_from_section:
 			(rec_qname, _, _, rec_qtype, rec_rdata) = this_full_record.split(" ")
-			if rec_qtype == "RRSIG:
+			if rec_qtype == "RRSIG":
 				found_rrsig = True
 				break
 		if not found_rrsig:
