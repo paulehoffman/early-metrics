@@ -497,16 +497,18 @@ if __name__ == "__main__":
 					(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ", maxsplit=4)
 					if rec_qtype == "NS":
 						found_NS_recs.append(rec_rdata)
-				# Assume failure, then check for A/AAAA from Additional
-				found_A_AAAA = False
+				found_qname_of_A_AAAA_recs = []
 				for this_rec in resp["ADDITIONAL_SECTION"]:
 					(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ", maxsplit=4)
 					if rec_qtype in ("A", "AAAA"):
+						found_qname_of_A_AAAA_recs.append(rec_qname)
+				found_A_AAAA_NS_match = False
+				for this_addr in found_qname_of_A_AAAA_recs:
 						if rec_rdata in found_NS_recs:
-							found_A_AAAA = True
+							found_A_AAAA_NS_match = True
 							break
-				if not found_A_AAAA:
-					failure_reasons.append("Did not find an A or AAAA in the Additional section associated with an NS record")
+				if not found_A_AAAA_NS_match:
+					failure_reasons.append("No QNAMEs from A and AAAA in Additional {} matched NS from Authority {}".format(found_qname_of_A_AAAA_recs, found_NS_recs))
 			elif (this_qname != ".") and (this_qtype == "DS"):  # Processing for TLD / DS [dru]
 				# The header AA bit is set. [yot]
 				if not "aa" in resp["flags"]:

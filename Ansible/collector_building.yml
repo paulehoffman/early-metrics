@@ -195,6 +195,8 @@
       - source_pickle bytea
 
 # To nuke all the tables in psql: drop table correctness_info ; drop table files_gotten ; drop table route_info ; drop table soa_info ;
+# To nuke just the records: delete from correctness_info; delete from files_gotten; delete from route_info; delete from soa_info;
+# select (id, file_prefix, date_derived, vp, rsi, internet, transport, recent_soa, is_correct, failure_reason) from correctness_info;
 
 #  - name: Give the crontab entry for get_root_zone.py
 #    cron:   # [mba] [wca]
