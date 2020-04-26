@@ -281,7 +281,7 @@ if __name__ == "__main__":
 	with futures.ProcessPoolExecutor() as executor:
 		for (this_file, _) in zip(all_files, executor.map(process_one_incoming_file, all_files)):
 			pass
-	log("Finished processing {} files".format(len(all_files)))
+	log("Finished processing {} files in Incoming".format(len(all_files)))
 
 	###############################################################
 	
