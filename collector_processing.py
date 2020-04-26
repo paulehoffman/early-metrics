@@ -623,84 +623,13 @@ if __name__ == "__main__":
 			conn.commit()	
 		except Exception as e:
 			alert("Could not update correctness_info after processing record {}: '{}'".format(this_id, e))
+	log("Finished correctness checking")
 	conn.commit()  # Just in case we forgot one
 	exit()
 
 """
+
+STILL TO DO: Running through correctness_info where is_correct is false, using older root zones based on SOA
+
 update temp1 set b = b || '{"ThrEE"}' where a = 'one';
 """
-
-"""
-    response_message_data:
-      opcode: QUERY
-      status: NOERROR
-      id: 24783
-      flags: qr aa
-      QUESTION: 1
-      ANSWER: 2
-      AUTHORITY: 0
-      ADDITIONAL: 1
-      OPT_PSEUDOSECTION:
-        EDNS:
-          version: 0
-          flags: do
-          udp: 4096
-          NSID: 4d 2d 53 4a 43 2d 34 ("M-SJC-4")
-      QUESTION_SECTION:
-        - honda. IN DS
-      ANSWER_SECTION:
-        - honda. 86400 IN DS 25744 8 2 4214B1E2FFB881035440B32CB3C90675E1051A23AB5424FC07111EB9 17643338
-        - honda. 86400 IN RRSIG DS 8 1 86400 20200415170000 20200402160000 48903 . sa4+qbyBLh3RY1vmxUDptQuDiXon+ltQXKxPqpv20aGjkcKO/JCl8br2 XbrvanshnYaL0CLbVC1pyIzUggasyVM/mheyGUGurCD6dwElUQO+iK8+ bB3mvhbHA3PLtqZGnz+VSkBkYXfstvnvykMqKT3/WA1Dny1Lth191ILx noinZMSDCfgKhR/CJx2tMQMYgpwzN7AFFZUUzR3VQ695EibTtlIgSsgj YKPC7HOGBR5icKviZe21CCFQZiiez+Y/3OVTG/4DoDiKimRoIJs834h6 pBJJYuPVU6P7z0mNJrU8nJG8lKgue0bp94y/cSyBM5DCMj92cy1Hleia DmAtgg==
-"""
-
-"""
-                                  Table "public.correctness_info"
-     Column     |            Type             | Collation | Nullable |           Default
-----------------+-----------------------------+-----------+----------+------------------------------
- id             | integer                     |           | not null | generated always as identity
- file_prefix    | text                        |           |          |
- date_derived   | timestamp without time zone |           |          |
- vp             | text                        |           |          |
- rsi            | text                        |           |          |
- internet       | text                        |           |          |
- transport      | text                        |           |          |
- recent_soa     | text                        |           |          |
- is_correct     | boolean                     |           |          |
- failure_reason | text                        |           |          |
- source_pickle  | bytea                       |           |          |
-
-                                    Table "public.files_gotten"
-    Column     |            Type             | Collation | Nullable |           Default
----------------+-----------------------------+-----------+----------+------------------------------
- id            | integer                     |           | not null | generated always as identity
- filename_full | text                        |           |          |
- retrieved_at  | timestamp without time zone |           |          |
- processed_at  | timestamp without time zone |           |          |
- version       | integer                     |           |          |
- delay         | integer                     |           |          |
- elapsed       | integer                     |           |          |
-
-                                    Table "public.route_info"
-    Column    |            Type             | Collation | Nullable |           Default
---------------+-----------------------------+-----------+----------+------------------------------
- id           | integer                     |           | not null | generated always as identity
- file_prefix  | text                        |           |          |
- date_derived | timestamp without time zone |           |          |
- vp           | text                        |           |          |
- route_string | text                        |           |          |
-
-                                     Table "public.soa_info"
-    Column    |            Type             | Collation | Nullable |           Default
---------------+-----------------------------+-----------+----------+------------------------------
- id           | integer                     |           | not null | generated always as identity
- file_prefix  | text                        |           |          |
- date_derived | timestamp without time zone |           |          |
- vp           | text                        |           |          |
- rsi          | text                        |           |          |
- internet     | text                        |           |          |
- transport    | text                        |           |          |
- prog_elapsed | real                        |           |          |
- dig_elapsed  | real                        |           |          |
- timeout      | boolean                     |           |          |
- soa          | text                        |           |          |
- """
