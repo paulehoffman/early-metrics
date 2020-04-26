@@ -55,7 +55,7 @@ def get_files_from_one_vp(this_vp):
 	return pulled_count
 
 ###############################################################
-
+	
 def process_one_incoming_file(full_file):
 	# Process an incoming file, and move it when done
 	#   Returns nothing
@@ -192,6 +192,284 @@ def process_one_incoming_file(full_file):
 
 ###############################################################
 
+def check_for_signed_rr(list_of_records_from_section, name_of_rrtype):
+	# Part of correctness checking
+	#   See if there is a record in the list of the given RRtype, and make sure there is also an RRSIG for that RRtype
+	found_rrtype = False
+	for this_full_record in list_of_records_from_section:
+		(rec_qname, _, _, rec_qtype, rec_rdata) = this_full_record.split(" ", maxsplit=4)
+		if rec_qtype == name_of_rrtype:
+			found_rrtype = True
+			break
+	if not found_rrtype:
+		return "No record of type {} was found in that section".format(name_of_rrtype)
+	found_rrsig = False
+	for this_full_record in list_of_records_from_section:
+		(rec_qname, _, _, rec_qtype, rec_rdata) = this_full_record.split(" ", maxsplit=4)
+		if rec_qtype == "RRSIG":
+			found_rrsig = True
+			break
+	if not found_rrsig:
+		return "One more more records of type {} were found in that section, but there was no RRSIG".format(name_of_rrtype)
+	return ""
+	
+###############################################################
+
+def process_one_correctness_tuple(this_id, this_recent_soa_serial_array, this_resp_pickle):
+	# Process one tuple of id / SOA / pickle_of_response
+	#   Returns nothing
+	# See if it is a timeout; if so, set is_correct but move on [lbl]
+	try:
+		this_resp_obj = pickle.loads(this_resp_pickle)
+	except Exception as e:
+		alert("Could not unpickle in correctness_info for {}: '{}'".format(this_id, e))
+		return
+	if this_resp_obj[0]["type"] == "DIG_ERROR":
+		try:
+			cur.execute("update correctness_info set (is_correct, failure_reason) = (%s, %s) where id = %s", (True, "", this_id))
+		except Exception as e:
+			alert("Could not update correctness_info for timed-out {}: '{}'".format(this_id, e))
+		return
+	elif not this_resp_obj[0]["type"] == "MESSAGE":
+		alert("Found an unexpected dig type '{}' in correctness_info for {}".format(this_resp_obj[0]["type"], this_id))
+		return
+	
+	# Convert this_recent_soa_serial_array into root_to_check by reading the file and unpickling it
+	recent_soa_pickle_filename = "{}/{}.matching.pickle".format(saved_matching_dir, this_recent_soa_serial_array[-1])
+	try:
+		soa_f = open(recent_soa_pickle_filename, mode="rb")
+	except:
+		alert("Found SOA {} in correctness checking for {} for which there was no file".format(this_id, this_recent_soa_serial_array[-1]))
+		return
+	try:
+		root_to_check = pickle.load(soa_f)
+	except:
+		alert("Could not unpickle {} while processing {} for correctness".format(recent_soa_pickle_filename, this_id))
+		return
+	
+	# Here if it is a dig MESSAGE type
+	#   failure_reasons holds an expanding set of reasons
+	#   It is checked at the end of testing, and all "" entries eliminted
+	#   If it is empty, then all correctness tests passed
+	failure_reasons = []
+	resp = this_resp_obj[0]["message"]["response_message_data"]
+
+	# Check that each of the RRsets in the Answer, Authority, and Additional sections match RRsets found in the zone [vnk]
+	#   This check does not include any RRSIG RRsets that are not named in the matching tests below. [ygx]
+	# This check does not include any OPT RRset found in the Additional section because "dig +yaml" does not put them in the Additional section [pvz]
+	# After this check is done, we no longer need to check RRsets from the answer against the root zone
+	for this_section_name in [ "ANSWER_SECTION", "AUTHORITY_SECTION", "ADDITIONAL_SECTION" ]:
+		if resp.get(this_section_name):
+			rrsets_for_checking = {}
+			for this_full_record in resp[this_section_name]:
+				(rec_qname, _, _, rec_qtype, rec_rdata) = this_full_record.split(" ", maxsplit=4)
+				if not rec_qtype == "RRSIG":  # [ygx]
+					this_key = "{}/{}".format(rec_qname, rec_qtype)
+					if not this_key in rrsets_for_checking:
+						rrsets_for_checking[this_key] = set()
+					rrsets_for_checking[this_key].add(rec_rdata)
+			for this_rrset_key in rrsets_for_checking:
+				if not this_rrset_key in root_to_check:
+					failure_reasons.append("{} was in {} in the response but not the root".format(this_rrset_key, this_section_name))
+				else:
+					if rrsets_for_checking[this_rrset_key] < root_to_check[this_rrset_key]:
+						failure_reasons.append("RRset '{}' in response is shorter than '{}' in root zone".\
+							format(rrsets_for_checking[this_rrset_key], root_to_check[this_rrset_key]))
+					elif rrsets_for_checking[this_rrset_key] > root_to_check[this_rrset_key]:
+						failure_reasons.append("RRset '{}' in response is longer than '{}' in root zone".\
+							format(rrsets_for_checking[this_rrset_key], root_to_check[this_rrset_key]))
+
+	# Check that each of the RRsets that are signed have their signatures validated. [yds]
+	#   Send all the records in each section to the function that checks for validity
+	answer_and_authority_recs = []
+	for this_section_name in [ "ANSWER_SECTION", "AUTHORITY_SECTION", "ADDITIONAL_SECTION" ]:
+		if resp.get(this_section_name):
+			answer_and_authority_recs.extend(resp[this_section_name])
+	##### Find RRsets that have associated RRSIGs
+	##### For each, call out to program that validates
+	#####   If something does not validate, failure_reasons.append("XXXX did not validate")
+	
+	# Check that all the parts of the resp structure are correct, based on the type of answer
+	question_record = resp["QUESTION_SECTION"][0]
+	(this_qname, _, this_qtype) = question_record.split(" ")
+	if resp["status"] == "NOERROR":
+		if (this_qname != ".") and (this_qtype == "NS"):  # Processing for TLD / NS [hmk]
+			# The header AA bit is not set. [ujy]
+			if "aa" in resp["flags"]:
+				failure_reasons.append("AA bit was set")
+			# The Answer section is empty. [aeg]
+			if resp.get("ANSWER_SECTION"):
+				failure_reasons.append("Answer section was not empty")
+			# The Authority section contains the entire NS RRset for the query name. [pdd]
+			if not resp.get("AUTHORITY_SECTION"):
+				failure_reasons.append("Authority section was empty")
+			root_ns_for_qname = root_to_check["{}/NS".format(this_qname)]
+			auth_ns_for_qname = set()
+			for this_rec in resp["AUTHORITY_SECTION"]:
+				(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ", maxsplit=4)
+				if rec_qtype == "NS":
+					auth_ns_for_qname.add(rec_rdata)
+			if not auth_ns_for_qname == root_ns_for_qname:
+				failure_reasons.append("NS RRset in Authority was '{}', but NS from root was '{}'".format(auth_ns_for_qname, root_ns_for_qname))
+			# If the DS RRset for the query name exists in the zone: [hue]
+			if root_to_check.get("{}/DS".format(this_qname)):
+				# The Authority section contains the signed DS RRset for the query name. [kbd]
+				failure_reasons.append(check_for_signed_rr(resp["AUTHORITY_SECTION"], "DS"))
+			else:  # If the DS RRset for the query name does not exist in the zone: [fot]
+				# The Authority section contains no DS RRset. [bgr]
+				for this_rec in resp["AUTHORITY_SECTION"]:
+					(rec_qname, _, _, rec_qtype, _) = this_rec.split(" ", maxsplit=4)
+					if rec_qtype == "DS":
+						failure_reasons.append("Found DS in Authority section")
+						break
+				# The Authority section contains a signed NSEC RRset covering the query name. [mkl]
+				has_covering_nsec = False
+				for this_rec in resp["AUTHORITY_SECTION"]:
+					(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ", maxsplit=4)
+					if rec_qtype == "NSEC":
+						if rec_qname == this_qname:
+							has_covering_nsec = True
+							break
+				if not has_covering_nsec:
+					failure_reasons.append("Authority section had no covering NSEC record")
+			# Additional section contains at least one A or AAAA record found in the zone associated with at least one NS record found in the Authority section. [cjm]
+			#    Collect the NS records from the Authority section
+			found_NS_recs = []
+			for this_rec in resp["AUTHORITY_SECTION"]:
+				(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ", maxsplit=4)
+				if rec_qtype == "NS":
+					found_NS_recs.append(rec_rdata)
+			found_qname_of_A_AAAA_recs = []
+			for this_rec in resp["ADDITIONAL_SECTION"]:
+				(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ", maxsplit=4)
+				if rec_qtype in ("A", "AAAA"):
+					found_qname_of_A_AAAA_recs.append(rec_qname)
+			found_A_AAAA_NS_match = False
+			for a_aaaa_qname in found_qname_of_A_AAAA_recs:
+					if a_aaaa_qname in found_NS_recs:
+						found_A_AAAA_NS_match = True
+						break
+			if not found_A_AAAA_NS_match:
+				failure_reasons.append("No QNAMEs from A and AAAA in Additional {} matched NS from Authority {}".format(found_qname_of_A_AAAA_recs, found_NS_recs))
+		elif (this_qname != ".") and (this_qtype == "DS"):  # Processing for TLD / DS [dru]
+			# The header AA bit is set. [yot]
+			if not "aa" in resp["flags"]:
+				failure_reasons.append("AA bit was not set")
+			# The Answer section contains the signed DS RRset for the query name. [cpf]
+			if not resp.get("ANSWER_SECTION"):
+				failure_reasons.append("Answer section was empty")
+			else:
+				# Make sure the DS is for the query name
+				for this_rec in resp["ANSWER_SECTION"]:
+					(rec_qname, _, _, rec_qtype, _) = this_rec.split(" ", maxsplit=4)
+					if rec_qtype == "DS":
+						if not rec_qname == this_qname:
+							failure_reasons.append("DS in Answer section had QNAME {} instead of {}".format(rec_qname, this_qname))
+				failure_reasons.append(check_for_signed_rr(resp["ANSWER_SECTION"], "DS"))
+			# The Authority section is empty. [xdu]
+			if resp.get("AUTHORITY_SECTION"):
+				failure_reasons.append("Authority section was not empty")
+			# The Additional section is empty. [mle]
+			if resp.get("ADDITIONAL_SECTION"):
+				failure_reasons.append("Additional section was not empty")
+		elif (this_qname == ".") and (this_qtype == "SOA"):  # Processing for . / SOA
+			# The header AA bit is set. [xhr]
+			if not "aa" in resp["flags"]:
+				failure_reasons.append("AA bit was not set")
+			# The Answer section contains the signed SOA record for the root. [obw]
+			failure_reasons.append(check_for_signed_rr(resp["ANSWER_SECTION"], "SOA"))
+			# The Authority section contains the signed NS RRset for the root. [ktm]
+			failure_reasons.append(check_for_signed_rr(resp["AUTHORITY_SECTION"], "NS"))
+		elif (this_qname == ".") and (this_qtype == "NS"):  # Processing for . / NS [amj]
+			# The header AA bit is set. [csz]
+			if not "aa" in resp["flags"]:
+				failure_reasons.append("AA bit was not set")
+			# The Answer section contains the signed NS RRset for the root. [wal]
+			failure_reasons.append(check_for_signed_rr(resp["ANSWER_SECTION"], "NS"))
+			# The Authority section is empty. [eyk]
+			if resp.get("AUTHORITY_SECTION"):
+				failure_reasons.append("Authority section was not empty")
+		elif (this_qname == ".") and (this_qtype == "DNSKEY"):  # Processing for . / DNSKEY [djd]
+			# The header AA bit is set. [occ]
+			if not "aa" in resp["flags"]:
+				failure_reasons.append("AA bit was not set")
+			# The Answer section contains the signed DNSKEY RRset for the root. [eou]
+			failure_reasons.append(check_for_signed_rr(resp["ANSWER_SECTION"], "DNSKEY"))
+			# The Authority section is empty. [kka]
+			if resp.get("AUTHORITY_SECTION"):
+				failure_reasons.append("Authority section was not empty")
+			# The Additional section is empty. [jws]
+			if resp.get("ADDITIONAL_SECTION"):
+				failure_reasons.append("Additional section was not empty")
+		else:
+			failure_reasons.append("Not matched: when checking NOERROR statuses, found unexpected name/type of {}/{}".format(this_qname, this_qtype))
+	elif resp["status"] == "NXDOMAIN":  # Processing for negative responses [vcu]
+		# The header AA bit is set. [gpl]
+		if not "aa" in resp["flags"]:
+			failure_reasons.append("AA bit was not set")
+		# The Answer section is empty. [dvh]
+		if resp.get("ANSWER_SECTION"):
+			failure_reasons.append("Answer section was not empty")
+		# The Authority section contains the signed . / SOA record. [axj]
+		if not resp.get("AUTHORITY_SECTION"):
+			failure_reasons.append("Authority section was empty")
+		else:
+			# Make sure the SOA record is for .
+			for this_rec in resp["AUTHORITY_SECTION"]:
+				(rec_qname, _, _, rec_qtype, _) = this_rec.split(" ", maxsplit=4)
+				if rec_qtype == "SOA":
+					if not rec_qname == ".":
+						failure_reasons.append("SOA in Authority section had QNAME {} instead of '.'".format(rec_qname))
+			failure_reasons.append(check_for_signed_rr(resp["AUTHORITY_SECTION"], "SOA"))
+			# The Authority section contains a signed NSEC record covering the query name. [czb]
+			#   Note that the query name might have multiple labels, so only compare against the last
+			this_qname_TLD = this_qname.split(".")[-2] + "."
+			nsec_covers_query_name = False
+			nsecs_in_authority = []
+			for this_rec in resp["AUTHORITY_SECTION"]:
+				(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ", maxsplit=4)
+				if rec_qtype == "NSEC":
+					nsec_parts = rec_rdata.split(" ")
+					nsecs_in_authority.append("{}|{}".format(rec_qname, nsec_parts[0]))
+					# Make a list of the three strings, then make sure the original QNAME is in the middle
+					test_sort = sorted([rec_qname, nsec_parts[0], this_qname_TLD])
+					if test_sort[1] == this_qname_TLD:
+						nsec_covers_query_name = True
+						break
+			if not nsec_covers_query_name:
+				failure_reasons.append("NSECs in Authority '{}' did not cover qname '{}'".format(nsecs_in_authority, this_qname))
+			# The Authority section contains a signed NSEC record with owner name “.” proving no wildcard exists in the zone. [jhz]
+			nsec_with_owner_dot = False
+			for this_rec in resp["AUTHORITY_SECTION"]:
+				(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ", maxsplit=4)
+				if rec_qtype == "NSEC":
+					if rec_qname == ".":
+						nsec_with_owner_dot = True
+						break;
+			if not 	nsec_with_owner_dot:
+				failure_reasons.append("Authority section did not contain a signed NSEC record with owner name '.'")
+		# The Additional section is empty. [trw]
+		if resp.get("ADDITIONAL_SECTION"):
+			failure_reasons.append("Additional section was not empty")
+	else:
+		failure_reasons.append("Response had a status other than NOERROR and NXDOMAIN")
+	
+	# See if the results were all positive
+	#    Remove all entries which are blank
+	pared_failure_reasons = []
+	for this_element in failure_reasons:
+		if not this_element == "":
+			pared_failure_reasons.append(this_element)
+	failure_reason_text = "\n".join(pared_failure_reasons)
+	make_is_correct = (failure_reason_text == "")
+	try:
+		cur.execute("update correctness_info set (is_correct, failure_reason) = (%s, %s) where id = %s", (make_is_correct, failure_reason_text, this_id))
+	except Exception as e:
+		alert("Could not update correctness_info after processing record {}: '{}'".format(this_id, e))
+	return
+
+###############################################################
+
 if __name__ == "__main__":
 	# Get the base for the log directory
 	log_dir = "{}/Logs".format(os.path.expanduser("~"))
@@ -286,6 +564,7 @@ if __name__ == "__main__":
 	# Keep the set of root zones up to date
 	#   If there is a new root zone, save it and also process it for matching tests later
 	#   This is done after pulling the VP data to increase the chance that we'll get the latest zone before matching
+	# This is not done under multiprocessing
 	
 	log("Started root zone collecting")
 
@@ -358,28 +637,10 @@ if __name__ == "__main__":
 		pickle.dump(root_name_and_types, out_f)
 		out_f.close()
 
+	log("Finished root zone collecting")
+	
 	###############################################################
 
-	def check_for_signed_rr(list_of_records_from_section, name_of_rrtype):
-		# See if there is a record in the list of the given RRtype, and make sure there is also an RRSIG for that RRtype
-		found_rrtype = False
-		for this_full_record in list_of_records_from_section:
-			(rec_qname, _, _, rec_qtype, rec_rdata) = this_full_record.split(" ", maxsplit=4)
-			if rec_qtype == name_of_rrtype:
-				found_rrtype = True
-				break
-		if not found_rrtype:
-			return "No record of type {} was found in that section".format(name_of_rrtype)
-		found_rrsig = False
-		for this_full_record in list_of_records_from_section:
-			(rec_qname, _, _, rec_qtype, rec_rdata) = this_full_record.split(" ", maxsplit=4)
-			if rec_qtype == "RRSIG":
-				found_rrsig = True
-				break
-		if not found_rrsig:
-			return "One more more records of type {} were found in that section, but there was no RRSIG".format(name_of_rrtype)
-		return ""
-	
 	# Now that all the measurements are in, go through all records in correctness_info where is_correct is NULL
 	#   This is done separately in order to catch all earlier attempts where there was not a good root zone file to compare
 	#   This does not log or alert; that is left for a different program checking when is_correct is not null
@@ -388,263 +649,24 @@ if __name__ == "__main__":
 	cur.execute("select id, recent_soa, source_pickle from correctness_info where is_correct is null")
 	correct_to_check = cur.fetchall()
 	log("Started correctness checking on {} found".format(len(correct_to_check)))
-	for (this_id, this_recent_soa_serial_array, this_resp_pickle) in correct_to_check:
-		# See if it is a timeout; if so, set is_correct but move on [lbl]
-		try:
-			this_resp_obj = pickle.loads(this_resp_pickle)
-		except Exception as e:
-			alert("Could not unpickle in correctness_info for {}: '{}'".format(this_id, e))
-			continue
-		if this_resp_obj[0]["type"] == "DIG_ERROR":
-			try:
-				cur.execute("update correctness_info set (is_correct, failure_reason) = (%s, %s) where id = %s", (True, "", this_id))
-			except Exception as e:
-				alert("Could not update correctness_info for timed-out {}: '{}'".format(this_id, e))
-			continue
-		elif not this_resp_obj[0]["type"] == "MESSAGE":
-			alert("Found an unexpected dig type '{}' in correctness_info for {}".format(this_resp_obj[0]["type"], this_id))
-			continue
-		
-		# Convert this_recent_soa_serial_array into root_to_check by reading the file and unpickling it
-		recent_soa_pickle_filename = "{}/{}.matching.pickle".format(saved_matching_dir, this_recent_soa_serial_array[-1])
-		try:
-			soa_f = open(recent_soa_pickle_filename, mode="rb")
-		except:
-			alert("Found SOA {} in correctness checking for {} for which there was no file".format(this_id, this_recent_soa_serial_array[-1]))
-			continue
-		try:
-			root_to_check = pickle.load(soa_f)
-		except:
-			alert("Could not unpickle {} while processing {} for correctness".format(recent_soa_pickle_filename, this_id))
-			continue
-		
-		# Here if it is a dig MESSAGE type
-		#   failure_reasons holds an expanding set of reasons
-		#   It is checked at the end of testing, and all "" entries eliminted
-		#   If it is empty, then all correctness tests passed
-		failure_reasons = []
-		resp = this_resp_obj[0]["message"]["response_message_data"]
-
-		# Check that each of the RRsets in the Answer, Authority, and Additional sections match RRsets found in the zone [vnk]
-		#   This check does not include any RRSIG RRsets that are not named in the matching tests below. [ygx]
-		# This check does not include any OPT RRset found in the Additional section because "dig +yaml" does not put them in the Additional section [pvz]
-		# After this check is done, we no longer need to check RRsets from the answer against the root zone
-		for this_section_name in [ "ANSWER_SECTION", "AUTHORITY_SECTION", "ADDITIONAL_SECTION" ]:
-			if resp.get(this_section_name):
-				rrsets_for_checking = {}
-				for this_full_record in resp[this_section_name]:
-					(rec_qname, _, _, rec_qtype, rec_rdata) = this_full_record.split(" ", maxsplit=4)
-					if not rec_qtype == "RRSIG":  # [ygx]
-						this_key = "{}/{}".format(rec_qname, rec_qtype)
-						if not this_key in rrsets_for_checking:
-							rrsets_for_checking[this_key] = set()
-						rrsets_for_checking[this_key].add(rec_rdata)
-				for this_rrset_key in rrsets_for_checking:
-					if not this_rrset_key in root_to_check:
-						failure_reasons.append("{} was in {} in the response but not the root".format(this_rrset_key, this_section_name))
-					else:
-						if rrsets_for_checking[this_rrset_key] < root_to_check[this_rrset_key]:
-							failure_reasons.append("RRset '{}' in response is shorter than '{}' in root zone".\
-								format(rrsets_for_checking[this_rrset_key], root_to_check[this_rrset_key]))
-						elif rrsets_for_checking[this_rrset_key] > root_to_check[this_rrset_key]:
-							failure_reasons.append("RRset '{}' in response is longer than '{}' in root zone".\
-								format(rrsets_for_checking[this_rrset_key], root_to_check[this_rrset_key]))
-
-		# Check that each of the RRsets that are signed have their signatures validated. [yds]
-		#   Send all the records in each section to the function that checks for validity
-		# Need the root zone file for this
-		recent_soa_root_filename = "{}/{}.root.txt".format(saved_root_zone_dir, this_recent_soa_serial_array[-1])
-		answer_and_authority_recs = []
-		for this_section_name in [ "ANSWER_SECTION", "AUTHORITY_SECTION", "ADDITIONAL_SECTION" ]:
-			if resp.get(this_section_name):
-				answer_and_authority_recs.extend(resp[this_section_name])
-		##### Find RRsets that have associated RRSIGs
-		##### For each, call out to program that validates
-		#####   If something does not validate, failure_reasons.append("XXXX did not validate")
-		
-		# Check that all the parts of the resp structure are correct, based on the type of answer
-		question_record = resp["QUESTION_SECTION"][0]
-		(this_qname, _, this_qtype) = question_record.split(" ")
-		if resp["status"] == "NOERROR":
-			if (this_qname != ".") and (this_qtype == "NS"):  # Processing for TLD / NS [hmk]
-				# The header AA bit is not set. [ujy]
-				if "aa" in resp["flags"]:
-					failure_reasons.append("AA bit was set")
-				# The Answer section is empty. [aeg]
-				if resp.get("ANSWER_SECTION"):
-					failure_reasons.append("Answer section was not empty")
-				# The Authority section contains the entire NS RRset for the query name. [pdd]
-				if not resp.get("AUTHORITY_SECTION"):
-					failure_reasons.append("Authority section was empty")
-				root_ns_for_qname = root_to_check["{}/NS".format(this_qname)]
-				auth_ns_for_qname = set()
-				for this_rec in resp["AUTHORITY_SECTION"]:
-					(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ", maxsplit=4)
-					if rec_qtype == "NS":
-						auth_ns_for_qname.add(rec_rdata)
-				if not auth_ns_for_qname == root_ns_for_qname:
-					failure_reasons.append("NS RRset in Authority was '{}', but NS from root was '{}'".format(auth_ns_for_qname, root_ns_for_qname))
-				# If the DS RRset for the query name exists in the zone: [hue]
-				if root_to_check.get("{}/DS".format(this_qname)):
-					# The Authority section contains the signed DS RRset for the query name. [kbd]
-					failure_reasons.append(check_for_signed_rr(resp["AUTHORITY_SECTION"], "DS"))
-				else:  # If the DS RRset for the query name does not exist in the zone: [fot]
-					# The Authority section contains no DS RRset. [bgr]
-					for this_rec in resp["AUTHORITY_SECTION"]:
-						(rec_qname, _, _, rec_qtype, _) = this_rec.split(" ", maxsplit=4)
-						if rec_qtype == "DS":
-							failure_reasons.append("Found DS in Authority section")
-							break
-					# The Authority section contains a signed NSEC RRset covering the query name. [mkl]
-					has_covering_nsec = False
-					for this_rec in resp["AUTHORITY_SECTION"]:
-						(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ", maxsplit=4)
-						if rec_qtype == "NSEC":
-							if rec_qname == this_qname:
-								has_covering_nsec = True
-								break
-					if not has_covering_nsec:
-						failure_reasons.append("Authority section had no covering NSEC record")
-				# Additional section contains at least one A or AAAA record found in the zone associated with at least one NS record found in the Authority section. [cjm]
-				#    Collect the NS records from the Authority section
-				found_NS_recs = []
-				for this_rec in resp["AUTHORITY_SECTION"]:
-					(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ", maxsplit=4)
-					if rec_qtype == "NS":
-						found_NS_recs.append(rec_rdata)
-				found_qname_of_A_AAAA_recs = []
-				for this_rec in resp["ADDITIONAL_SECTION"]:
-					(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ", maxsplit=4)
-					if rec_qtype in ("A", "AAAA"):
-						found_qname_of_A_AAAA_recs.append(rec_qname)
-				found_A_AAAA_NS_match = False
-				for a_aaaa_qname in found_qname_of_A_AAAA_recs:
-						if a_aaaa_qname in found_NS_recs:
-							found_A_AAAA_NS_match = True
-							break
-				if not found_A_AAAA_NS_match:
-					failure_reasons.append("No QNAMEs from A and AAAA in Additional {} matched NS from Authority {}".format(found_qname_of_A_AAAA_recs, found_NS_recs))
-			elif (this_qname != ".") and (this_qtype == "DS"):  # Processing for TLD / DS [dru]
-				# The header AA bit is set. [yot]
-				if not "aa" in resp["flags"]:
-					failure_reasons.append("AA bit was not set")
-				# The Answer section contains the signed DS RRset for the query name. [cpf]
-				if not resp.get("ANSWER_SECTION"):
-					failure_reasons.append("Answer section was empty")
-				else:
-					# Make sure the DS is for the query name
-					for this_rec in resp["ANSWER_SECTION"]:
-						(rec_qname, _, _, rec_qtype, _) = this_rec.split(" ", maxsplit=4)
-						if rec_qtype == "DS":
-							if not rec_qname == this_qname:
-								failure_reasons.append("DS in Answer section had QNAME {} instead of {}".format(rec_qname, this_qname))
-					failure_reasons.append(check_for_signed_rr(resp["ANSWER_SECTION"], "DS"))
-				# The Authority section is empty. [xdu]
-				if resp.get("AUTHORITY_SECTION"):
-					failure_reasons.append("Authority section was not empty")
-				# The Additional section is empty. [mle]
-				if resp.get("ADDITIONAL_SECTION"):
-					failure_reasons.append("Additional section was not empty")
-			elif (this_qname == ".") and (this_qtype == "SOA"):  # Processing for . / SOA
-				# The header AA bit is set. [xhr]
-				if not "aa" in resp["flags"]:
-					failure_reasons.append("AA bit was not set")
-				# The Answer section contains the signed SOA record for the root. [obw]
-				failure_reasons.append(check_for_signed_rr(resp["ANSWER_SECTION"], "SOA"))
-				# The Authority section contains the signed NS RRset for the root. [ktm]
-				failure_reasons.append(check_for_signed_rr(resp["AUTHORITY_SECTION"], "NS"))
-			elif (this_qname == ".") and (this_qtype == "NS"):  # Processing for . / NS [amj]
-				# The header AA bit is set. [csz]
-				if not "aa" in resp["flags"]:
-					failure_reasons.append("AA bit was not set")
-				# The Answer section contains the signed NS RRset for the root. [wal]
-				failure_reasons.append(check_for_signed_rr(resp["ANSWER_SECTION"], "NS"))
-				# The Authority section is empty. [eyk]
-				if resp.get("AUTHORITY_SECTION"):
-					failure_reasons.append("Authority section was not empty")
-			elif (this_qname == ".") and (this_qtype == "DNSKEY"):  # Processing for . / DNSKEY [djd]
-				# The header AA bit is set. [occ]
-				if not "aa" in resp["flags"]:
-					failure_reasons.append("AA bit was not set")
-				# The Answer section contains the signed DNSKEY RRset for the root. [eou]
-				failure_reasons.append(check_for_signed_rr(resp["ANSWER_SECTION"], "DNSKEY"))
-				# The Authority section is empty. [kka]
-				if resp.get("AUTHORITY_SECTION"):
-					failure_reasons.append("Authority section was not empty")
-				# The Additional section is empty. [jws]
-				if resp.get("ADDITIONAL_SECTION"):
-					failure_reasons.append("Additional section was not empty")
-			else:
-				failure_reasons.append("Not matched: when checking NOERROR statuses, found unexpected name/type of {}/{}".format(this_qname, this_qtype))
-		elif resp["status"] == "NXDOMAIN":  # Processing for negative responses [vcu]
-			# The header AA bit is set. [gpl]
-			if not "aa" in resp["flags"]:
-				failure_reasons.append("AA bit was not set")
-			# The Answer section is empty. [dvh]
-			if resp.get("ANSWER_SECTION"):
-				failure_reasons.append("Answer section was not empty")
-			# The Authority section contains the signed . / SOA record. [axj]
-			if not resp.get("AUTHORITY_SECTION"):
-				failure_reasons.append("Authority section was empty")
-			else:
-				# Make sure the SOA record is for .
-				for this_rec in resp["AUTHORITY_SECTION"]:
-					(rec_qname, _, _, rec_qtype, _) = this_rec.split(" ", maxsplit=4)
-					if rec_qtype == "SOA":
-						if not rec_qname == ".":
-							failure_reasons.append("SOA in Authority section had QNAME {} instead of '.'".format(rec_qname))
-				failure_reasons.append(check_for_signed_rr(resp["AUTHORITY_SECTION"], "SOA"))
-				# The Authority section contains a signed NSEC record covering the query name. [czb]
-				#   Note that the query name might have multiple labels, so only compare against the last
-				this_qname_TLD = this_qname.split(".")[-2] + "."
-				nsec_covers_query_name = False
-				nsecs_in_authority = []
-				for this_rec in resp["AUTHORITY_SECTION"]:
-					(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ", maxsplit=4)
-					if rec_qtype == "NSEC":
-						nsec_parts = rec_rdata.split(" ")
-						nsecs_in_authority.append("{}|{}".format(rec_qname, nsec_parts[0]))
-						# Make a list of the three strings, then make sure the original QNAME is in the middle
-						test_sort = sorted([rec_qname, nsec_parts[0], this_qname_TLD])
-						if test_sort[1] == this_qname_TLD:
-							nsec_covers_query_name = True
-							break
-				if not nsec_covers_query_name:
-					failure_reasons.append("NSECs in Authority '{}' did not cover qname '{}'".format(nsecs_in_authority, this_qname))
-				# The Authority section contains a signed NSEC record with owner name “.” proving no wildcard exists in the zone. [jhz]
-				nsec_with_owner_dot = False
-				for this_rec in resp["AUTHORITY_SECTION"]:
-					(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ", maxsplit=4)
-					if rec_qtype == "NSEC":
-						if rec_qname == ".":
-							nsec_with_owner_dot = True
-							break;
-				if not 	nsec_with_owner_dot:
-					failure_reasons.append("Authority section did not contain a signed NSEC record with owner name '.'")
-			# The Additional section is empty. [trw]
-			if resp.get("ADDITIONAL_SECTION"):
-				failure_reasons.append("Additional section was not empty")
-		else:
-			failure_reasons.append("Response had a status other than NOERROR and NXDOMAIN")
-		
-		# See if the results were all positive
-		#    Remove all entries which are blank
-		pared_failure_reasons = []
-		for this_element in failure_reasons:
-			if not this_element == "":
-				pared_failure_reasons.append(this_element)
-		failure_reason_text = "\n".join(pared_failure_reasons)
-		make_is_correct = (failure_reason_text == "")
-		try:
-			cur.execute("update correctness_info set (is_correct, failure_reason) = (%s, %s) where id = %s", (make_is_correct, failure_reason_text, this_id))
-		except Exception as e:
-			alert("Could not update correctness_info after processing record {}: '{}'".format(this_id, e))
-	log("Finished correctness checking")
+	with futures.ProcessPoolExecutor() as executor:
+		for (this_correctness_tuple, _) in zip(correct_to_check, executor.map(process_one_correctness_tuple, correct_to_check)):
+			pass
+	log("Finished processing {} files in Incoming".format(len(all_files)))
+	
+	###############################################################
+	
+	# STILL TO DO: Running through correctness_info where is_correct is false, using older root zones based on SOA
+	#    Will likely use updating as in "update temp1 set b = b || '{"ThrEE"}' where a = 'one';"
+	
+	# STILL TO DO: Validation in correctness checking
+	
+	###############################################################
+	
+	log("Finished overall collector processing")	
 	exit()
 
 """
-
-STILL TO DO: Running through correctness_info where is_correct is false, using older root zones based on SOA
-
-update temp1 set b = b || '{"ThrEE"}' where a = 'one';
+	# Need the root zone file for this
+	recent_soa_root_filename = "{}/{}.root.txt".format(saved_root_zone_dir, this_recent_soa_serial_array[-1])
 """
