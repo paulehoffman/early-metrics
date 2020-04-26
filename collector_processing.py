@@ -49,7 +49,12 @@ def get_files_from_one_vp(this_vp):
 			die("Running rename for {} ended with '{}'".format(this_filename, e))
 		pulled_count += 1
 		try:
+			conn = psycopg2.connect(dbname="metrics", user="metrics")
+			cur = conn.cursor()
 			cur.execute("insert into files_gotten (filename_full, retrieved_at) values (%s, %s);", (this_filename, datetime.datetime.now(datetime.timezone.utc)))
+			conn.commit()
+			cur.close()
+			conn.close()
 		except Exception as e:
 			die("Could not insert '{}' into files_gotten: '{}'".format(this_filename, e))
 	return pulled_count
@@ -60,6 +65,13 @@ def process_one_incoming_file(full_file):
 	# Process an incoming file, and move it when done
 	#   Returns nothing
 	#   File-level errors cause "die", record-level errors cause "alert" and skipping the record
+	try:
+		conn = psycopg2.connect(dbname="metrics", user="metrics")
+		cur = conn.cursor()
+		conn.set_session(autocommit=True)
+	except Exception as e:
+		die("Could not open database in process_one_incoming_file: {}".format(e))
+	# Check for bad file
 	if not full_file.endswith(".pickle.gz"):
 		alert("Found {} that did not end in .pickle.gz".format(full_file))
 		return
@@ -188,6 +200,8 @@ def process_one_incoming_file(full_file):
 		else:
 			alert("Found a response type {}, which is not S or C, in record {} of {}".format(this_resp[4], response_count, full_file))
 			continue
+	cur.close()
+	conn.close()
 	return
 
 ###############################################################
@@ -218,6 +232,12 @@ def check_for_signed_rr(list_of_records_from_section, name_of_rrtype):
 def process_one_correctness_tuple(this_id, this_recent_soa_serial_array, this_resp_pickle):
 	# Process one tuple of id / SOA / pickle_of_response
 	#   Returns nothing
+	try:
+		conn = psycopg2.connect(dbname="metrics", user="metrics")
+		cur = conn.cursor()
+		conn.set_session(autocommit=True)
+	except Exception as e:
+		die("Could not open database in process_one_correctness_tuple: {}".format(e))
 	# See if it is a timeout; if so, set is_correct but move on [lbl]
 	try:
 		this_resp_obj = pickle.loads(this_resp_pickle)
@@ -466,6 +486,8 @@ def process_one_correctness_tuple(this_id, this_recent_soa_serial_array, this_re
 		cur.execute("update correctness_info set (is_correct, failure_reason) = (%s, %s) where id = %s", (make_is_correct, failure_reason_text, this_id))
 	except Exception as e:
 		alert("Could not update correctness_info after processing record {}: '{}'".format(this_id, e))
+	cur.close()
+	conn.close()
 	return
 
 ###############################################################
@@ -663,6 +685,8 @@ if __name__ == "__main__":
 	
 	###############################################################
 	
+	cur.close()
+	conn.close()
 	log("Finished overall collector processing")	
 	exit()
 
