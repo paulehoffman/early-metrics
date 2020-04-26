@@ -50,7 +50,6 @@ def get_files_from_one_vp(this_vp):
 		pulled_count += 1
 		try:
 			cur.execute("insert into files_gotten (filename_full, retrieved_at) values (%s, %s);", (this_filename, datetime.datetime.now(datetime.timezone.utc)))
-			conn.commit()
 		except Exception as e:
 			die("Could not insert '{}' into files_gotten: '{}'".format(this_filename, e))
 	return pulled_count
@@ -99,7 +98,6 @@ def process_one_incoming_file(full_file):
 	update_vales = (datetime.datetime.now(datetime.timezone.utc), in_obj["v"], in_obj["d"], in_obj["e"], short_file+".pickle.gz") 
 	try:
 		cur.execute(update_string, update_vales)
-		conn.commit()
 	except Exception as e:
 		alert("Could not update {} in files_gotten: '{}'".format(short_file, e))
 
@@ -119,7 +117,6 @@ def process_one_incoming_file(full_file):
 		update_vales = (short_file, file_date, file_vp, in_obj["s"]) 
 		try:
 			cur.execute(update_string, update_vales)
-			conn.commit()
 		except Exception as e:
 			alert("Could not insert into route_info for {}: '{}'".format(short_file, e))
 
@@ -191,8 +188,6 @@ def process_one_incoming_file(full_file):
 		else:
 			alert("Found a response type {}, which is not S or C, in record {} of {}".format(this_resp[4], response_count, full_file))
 			continue
-	# Commit the inserts for this file
-	conn.commit()
 	return
 
 ###############################################################
@@ -241,8 +236,6 @@ if __name__ == "__main__":
 	output_dir = os.path.expanduser("~/Output")
 	if not os.path.exists(output_dir):
 		os.mkdir(output_dir)
-	
-	###############################################################
 
 	# Connect to the database
 	try:
@@ -253,8 +246,15 @@ if __name__ == "__main__":
 		cur = conn.cursor()
 	except Exception as e:
 		die("Unable to get database cursor: '{}'".format(e))
+	try:
+		conn.set_session(autocommit=True)
+	except Exception as e:
+		die("Unable to get set autocommit: '{}'".format(e))
 	
 	###############################################################
+
+	# For each VP, find the files in /sftp/transfer/Output and get them one by one
+	#   For each file, after getting, move it to /sftp/transfer/AlreadySeen
 
 	# Get the list of VPs
 	log("Started pulling from VPs")
@@ -264,8 +264,6 @@ if __name__ == "__main__":
 	except Exception as e:
 		die("Could not open {} and split the lines: '{}'".format(vp_list_filename, e))
 
-	# For each VP, find the files in /sftp/transfer/Output and get them one by one
-	#   For each file, after getting, move it to /sftp/transfer/AlreadySeen
 	total_pulled = 0
 	with futures.ProcessPoolExecutor() as executor:
 		for (this_vp, pulled_count) in zip(all_vps, executor.map(get_files_from_one_vp, all_vps)):
@@ -639,11 +637,9 @@ if __name__ == "__main__":
 		make_is_correct = (failure_reason_text == "")
 		try:
 			cur.execute("update correctness_info set (is_correct, failure_reason) = (%s, %s) where id = %s", (make_is_correct, failure_reason_text, this_id))
-			conn.commit()	
 		except Exception as e:
 			alert("Could not update correctness_info after processing record {}: '{}'".format(this_id, e))
 	log("Finished correctness checking")
-	conn.commit()  # Just in case we forgot one
 	exit()
 
 """
