@@ -322,7 +322,7 @@ if __name__ == "__main__":
 			
 	# Find the SOA record
 	try:
-		this_soa_record = root_name_and_types[("./SOA")][0]
+		this_soa_record = list(root_name_and_types[("./SOA")])[0]
 	except:
 		die("The root zone just received didn't have an SOA record.")
 	try:
@@ -349,7 +349,7 @@ if __name__ == "__main__":
 		# See if there is a record in the list of the given RRtype, and make sure there is also an RRSIG for that RRtype
 		found_rrtype = False
 		for this_full_record in list_of_records_from_section:
-			(rec_qname, _, _, rec_qtype, rec_rdata) = this_full_record.split(" ")
+			(rec_qname, _, _, rec_qtype, rec_rdata) = this_full_record.split(" ", maxsplit=4)
 			if rec_qtype == name_of_rrtype:
 				found_rrtype = True
 				break
@@ -357,7 +357,7 @@ if __name__ == "__main__":
 			return "No record of type {} was found in that section".format(name_of_rrtype)
 		found_rrsig = False
 		for this_full_record in list_of_records_from_section:
-			(rec_qname, _, _, rec_qtype, rec_rdata) = this_full_record.split(" ")
+			(rec_qname, _, _, rec_qtype, rec_rdata) = this_full_record.split(" ", maxsplit=4)
 			if rec_qtype == "RRSIG":
 				found_rrsig = True
 				break
@@ -418,7 +418,7 @@ if __name__ == "__main__":
 			if resp.get(this_section_name):
 				rrsets_for_checking = {}
 				for this_full_record in resp[this_section_name]:
-					(rec_qname, _, _, rec_qtype, rec_rdata) = this_full_record.split(" ")
+					(rec_qname, _, _, rec_qtype, rec_rdata) = this_full_record.split(" ", maxsplit=4)
 					if not rec_qtype == "RRSIG":  # [ygx]
 						this_key = "{}/{}".format(rec_qname, rec_qtype)
 						if not this_key in rrsets_for_checking:
@@ -464,7 +464,7 @@ if __name__ == "__main__":
 				root_ns_for_qname = root_to_check["{}/NS".format(this_qname)]
 				auth_ns_for_qname = set()
 				for this_rec in resp["AUTHORITY_SECTION"]:
-					(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ")
+					(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ", maxsplit=4)
 					if rec_qtype == "NS":
 						auth_ns_for_qname.add(rec_rdata)
 				if not auth_ns_for_qname == root_ns_for_qname:
@@ -476,14 +476,14 @@ if __name__ == "__main__":
 				else:  # If the DS RRset for the query name does not exist in the zone: [fot]
 					# The Authority section contains no DS RRset. [bgr]
 					for this_rec in resp["AUTHORITY_SECTION"]:
-						(rec_qname, _, _, rec_qtype, _) = this_rec.split(" ")
+						(rec_qname, _, _, rec_qtype, _) = this_rec.split(" ", maxsplit=4)
 						if rec_qtype == "DS":
 							failure_reasons.append("Found DS in Authority section")
 							break
 					# The Authority section contains a signed NSEC RRset covering the query name. [mkl]
 					has_covering_nsec = False
 					for this_rec in resp["AUTHORITY_SECTION"]:
-						(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ")
+						(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ", maxsplit=4)
 						if rec_qtype == "NSEC":
 							if rec_qname == this_qname:
 								has_covering_nsec = True
@@ -494,13 +494,13 @@ if __name__ == "__main__":
 				#    Collect the NS records from the Authority section
 				found_NS_recs = []
 				for this_rec in resp["AUTHORITY_SECTION"]:
-					(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ")
+					(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ", maxsplit=4)
 					if rec_qtype == "NS":
 						found_NS_recs.append(rec_rdata)
 				# Assume failure, then check for A/AAAA from Additional
 				found_A_AAAA = False
 				for this_rec in resp["ADDITIONAL_SECTION"]:
-					(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ")
+					(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ", maxsplit=4)
 					if rec_qtype in ("A", "AAAA"):
 						if rec_rdata in found_NS_recs:
 							found_A_AAAA = True
@@ -517,7 +517,7 @@ if __name__ == "__main__":
 				else:
 					# Make sure the DS is for the query name
 					for this_rec in resp["ANSWER_SECTION"]:
-						(rec_qname, _, _, rec_qtype, _) = this_rec.split(" ")
+						(rec_qname, _, _, rec_qtype, _) = this_rec.split(" ", maxsplit=4)
 						if rec_qtype == "DS":
 							if not rec_qname == this_qname:
 								failure_reasons.append("DS in Answer section had QNAME {} instead of {}".format(rec_qname, this_qname))
@@ -572,7 +572,7 @@ if __name__ == "__main__":
 			else:
 				# Make sure the SOA record is for .
 				for this_rec in resp["AUTHORITY_SECTION"]:
-					(rec_qname, _, _, rec_qtype, _) = this_rec.split(" ")
+					(rec_qname, _, _, rec_qtype, _) = this_rec.split(" ", maxsplit=4)
 					if rec_qtype == "SOA":
 						if not rec_qname == ".":
 							failure_reasons.append("SOA in Authority section had QNAME {} instead of '.'".format(rec_qname))
@@ -580,7 +580,7 @@ if __name__ == "__main__":
 				# The Authority section contains a signed NSEC record covering the query name. [czb]
 				nsec_covers_query_name = False
 				for this_rec in resp["AUTHORITY_SECTION"]:
-					(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ")
+					(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ", maxsplit=4)
 					if rec_qtype == "NSEC":
 						nsec_parts = rec_rdata.split(" ")
 						# Make a list of the three strings, then make sure the original QNAME is in the middle
@@ -593,7 +593,7 @@ if __name__ == "__main__":
 				# The Authority section contains a signed NSEC record with owner name “.” proving no wildcard exists in the zone. [jhz]
 				nsec_with_owner_dot = False
 				for this_rec in resp["AUTHORITY_SECTION"]:
-					(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ")
+					(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ", maxsplit=4)
 					if rec_qtype == "NSEC":
 						if rec_qname == ".":
 							nsec_with_owner_dot = True
