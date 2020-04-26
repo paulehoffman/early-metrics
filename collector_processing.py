@@ -8,7 +8,7 @@ import datetime, glob, gzip, logging, os, pickle, psycopg2, re, requests, subpro
 from concurrent import futures
 
 def get_files_from_one_vp(this_vp):
-	''' Used to pull files from VPs under multiprocessing '''
+	# Used to pull files from VPs under multiprocessing; retuns the number of files pulled from this VP
 	pulled_count = 0
 	# Make a batch file for sftp that gets the directory
 	dir_batch_filename = "{}/dirbatchfile.txt".format(log_dir)
@@ -54,6 +54,148 @@ def get_files_from_one_vp(this_vp):
 		except Exception as e:
 			die("Could not insert '{}' into files_gotten: '{}'".format(this_filename, e))
 	return pulled_count
+
+###############################################################
+
+def process_one_incoming_file(full_file):
+	# Process an incoming file, and move it when done
+	#   Returns nothing
+	#   File-level errors cause "die", record-level errors cause "alert" and skipping the record
+	if not full_file.endswith(".pickle.gz"):
+		alert("Found {} that did not end in .pickle.gz".format(full_file))
+		return
+	short_file = os.path.basename(full_file).replace(".pickle.gz", "")
+	# Ungz it
+	try:
+		with gzip.open(full_file, mode="rb") as pf:
+			in_pickle = pf.read()
+	except Exception as e:
+		die("Could not unzip {}: '{}'".format(full_file, e))
+	# Unpickle it
+	try:
+		in_obj = pickle.loads(in_pickle)
+	except Exception as e:
+		die("Could not unpickle {}: '{}'".format(full_file, e))
+	# Sanity check the record
+	if not ("d" in in_obj) and ("e" in in_obj) and ("r" in in_obj) and ("s" in in_obj) and ("v" in in_obj):
+		alert("Object in {} did not contain keys d, e, r, s, and v".format(full_file))
+
+	# Move the file to ~/Originals/yyyymm so it doesn't get processed again
+	year_from_short_file = short_file[0:4]
+	month_from_short_file = short_file[4:6]
+	original_dir_target = os.path.expanduser("~/Originals/{}{}".format(year_from_short_file, month_from_short_file))
+	if not os.path.exists(original_dir_target):
+		try:
+			os.mkdir(original_dir_target)
+		except Exception as e:
+			die("Could not create {}: '{}'".format(original_dir_target, e))
+	try:
+		shutil.move(full_file, original_dir_target)
+	except Exception as e:
+			die("Could not move {} to {}: '{}'".format(full_file, original_dir_target, e))
+
+	# Log the metadata
+	update_string = "update files_gotten set processed_at=%s, version=%s, delay=%s, elapsed=%s where filename_full=%s"
+	update_vales = (datetime.datetime.now(datetime.timezone.utc), in_obj["v"], in_obj["d"], in_obj["e"], short_file+".pickle.gz") 
+	try:
+		cur.execute(update_string, update_vales)
+		conn.commit()
+	except Exception as e:
+		alert("Could not update {} in files_gotten: '{}'".format(short_file, e))
+
+	# Get the derived date and VP name from the file name
+	(file_date_text, file_vp) = short_file.split("-")
+	try:
+		file_date = datetime.datetime(int(file_date_text[0:4]), int(file_date_text[4:6]), int(file_date_text[6:8]),\
+			int(file_date_text[8:10]), int(file_date_text[10:12]))
+	except Exception as e:
+		die("Could not split the file name '{}' into a datetime: '{}'".format(short_file, e))
+
+	# Log the route information from in_obj["s"]
+	if not in_obj.get("s"):
+		alert("File {} did not have a route information record".format(full_file))
+	else:
+		update_string = "insert into route_info (file_prefix, date_derived, vp, route_string) values (%s, %s, %s, %s)"
+		update_vales = (short_file, file_date, file_vp, in_obj["s"]) 
+		try:
+			cur.execute(update_string, update_vales)
+			conn.commit()
+		except Exception as e:
+			alert("Could not insert into route_info for {}: '{}'".format(short_file, e))
+
+	# Walk through the response items from the unpickled file
+	response_count = 0
+	for this_resp in in_obj["r"]:
+		response_count += 1
+		# Get it out of YAML and do basic sanity checks
+		try:
+			this_resp_obj = yaml.load(this_resp[6])
+		except:
+			alert("Could not interpret YAML from {} of {}".format(response_count, full_file))
+			continue
+		# Sanity check the structure of the object
+		if not this_resp_obj:
+			alert("Found no object in record {} of {}".format(response_count, full_file))
+			continue
+		if not this_resp_obj[0].get("type"):
+			alert("Found no dig type in record {} of {}".format(response_count, full_file))
+			continue
+		if not this_resp_obj[0].get("message"):
+			alert("Found no message in record {} of {}".format(response_count, full_file))
+			continue
+		# Each record is "S" for an SOA record or "C" for a correctness test
+		if this_resp[4] == "S":
+			# Get the this_dig_elapsed, this_timeout, this_soa for the response
+			if this_resp_obj[0]["type"] == "MESSAGE":
+				if (not this_resp_obj[0]["message"].get("response_time")) or (not this_resp_obj[0]["message"].get("query_time")):
+					alert("Found a message without response_time or query_time in record {} of {}".format(response_count, full_file))
+					continue
+				dig_elapsed_as_delta = this_resp_obj[0]["message"]["response_time"] - this_resp_obj[0]["message"]["query_time"]
+				this_dig_elapsed = datetime.timedelta.total_seconds(dig_elapsed_as_delta)
+				this_timeout = False
+				if not this_resp_obj[0]["message"].get("response_message_data").get("ANSWER_SECTION"):
+					alert("Found a message without an answer in record {} of {}".format(response_count, full_file))
+					continue
+				this_soa_record = this_resp_obj[0]["message"]["response_message_data"]["ANSWER_SECTION"][0]
+				soa_record_parts = this_soa_record.split(" ")
+				this_soa = soa_record_parts[6]
+			elif this_resp_obj[0]["type"] == "DIG_ERROR":
+				if not (("timed out" in this_resp_obj[0]["message"]) or ("communications error" in this_resp_obj[0]["message"])):
+					alert("Found unexpected dig error message '{}' in record {} of {}".format(this_resp_obj[0]["message"], response_count, full_file))
+					continue
+				this_dig_elapsed = None
+				this_timeout = True
+				this_soa = None
+			else:
+				alert("Found an unexpected dig type {} in record {} of {}".format(this_resp_obj[0]["type"], response_count, full_file))
+				continue
+			# Log the SOA information
+			update_string = "insert into soa_info (file_prefix, date_derived, vp, rsi, internet, transport, prog_elapsed, dig_elapsed, timeout, soa) "\
+				+ "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+			update_vales = (short_file, file_date, file_vp, this_resp[0], this_resp[1], this_resp[2], this_resp[5], this_dig_elapsed, this_timeout, this_soa) 
+			try:
+				cur.execute(update_string, update_vales)
+			except Exception as e:
+				alert("Could not insert into soa_info for {}: '{}'".format(short_file, e))
+		elif this_resp[4] == "C": # Records for correctness checking
+			# Here, we are writing the record out with None for the is_correct value; the correctness is check is done later in this pass
+			update_string = "insert into correctness_info (file_prefix, date_derived, vp, rsi, internet, transport, recent_soa, "\
+				+ " is_correct, failure_reason, source_pickle) "\
+				+ "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+			# Set is_correct to NULL because it will be evaluated later
+			update_vales = (short_file, file_date, file_vp, this_resp[0], this_resp[1], this_resp[2], [ this_soa ], None, None, pickle.dumps(this_resp_obj))
+			try:
+				cur.execute(update_string, update_vales)
+			except Exception as e:
+				alert("Could not insert into correctness_info for {}: '{}'".format(short_file, e))
+		else:
+			alert("Found a response type {}, which is not S or C, in record {} of {}".format(this_resp[4], response_count, full_file))
+			continue
+	# Commit the inserts for this file
+	conn.commit()
+	return
+
+###############################################################
 
 if __name__ == "__main__":
 	# Get the base for the log directory
@@ -134,145 +276,11 @@ if __name__ == "__main__":
 	###############################################################
 
 	# Go through the files in ~/Incoming
-	#   File-level errors cause "die", record-level errors cause "alert" and skipping the record
 	log("Started going through Incoming")
 	all_files = list(glob.glob("{}/*".format(incoming_dir)))
-	for full_file in all_files:
-		if not full_file.endswith(".pickle.gz"):
-			alert("Found {} that did not end in .pickle.gz".format(full_file))
-			continue
-		short_file = os.path.basename(full_file).replace(".pickle.gz", "")
-		# Ungz it
-		try:
-			with gzip.open(full_file, mode="rb") as pf:
-				in_pickle = pf.read()
-		except Exception as e:
-			die("Could not unzip {}: '{}'".format(full_file, e))
-		# Unpickle it
-		try:
-			in_obj = pickle.loads(in_pickle)
-		except Exception as e:
-			die("Could not unpickle {}: '{}'".format(full_file, e))
-		# Sanity check the record
-		if not ("d" in in_obj) and ("e" in in_obj) and ("r" in in_obj) and ("s" in in_obj) and ("v" in in_obj):
-			alert("Object in {} did not contain keys d, e, r, s, and v".format(full_file))
-
-		# Move the file to ~/Originals/yyyymm so it doesn't get processed again
-		year_from_short_file = short_file[0:4]
-		month_from_short_file = short_file[4:6]
-		original_dir_target = os.path.expanduser("~/Originals/{}{}".format(year_from_short_file, month_from_short_file))
-		if not os.path.exists(original_dir_target):
-			try:
-				os.mkdir(original_dir_target)
-			except Exception as e:
-				die("Could not create {}: '{}'".format(original_dir_target, e))
-		try:
-			shutil.move(full_file, original_dir_target)
-		except Exception as e:
-				die("Could not move {} to {}: '{}'".format(full_file, original_dir_target, e))
-
-		# Log the metadata
-		update_string = "update files_gotten set processed_at=%s, version=%s, delay=%s, elapsed=%s where filename_full=%s"
-		update_vales = (datetime.datetime.now(datetime.timezone.utc), in_obj["v"], in_obj["d"], in_obj["e"], short_file+".pickle.gz") 
-		try:
-			cur.execute(update_string, update_vales)
-			conn.commit()
-		except Exception as e:
-			alert("Could not update {} in files_gotten: '{}'".format(short_file, e))
-
-		# Get the derived date and VP name from the file name
-		(file_date_text, file_vp) = short_file.split("-")
-		try:
-			file_date = datetime.datetime(int(file_date_text[0:4]), int(file_date_text[4:6]), int(file_date_text[6:8]),\
-				int(file_date_text[8:10]), int(file_date_text[10:12]))
-		except Exception as e:
-			die("Could not split the file name '{}' into a datetime: '{}'".format(short_file, e))
-
-		# Log the route information from in_obj["s"]
-		if not in_obj.get("s"):
-			alert("File {} did not have a route information record".format(full_file))
-		else:
-			update_string = "insert into route_info (file_prefix, date_derived, vp, route_string) values (%s, %s, %s, %s)"
-			update_vales = (short_file, file_date, file_vp, in_obj["s"]) 
-			try:
-				cur.execute(update_string, update_vales)
-				conn.commit()
-			except Exception as e:
-				alert("Could not insert into route_info for {}: '{}'".format(short_file, e))
-
-		# Walk through the response items from the unpickled file
-		response_count = 0
-		for this_resp in in_obj["r"]:
-			response_count += 1
-			# Get it out of YAML and do basic sanity checks
-			try:
-				this_resp_obj = yaml.load(this_resp[6])
-			except:
-				alert("Could not interpret YAML from {} of {}".format(response_count, full_file))
-				continue
-			# Sanity check the structure of the object
-			if not this_resp_obj:
-				alert("Found no object in record {} of {}".format(response_count, full_file))
-				continue
-			if not this_resp_obj[0].get("type"):
-				alert("Found no dig type in record {} of {}".format(response_count, full_file))
-				continue
-			if not this_resp_obj[0].get("message"):
-				alert("Found no message in record {} of {}".format(response_count, full_file))
-				continue
-			soa_for_correctness = ""
-			# Each record is "S" for an SOA record or "C" for a correctness test
-			if this_resp[4] == "S":
-				# Get the this_dig_elapsed, this_timeout, this_soa for the response
-				if this_resp_obj[0]["type"] == "MESSAGE":
-					if (not this_resp_obj[0]["message"].get("response_time")) or (not this_resp_obj[0]["message"].get("query_time")):
-						alert("Found a message without response_time or query_time in record {} of {}".format(response_count, full_file))
-						continue
-					dig_elapsed_as_delta = this_resp_obj[0]["message"]["response_time"] - this_resp_obj[0]["message"]["query_time"]
-					this_dig_elapsed = datetime.timedelta.total_seconds(dig_elapsed_as_delta)
-					this_timeout = False
-					if not this_resp_obj[0]["message"].get("response_message_data").get("ANSWER_SECTION"):
-						alert("Found a message without an answer in record {} of {}".format(response_count, full_file))
-						continue
-					this_soa_record = this_resp_obj[0]["message"]["response_message_data"]["ANSWER_SECTION"][0]
-					soa_record_parts = this_soa_record.split(" ")
-					this_soa = soa_record_parts[6]
-				elif this_resp_obj[0]["type"] == "DIG_ERROR":
-					if not (("timed out" in this_resp_obj[0]["message"]) or ("communications error" in this_resp_obj[0]["message"])):
-						alert("Found unexpected dig error message '{}' in record {} of {}".format(this_resp_obj[0]["message"], response_count, full_file))
-						continue
-					this_dig_elapsed = None
-					this_timeout = True
-					this_soa = None
-				else:
-					alert("Found an unexpected dig type {} in record {} of {}".format(this_resp_obj[0]["type"], response_count, full_file))
-					continue
-				# Save the SOA for the correctness checking
-				soa_for_correctness = this_soa
-				# Log the SOA information
-				update_string = "insert into soa_info (file_prefix, date_derived, vp, rsi, internet, transport, prog_elapsed, dig_elapsed, timeout, soa) "\
-					+ "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
-				update_vales = (short_file, file_date, file_vp, this_resp[0], this_resp[1], this_resp[2], this_resp[5], this_dig_elapsed, this_timeout, this_soa) 
-				try:
-					cur.execute(update_string, update_vales)
-				except Exception as e:
-					alert("Could not insert into soa_info for {}: '{}'".format(short_file, e))
-			elif this_resp[4] == "C": # Records for correctness checking
-				# Here, we are writing the record out with None for the is_correct value; the correctness is check is done later in this pass
-				update_string = "insert into correctness_info (file_prefix, date_derived, vp, rsi, internet, transport, recent_soa, "\
-					+ " is_correct, failure_reason, source_pickle) "\
-					+ "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
-				# Set is_correct to NULL because it will be evaluated later
-				update_vales = (short_file, file_date, file_vp, this_resp[0], this_resp[1], this_resp[2], [ this_soa ], None, None, pickle.dumps(this_resp_obj))
-				try:
-					cur.execute(update_string, update_vales)
-				except Exception as e:
-					alert("Could not insert into correctness_info for {}: '{}'".format(short_file, e))
-			else:
-				alert("Found a response type {}, which is not S or C, in record {} of {}".format(this_resp[4], response_count, full_file))
-				continue
-		# Commit the inserts for this file
-		conn.commit()
+	with futures.ProcessPoolExecutor() as executor:
+		for (this_file, _) in zip(all_files, executor.map(process_one_incoming_file, all_files)):
+			pass
 	log("Finished processing {} files".format(len(all_files)))
 
 	###############################################################
