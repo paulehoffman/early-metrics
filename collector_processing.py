@@ -602,7 +602,7 @@ if __name__ == "__main__":
 							nsec_covers_query_name = True
 							break
 				if not nsec_covers_query_name:
-					failure_reasons.append("NSECs in Authority '{}' did not cover qname".format(nsecs_in_authority, this_qname))
+					failure_reasons.append("NSECs in Authority '{}' did not cover qname '{}'".format(nsecs_in_authority, this_qname))
 				# The Authority section contains a signed NSEC record with owner name “.” proving no wildcard exists in the zone. [jhz]
 				nsec_with_owner_dot = False
 				for this_rec in resp["AUTHORITY_SECTION"]:
