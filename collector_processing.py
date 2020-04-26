@@ -5,6 +5,55 @@
 # Three-letter items in square brackets (such as [xyz]) refer to parts of rssac-047.md
 
 import datetime, glob, gzip, logging, os, pickle, psycopg2, re, requests, subprocess, shutil, yaml
+from concurrent import futures
+
+def get_files_from_one_vp(this_vp):
+	''' Used to pull files from VPs under multiprocessing '''
+	pulled_count = 0
+	# Make a batch file for sftp that gets the directory
+	dir_batch_filename = "{}/dirbatchfile.txt".format(log_dir)
+	dir_f = open(dir_batch_filename, mode="wt")
+	dir_f.write("cd transfer/Output\ndir -1\n")
+	dir_f.close()
+	# Execuite sftp with the directory batch file
+	try:
+		p = subprocess.run("sftp -b {} transfer@{}".format(dir_batch_filename, this_vp), shell=True, capture_output=True, text=True, check=True)
+	except Exception as e:
+		alert("Getting directory for {} ended with '{}'".format(dir_batch_filename, e))
+	dir_lines = p.stdout.splitlines()
+	# Get the filenames that end in .gz; some lines will be other cruft such as ">"
+	for this_filename in dir_lines:
+		if not this_filename.endswith(".gz"):
+			continue
+		# Create an sftp batch file for each file to get
+		get_batch_filename = "{}/getbatchfile.txt".format(log_dir)
+		get_f = open(get_batch_filename, mode="wt")
+		# Get the file
+		get_cmd = "get transfer/Output/{} {}\n".format(this_filename, incoming_dir)
+		get_f.write(get_cmd)
+		get_f.close()
+		try:
+			p = subprocess.run("sftp -b {} transfer@{}".format(get_batch_filename, this_vp), shell=True, capture_output=True, text=True, check=True)
+		except Exception as e:
+			die("Running get for {} ended with '{}'".format(this_filename, e))
+		# Create an sftp batch file for each file to move
+		move_batch_filename = "{}/getbatchfile.txt".format(log_dir)
+		move_f = open(move_batch_filename, mode="wt")
+		# Get the file
+		move_cmd = "rename transfer/Output/{0} transfer/AlreadySeen/{0}\n".format(this_filename)
+		move_f.write(move_cmd)
+		move_f.close()
+		try:
+			p = subprocess.run("sftp -b {} transfer@{}".format(move_batch_filename, this_vp), shell=True, capture_output=True, text=True, check=True)
+		except Exception as e:
+			die("Running rename for {} ended with '{}'".format(this_filename, e))
+		pulled_count += 1
+		try:
+			cur.execute("insert into files_gotten (filename_full, retrieved_at) values (%s, %s);", (this_filename, datetime.datetime.now(datetime.timezone.utc)))
+			conn.commit()
+		except Exception as e:
+			die("Could not insert '{}' into files_gotten: '{}'".format(this_filename, e))
+	return pulled_count
 
 if __name__ == "__main__":
 	# Get the base for the log directory
@@ -75,52 +124,12 @@ if __name__ == "__main__":
 
 	# For each VP, find the files in /sftp/transfer/Output and get them one by one
 	#   For each file, after getting, move it to /sftp/transfer/AlreadySeen
-	pulled_count = 0
-	for this_vp in all_vps:
-		# Make a batch file for sftp that gets the directory
-		dir_batch_filename = "{}/dirbatchfile.txt".format(log_dir)
-		dir_f = open(dir_batch_filename, mode="wt")
-		dir_f.write("cd transfer/Output\ndir -1\n")
-		dir_f.close()
-		# Execuite sftp with the directory batch file
-		try:
-			p = subprocess.run("sftp -b {} transfer@{}".format(dir_batch_filename, this_vp), shell=True, capture_output=True, text=True, check=True)
-		except Exception as e:
-			alert("Getting directory for {} ended with '{}'".format(dir_batch_filename, e))
-		dir_lines = p.stdout.splitlines()
-		# Get the filenames that end in .gz; some lines will be other cruft such as ">"
-		for this_filename in dir_lines:
-			if not this_filename.endswith(".gz"):
-				continue
-			# Create an sftp batch file for each file to get
-			get_batch_filename = "{}/getbatchfile.txt".format(log_dir)
-			get_f = open(get_batch_filename, mode="wt")
-			# Get the file
-			get_cmd = "get transfer/Output/{} {}\n".format(this_filename, incoming_dir)
-			get_f.write(get_cmd)
-			get_f.close()
-			try:
-				p = subprocess.run("sftp -b {} transfer@{}".format(get_batch_filename, this_vp), shell=True, capture_output=True, text=True, check=True)
-			except Exception as e:
-				exit("Running get for {} ended with '{}'".format(this_filename, e))
-			# Create an sftp batch file for each file to move
-			move_batch_filename = "{}/getbatchfile.txt".format(log_dir)
-			move_f = open(move_batch_filename, mode="wt")
-			# Get the file
-			move_cmd = "rename transfer/Output/{0} transfer/AlreadySeen/{0}\n".format(this_filename)
-			move_f.write(move_cmd)
-			move_f.close()
-			try:
-				p = subprocess.run("sftp -b {} transfer@{}".format(move_batch_filename, this_vp), shell=True, capture_output=True, text=True, check=True)
-			except Exception as e:
-				exit("Running rename for {} ended with '{}'".format(this_filename, e))
-			pulled_count += 1
-			try:
-				cur.execute("insert into files_gotten (filename_full, retrieved_at) values (%s, %s);", (this_filename, datetime.datetime.now(datetime.timezone.utc)))
-				conn.commit()
-			except Exception as e:
-				die("Could not insert '{}' into files_gotten: '{}'".format(this_filename, e))
-	log("Finished pulling from VPs; got {} files from {} VPs".format(pulled_count, len(all_vps)))
+	total_pulled = 0
+	with futures.ProcessPoolExecutor() as executor:
+		for (this_vp, pulled_count) in zip(all_vps, executor.map(get_files_from_one_vp, all_vps)):
+			if pulled_count:
+				total_pulled += pulled_count
+	log("Finished pulling from VPs; got {} files from {} VPs".format(total_pulled, len(all_vps)))
 
 	###############################################################
 
