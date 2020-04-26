@@ -503,8 +503,8 @@ if __name__ == "__main__":
 					if rec_qtype in ("A", "AAAA"):
 						found_qname_of_A_AAAA_recs.append(rec_qname)
 				found_A_AAAA_NS_match = False
-				for this_addr in found_qname_of_A_AAAA_recs:
-						if rec_rdata in found_NS_recs:
+				for a_aaaa_qname in found_qname_of_A_AAAA_recs:
+						if a_aaaa_qname in found_NS_recs:
 							found_A_AAAA_NS_match = True
 							break
 				if not found_A_AAAA_NS_match:
@@ -581,17 +581,19 @@ if __name__ == "__main__":
 				failure_reasons.append(check_for_signed_rr(resp["AUTHORITY_SECTION"], "SOA"))
 				# The Authority section contains a signed NSEC record covering the query name. [czb]
 				nsec_covers_query_name = False
+				nsecs_in_authority = []
 				for this_rec in resp["AUTHORITY_SECTION"]:
 					(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ", maxsplit=4)
 					if rec_qtype == "NSEC":
+						nsecs_in_authority.append(rec_rdata)
 						nsec_parts = rec_rdata.split(" ")
 						# Make a list of the three strings, then make sure the original QNAME is in the middle
 						test_sort = sorted([rec_qname, nsec_parts[0], this_qname])
 						if test_sort[1] == this_qname:
 							nsec_covers_query_name = True
 							break
-				if not 	nsec_covers_query_name:
-					failure_reasons.append("Authority section did not contain a signed NSEC record covering the query name")
+				if not nsec_covers_query_name:
+					failure_reasons.append("NSECs in Authority '{}' did not cover qname".format(nsecs_in_authority, this_qname))
 				# The Authority section contains a signed NSEC record with owner name “.” proving no wildcard exists in the zone. [jhz]
 				nsec_with_owner_dot = False
 				for this_rec in resp["AUTHORITY_SECTION"]:
