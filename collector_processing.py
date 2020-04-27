@@ -231,9 +231,10 @@ def check_for_signed_rr(list_of_records_from_section, name_of_rrtype):
 	
 ###############################################################
 
-def process_one_correctness_tuple(this_id, this_recent_soa_serial_array, this_resp_pickle):
+def process_one_correctness_array(in_array):
 	# Process one tuple of id / SOA / pickle_of_response
 	#   Returns nothing
+	(this_id, this_recent_soa_serial_array, this_resp_pickle) = in_array
 	try:
 		conn = psycopg2.connect(dbname="metrics", user="metrics")
 		cur = conn.cursor()
@@ -671,10 +672,13 @@ if __name__ == "__main__":
 
 	# Iterate over the records where is_correct is null
 	cur.execute("select id, recent_soa, source_pickle from correctness_info where is_correct is null")
-	correct_to_check = cur.fetchall()
-	log("Started correctness checking on {} found".format(len(correct_to_check)))
+	initial_correct_to_check = cur.fetchall()
+	correct_array_to_check = []
+	for this_tuple in initial_correct_to_check:
+		correct_array_to_check.append([this_tuple[0], this_tuple[1], bytes(this_tuple[2])])
+	log("Started correctness checking on {} found".format(len(correct_array_to_check)))
 	with futures.ProcessPoolExecutor() as executor:
-		for (this_correctness_tuple, _) in zip(correct_to_check, executor.map(process_one_correctness_tuple, correct_to_check)):
+		for (this_correctness_tuple, _) in zip(correct_array_to_check, executor.map(process_one_correctness_array, correct_array_to_check)):
 			pass
 	log("Finished processing {} files in Incoming".format(len(all_files)))
 	
