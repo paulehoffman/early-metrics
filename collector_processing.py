@@ -229,10 +229,9 @@ def check_for_signed_rr(list_of_records_from_section, name_of_rrtype):
 	
 ###############################################################
 
-def process_one_correctness_tuple(in_tuple):
+def process_one_correctness_tuple(this_id, this_recent_soa_serial_array, this_resp_pickle):
 	# Process one tuple of id / SOA / pickle_of_response
 	#   Returns nothing
-	(this_id, this_recent_soa_serial_array, this_resp_pickle) = in_tuple
 	try:
 		conn = psycopg2.connect(dbname="metrics", user="metrics")
 		cur = conn.cursor()
