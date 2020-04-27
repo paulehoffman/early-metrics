@@ -262,7 +262,7 @@ def process_one_correctness_array(in_array):
 	try:
 		soa_f = open(recent_soa_pickle_filename, mode="rb")
 	except:
-		alert("Found SOA {} in correctness checking for {} for which there was no file".format(this_id, this_recent_soa_serial_array[-1]))
+		alert("Found SOA {} in correctness checking for {} for which there was no file".format(this_recent_soa_serial_array[-1], this_id))
 		return
 	try:
 		root_to_check = pickle.load(soa_f)
