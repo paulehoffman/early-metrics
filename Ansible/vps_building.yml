@@ -73,7 +73,7 @@
       dest: /home/metrics/.bashrc
   - name: Put short-host-name.txt
     template:
-      src: short-host-name.txt
+      src: ../short-host-name.txt
       dest: /home/metrics/short-host-name.txt
   - name: make Logs/
     file:

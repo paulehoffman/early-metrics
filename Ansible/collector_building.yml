@@ -11,8 +11,8 @@
       force: true
   - name: Install all the needed packages
     apt:
-      pkg: [build-essential, curl, git, libcap-dev, libssl-dev, libuv1-dev, man, pkg-config, 
-        postgresql, pyflakes3, python-ply, python-psycopg2, python3-psycopg2, python3-paramiko, rsync, unzip]
+      pkg: [build-essential, curl, git, libcap-dev, libgetdns-dev, libidn11-dev, libldns-dev, libssl-dev, libtool, libtool-bin, libunbound-dev, libuv1-dev,
+        man, pkg-config, postgresql, pyflakes3, python-ply, python-psycopg2, python3-psycopg2, python3-paramiko, rsync, unzip]
   - name: Put .bashrc for root
     copy:
       src: ../bashrc-for-metrics-and-root
@@ -125,6 +125,24 @@
     copy:
       src: ../vp_list.txt
       dest: /home/metrics/vp_list.txt
+  - name: Put the source for getdns_validate
+    copy:
+      src: ../getdns_validate.c
+      dest: /home/metrics/Source/getdns_validate.c
+  - name: Make getdns_validate 1
+    shell:
+      chdir: /home/metrics
+      cmd: "gcc -g -O2 -Wall -I. -I/usr/include -std=c99 -c /home/metrics/Source/getdns_validate.c -o /home/metrics/Target/getdns_validate.o"
+      creates: /home/metrics/Target/getdns_validate.o
+  - name: Make getdns_validate 2
+    shell:
+      chdir: /home/metrics
+      cmd: "libtool --tag=CC --mode=link gcc -g -O2 -Wall -I. -I/usr/include -std=c99 -L/usr/lib -lgetdns -lgetdns_ext_event -lunbound -lidn -lldns -o /home/metrics/Target/getdns_validate /home/metrics/Target/getdns_validate.o"
+      creates: /home/metrics/Target/getdns_validate
+  - name: Put root-ds.txt
+    copy:
+      src: ../root-ds.txt
+      dest: /home/metrics/Target/root-ds.txt
 - name: Do Postgres stuff
   hosts: c00.mtric.net  
   remote_user: "{{ superuser }}"
