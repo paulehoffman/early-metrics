@@ -318,15 +318,19 @@ def process_one_correctness_array(in_array):
 		for this_section_name in [ "ANSWER_SECTION", "AUTHORITY_SECTION", "ADDITIONAL_SECTION" ]:
 			this_section_rrs = resp.get(this_section_name, [])
 			# Only act if this section has an RRSIG
-			has_rrsig = False
+			rrsigs_over_rrtypes = set()
 			for this_in_rr_text in this_section_rrs:
 				rr_parts = this_in_rr_text.split(" ", maxsplit=4)
 				if rr_parts[3] == "RRSIG":
-					has_rrsig = True
-			if has_rrsig:
+					rrsigs_over_rrtypes.add(rr_parts[4])
+			if len(rrsigs_over_rrtypes) > 0:
 				validate_f = tempfile.NamedTemporaryFile(mode="wt")
 				validate_fname = validate_f.name
-				validate_f.write("\n".join(this_section_rrs))
+				# Go through each record, and only save the RRSIGs and the records they cover
+				for this_in_rr_text in this_section_rrs:
+					rr_parts = this_in_rr_text.split(" ", maxsplit=4)
+					if (rr_parts[3] == "RRSIG") or (rr_parts[3] in rrsigs_over_rrtypes):
+						validate_f.write(this_in_rr_text+"\n")
 				validate_f.seek(0)
 				validate_p = subprocess.run("{}/getdns_validate -s {} {}".format(target_dir, recent_soa_root_filename, validate_fname),
 					shell=True, text=True, check=True, capture_output=True)
