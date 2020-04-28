@@ -595,7 +595,7 @@ if __name__ == "__main__":
 		for this_test_file in sorted(glob.glob("{}/*.test".format(tests_dir))):
 			this_id = os.path.basename(this_test_file).replace(".test", "")
 			this_resp_pickle = pickle.dumps(yaml.load(open(this_test_file, mode="rb")))
-			process_one_correctness_array([this_id, this_recent_soa_serial_array, this_resp_pickle])
+			print(process_one_correctness_array([this_id, this_recent_soa_serial_array, this_resp_pickle]))
 		log("Finished tests")
 		exit()
 
