@@ -103,6 +103,11 @@
       path: /home/metrics/Target
       mode: u+wrx,go+rx
       state: directory
+  - name: make Target/Tests
+    file:
+      path: /home/metrics/Target/Tests
+      mode: u+wrx,go+rx
+      state: directory
   - name: make Incoming/
     file:
       path: /home/metrics/Incoming

@@ -4,7 +4,7 @@
 # Run as the metrics user
 # Three-letter items in square brackets (such as [xyz]) refer to parts of rssac-047.md
 
-import datetime, glob, gzip, logging, os, pickle, psycopg2, re, requests, subprocess, shutil, tempfile, yaml
+import argparse, datetime, glob, gzip, logging, os, pickle, psycopg2, re, requests, subprocess, shutil, tempfile, yaml
 from concurrent import futures
 
 ###############################################################
@@ -233,14 +233,9 @@ def check_for_signed_rr(list_of_records_from_section, name_of_rrtype):
 
 def process_one_correctness_array(in_array):
 	# Process one tuple of id / SOA / pickle_of_response
-	#   Returns nothing
+	#   Normally returns nothing because it is writing the results into the correctness_info database
+	#   If running under opts.test, it does not write into the database but instead returns the results as text
 	(this_id, this_recent_soa_serial_array, this_resp_pickle) = in_array
-	try:
-		conn = psycopg2.connect(dbname="metrics", user="metrics")
-		cur = conn.cursor()
-		conn.set_session(autocommit=True)
-	except Exception as e:
-		die("Could not open database in process_one_correctness_tuple: {}".format(e))
 	# See if it is a timeout; if so, set is_correct but move on [lbl]
 	try:
 		this_resp_obj = pickle.loads(this_resp_pickle)
@@ -248,14 +243,26 @@ def process_one_correctness_array(in_array):
 		alert("Could not unpickle in correctness_info for {}: '{}'".format(this_id, e))
 		return
 	if this_resp_obj[0]["type"] == "DIG_ERROR":
-		try:
-			cur.execute("update correctness_info set (is_correct, failure_reason) = (%s, %s) where id = %s", (True, "", this_id))
-		except Exception as e:
-			alert("Could not update correctness_info for timed-out {}: '{}'".format(this_id, e))
-		return
+		if opts.test:
+			return "{}\t{}\t{}".format(this_id, True, "Timeout")
+		else:
+			try:
+				conn = psycopg2.connect(dbname="metrics", user="metrics")
+				cur = conn.cursor()
+				conn.set_session(autocommit=True)
+				cur.execute("update correctness_info set (is_correct, failure_reason) = (%s, %s) where id = %s", (True, "", this_id))
+				cur.close()
+				conn.close()
+			except Exception as e:
+				alert("Could not update correctness_info for timed-out {}: '{}'".format(this_id, e))
+			return
 	elif not this_resp_obj[0]["type"] == "MESSAGE":
-		alert("Found an unexpected dig type '{}' in correctness_info for {}".format(this_resp_obj[0]["type"], this_id))
-		return
+		unexpected_message = "Found an unexpected dig type '{}' in correctness_info for {}".format(this_resp_obj[0]["type"], this_id)
+		if opts.test:
+			return "{}\t{}\t{}".format(this_id, False, unexpected_message)
+		else:
+			alert(unexpected_message)
+			return
 	
 	# Convert this_recent_soa_serial_array into root_to_check by reading the file and unpickling it
 	recent_soa_pickle_filename = "{}/{}.matching.pickle".format(saved_matching_dir, this_recent_soa_serial_array[-1])
@@ -321,7 +328,7 @@ def process_one_correctness_array(in_array):
 				validate_fname = validate_f.name
 				validate_f.write("\n".join(this_section_rrs))
 				validate_f.seek(0)
-				validate_p = subprocess.run("/home/metrics/Target/getdns_validate -s {} {}".format(recent_soa_root_filename, validate_fname),
+				validate_p = subprocess.run("{}/getdns_validate -s {} {}".format(target_dir, recent_soa_root_filename, validate_fname),
 					shell=True, text=True, check=True, capture_output=True)
 				validate_output = validate_p.stdout.splitlines()[0]
 				(validate_return, _) = validate_output.split(" ", maxsplit=1)
@@ -505,13 +512,20 @@ def process_one_correctness_array(in_array):
 			pared_failure_reasons.append(this_element)
 	failure_reason_text = "\n".join(pared_failure_reasons)
 	make_is_correct = (failure_reason_text == "")
-	try:
-		cur.execute("update correctness_info set (is_correct, failure_reason) = (%s, %s) where id = %s", (make_is_correct, failure_reason_text, this_id))
-	except Exception as e:
-		alert("Could not update correctness_info after processing record {}: '{}'".format(this_id, e))
-	cur.close()
-	conn.close()
-	return
+	if opts.test:
+		pass ###################
+		return "{}\t{}\t{}".format(this_id, make_is_correct, failure_reason_text)
+	else:
+		try:
+			conn = psycopg2.connect(dbname="metrics", user="metrics")
+			cur = conn.cursor()
+			conn.set_session(autocommit=True)
+			cur.execute("update correctness_info set (is_correct, failure_reason) = (%s, %s) where id = %s", (make_is_correct, failure_reason_text, this_id))
+			cur.close()
+			conn.close()
+		except Exception as e:
+			alert("Could not update correctness_info after processing record {}: '{}'".format(this_id, e))
+		return
 
 ###############################################################
 
@@ -543,6 +557,24 @@ if __name__ == "__main__":
 		log("Died with '{}'".format(error_message))
 		exit()
 	
+	# Where the binaries are
+	target_dir = "/home/metrics/Target"
+	
+	this_parser = argparse.ArgumentParser()
+	this_parser.add_argument("--test", action="store_true", dest="test",
+		help="Run tests on requests")
+	opts = this_parser.parse_args()
+
+	# Tests can be run outside the normal cron job. Output is to the terminal, not logging.
+	if opts.test:
+		log("Running tests instead of a real run")
+		tests_dir = "{}/Tests".format(target_dir)
+		if not os.path.exists(tests_dir):
+			exit("Could not find {}".format(tests_dir))
+		#####################################
+		log("Finished tests")
+		exit()
+
 	log("Started overall collector processing")
 
 	# Set up directories
@@ -634,7 +666,7 @@ if __name__ == "__main__":
 	temp_latest_zone_f.close()
 	# Give the named-compilezone command, then post-process
 	try:
-		named_compilezone_p = subprocess.run("/home/metrics/Target/sbin/named-compilezone -q -i none -r ignore -o - . '{}'".format(temp_latest_zone_name),
+		named_compilezone_p = subprocess.run("{}/sbin/named-compilezone -q -i none -r ignore -o - . '{}'".format(target_dir, temp_latest_zone_name),
 			shell=True, text=True, check=True, capture_output=True)
 	except Exception as e:
 		die("named-compilezone failed with '{}'".format(e))
