@@ -1,13 +1,7 @@
 #!/usr/bin/env python3
 
-''' Get root zone for collector and save all new copies '''
-# Run as the metrics user
-# Stores zones in ~/Output/RootZones
-# Run from cron job every 30 minutes
-# Process zone file with named-compilezone, look for SOA
-#   If not already there, name new file _soa_.root.txt
-
-# Three-letter items in square brackets (such as [xyz]) refer to parts of rssac-047.md
+''' Gets the root zone '''
+# Run as the metrics user under cron, every 15 minutes
 
 import logging, os, pickle, re, requests, subprocess
 
@@ -22,44 +16,55 @@ if __name__ == "__main__":
 	vp_log = logging.getLogger("logging")
 	vp_log.setLevel(logging.INFO)
 	log_handler = logging.FileHandler(log_file_name)
-	log_handler.setFormatter(logging.Formatter("%(created)d %(message)s"))
+	log_handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
 	vp_log.addHandler(log_handler)
 	vp_alert = logging.getLogger("alerts")
 	vp_alert.setLevel(logging.CRITICAL)
 	alert_handler = logging.FileHandler(alert_file_name)
-	alert_handler.setFormatter(logging.Formatter("%(created)d %(message)s"))
+	alert_handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
 	vp_alert.addHandler(alert_handler)
 	def log(log_message):
 		vp_log.info(log_message)
+	def alert(alert_message):
+		vp_alert.critical(alert_message)
+		log(alert_message)
 	def die(error_message):
 		vp_alert.critical(error_message)
 		log("Died with '{}'".format(error_message))
 		exit()
 	
+	# Where the binaries are
+	target_dir = "/home/metrics/Target"
+	
 	# Where to save things long-term
 	output_dir = os.path.expanduser("~/Output")
 	if not os.path.exists(output_dir):
 		os.mkdir(output_dir)
+
+	log("Started root zone collecting")
+
+	# Subdirectories of ~/Output for root zones
 	saved_root_zone_dir = "{}/RootZones".format(output_dir)
 	if not os.path.exists(saved_root_zone_dir):
 		os.mkdir(saved_root_zone_dir)
 	saved_matching_dir = "{}/RootMatching".format(output_dir)
 	if not os.path.exists(saved_matching_dir):
 		os.mkdir(saved_matching_dir)
+	
 	# Get the current root zone
 	internic_url = "https://www.internic.net/domain/root.zone"
 	try:
-		r = requests.get(internic_url)
+		root_zone_request = requests.get(internic_url)
 	except Exception as e:
 		die("Could not do the requests.get on {}: '{}'".format(internic_url, e))
 	# Save it as a temp file to use named-compilezone
 	temp_latest_zone_name = "{}/temp_latest_zone".format(log_dir)
 	temp_latest_zone_f = open(temp_latest_zone_name, mode="wt")
-	temp_latest_zone_f.write(r.text)
+	temp_latest_zone_f.write(root_zone_request.text)
 	temp_latest_zone_f.close()
 	# Give the named-compilezone command, then post-process
 	try:
-		named_compilezone_p = subprocess.run("/home/metrics/Target/sbin/named-compilezone -q -i none -r ignore -o - . '{}'".format(temp_latest_zone_name),
+		named_compilezone_p = subprocess.run("{}/sbin/named-compilezone -q -i none -r ignore -o - . '{}'".format(target_dir, temp_latest_zone_name),
 			shell=True, text=True, check=True, capture_output=True)
 	except Exception as e:
 		die("named-compilezone failed with '{}'".format(e))
@@ -74,29 +79,31 @@ if __name__ == "__main__":
 	for this_line in new_root_text_in.splitlines():
 		if not this_line.startswith(";"):
 			new_root_text += this_line + "\n"
-	# Keep track of all the records, both to find the SOA but also to save for later matching comparisons
+
+	# Keep track of all the records in this temporary root zone, both to find the SOA but also to save for later matching comparisons
 	root_name_and_types = {}
-	for his_line in new_root_text.splitlines():
-		(this_name, _, _, this_type, rdata) = this_line.split(" ", maxsplit=4)
+	for this_line in new_root_text.splitlines():
+		(this_name, _, _, this_type, this_rdata) = this_line.split(" ", maxsplit=4)
 		this_key = "{}/{}".format(this_name, this_type)
-		if this_key in root_name_and_types:
-			root_name_and_types[this_key].append(rdata)
-		else:
-			root_name_and_types[this_key] = [ rdata ]
+		if not this_key in root_name_and_types:
+			root_name_and_types[this_key] = set()
+		root_name_and_types[this_key].add(this_rdata)
+			
 	# Find the SOA record
 	try:
-		this_soa_record = root_name_and_types[("./SOA")][0]
+		this_soa_record = list(root_name_and_types[("./SOA")])[0]
 	except:
 		die("The root zone just received didn't have an SOA record.")
 	try:
 		this_soa = this_soa_record.split(" ")[2]
 	except Exception as e:
 		die("Splitting the SOA from the root zone just received failed with '{}'".format(e))
+
 	# Check if this SOA has already been seen
 	full_root_file_name = "{}/{}.root.txt".format(saved_root_zone_dir, this_soa)
 	if not os.path.exists(full_root_file_name):
 		out_f = open(full_root_file_name, mode="wt")
-		out_f.write(new_root_text)
+		out_f.write(root_zone_request.text)
 		out_f.close()
 		log("Got a root zone with new SOA {}".format(this_soa))
 		# Also create a file of the tuples for matching
@@ -104,5 +111,6 @@ if __name__ == "__main__":
 		out_f = open(matching_file_name, mode="wb")
 		pickle.dump(root_name_and_types, out_f)
 		out_f.close()
-	exit()
+
+	log("Finished root zone collecting")
 	

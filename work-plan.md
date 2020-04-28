@@ -67,21 +67,15 @@
 - Also has "tranfer" user for others to copy data
 
 - `get_root_zone.py`
-	- Run from cron job every 30 minutes
+	- Run from cron job every 15 minutes
 	- Stores zones in ~/Output/RootZones for every SOA seen
 
-- `pull_from-vps.py`
-	- Run from cron job every 30 minutes
+- `collector_processing.py`
+	- Run from cron job every hour
 	- Use sftp to pull from all VPs to ~/Incoming
-
-- `update_measurments.py`
-	- Run from cron job every 30 minutes
 	- For each .gz file in ~/Incoming
 		- Open file, store results in the database
 		- Move file to ~/Originals/yyyymm/
-
-- `check_correctness.py`
-	- Run from cron job every 30 minutes
 	- Find records in the correctness table that have not been checked, and check them
 	- Reports why any failure happens
 
