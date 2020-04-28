@@ -330,13 +330,14 @@ def process_one_correctness_array(in_array):
 				for this_in_rr_text in this_section_rrs:
 					rr_parts = this_in_rr_text.split(" ", maxsplit=4)
 					if (rr_parts[3] == "RRSIG") or (rr_parts[3] in rrsigs_over_rrtypes):
-						validate_f.write(this_in_rr_text)
+						validate_f.write(this_in_rr_text+"\n")
 				validate_f.seek(0)
 				validate_p = subprocess.run("{}/getdns_validate -s {} {}".format(target_dir, recent_soa_root_filename, validate_fname),
 					shell=True, text=True, check=True, capture_output=True)
 				validate_output = validate_p.stdout.splitlines()[0]
 				(validate_return, _) = validate_output.split(" ", maxsplit=1)
 				if not validate_return == "400":
+					print(open(validate_fname).read())
 					failure_reasons.append("Validating {} in {} got error of {}".format(this_section_name, this_id, validate_return))
 				validate_f.close()
 	
