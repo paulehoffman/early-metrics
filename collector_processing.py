@@ -513,7 +513,6 @@ def process_one_correctness_array(in_array):
 	failure_reason_text = "\n".join(pared_failure_reasons)
 	make_is_correct = (failure_reason_text == "")
 	if opts.test:
-		pass ###################
 		return "{}\t{}\t{}".format(this_id, make_is_correct, failure_reason_text)
 	else:
 		try:
@@ -571,7 +570,12 @@ if __name__ == "__main__":
 		tests_dir = "{}/Tests".format(target_dir)
 		if not os.path.exists(tests_dir):
 			exit("Could not find {}".format(tests_dir))
-		#####################################
+		soa_for_testing = open("{}/1-soa-to-use".format(tests_dir), mode="rt").read().strip()
+		this_recent_soa_serial_array = [ soa_for_testing ]
+		for this_test_file in sorted(glob.glob("{}/*.test".format(tests_dir))):
+			this_id = os.path.basename(this_test_file).replace(".test", "")
+			this_resp_pickle = pickle.dumps(yaml.load(open(this_test_file, mode="rb")))
+			process_one_correctness_array([this_id, this_recent_soa_serial_array, this_resp_pickle])
 		log("Finished tests")
 		exit()
 
