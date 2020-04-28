@@ -320,7 +320,8 @@ def process_one_correctness_array(in_array):
 			# Only act if this section has an RRSIG
 			rrsigs_over_rrtypes = set()
 			for this_in_rr_text in this_section_rrs:
-				rr_parts = this_in_rr_text.split(" ", maxsplit=4)
+				# The following splits into 5 parts to expose the first field of RRSIGs
+				rr_parts = this_in_rr_text.split(" ", maxsplit=5)
 				if rr_parts[3] == "RRSIG":
 					rrsigs_over_rrtypes.add(rr_parts[4])
 			if len(rrsigs_over_rrtypes) > 0:
@@ -337,7 +338,6 @@ def process_one_correctness_array(in_array):
 				validate_output = validate_p.stdout.splitlines()[0]
 				(validate_return, _) = validate_output.split(" ", maxsplit=1)
 				if not validate_return == "400":
-					print(open(validate_fname).read())
 					failure_reasons.append("Validating {} in {} got error of {}".format(this_section_name, this_id, validate_return))
 				validate_f.close()
 	
