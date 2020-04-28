@@ -4,7 +4,7 @@
 # Run as the metrics user
 # Three-letter items in square brackets (such as [xyz]) refer to parts of rssac-047.md
 
-import datetime, glob, gzip, logging, os, pickle, psycopg2, re, requests, subprocess, shutil, yaml
+import datetime, glob, gzip, logging, os, pickle, psycopg2, re, requests, subprocess, shutil, tempfile, yaml
 from concurrent import futures
 
 ###############################################################
@@ -304,13 +304,32 @@ def process_one_correctness_array(in_array):
 
 	# Check that each of the RRsets that are signed have their signatures validated. [yds]
 	#   Send all the records in each section to the function that checks for validity
-	answer_and_authority_recs = []
-	for this_section_name in [ "ANSWER_SECTION", "AUTHORITY_SECTION", "ADDITIONAL_SECTION" ]:
-		if resp.get(this_section_name):
-			answer_and_authority_recs.extend(resp[this_section_name])
-	##### Find RRsets that have associated RRSIGs
-	##### For each, call out to program that validates
-	#####   If something does not validate, failure_reasons.append("XXXX did not validate")
+	recent_soa_root_filename = "{}/{}.root.txt".format(saved_root_zone_dir, this_recent_soa_serial_array[-1])
+	if not os.path.exists(recent_soa_root_filename):
+		alert("Could not find {} for correctness validation, so skipping".format(recent_soa_root_filename))
+	else:
+		for this_section_name in [ "ANSWER_SECTION", "AUTHORITY_SECTION", "ADDITIONAL_SECTION" ]:
+			this_section_rrs = resp.get(this_section_name, [])
+			# Only act if this section has an RRSIG
+			has_rrsig = False
+			for this_in_rr_text in this_section_rrs:
+				rr_parts = this_in_rr_text.split(".", maxsplit=4)
+				if rr_parts[3] == "RRSIG":
+					has_rrsig = True
+			if has_rrsig:
+				(validate_f, validate_fname) = tempfile.mkstemp(text=True)
+				validate_f.write("\n".join(this_section_rrs))
+				validate_f.close()
+				validate_p = subprocess.run("/home/metrics/Target/getdns_validate -s {} {}".format(recent_soa_root_filename, validate_fname),
+					shell=True, text=True, check=True, capture_output=True)
+				validate_output = validate_p.stdout.splitlines()[0]
+				(validate_return, _) = validate_output.split(" ", maxsplit=1)
+				if not validate_return == "400":
+					failure_reasons.append("Validating {} in {} got error of {}".format(this_section_name, this_id, validate_return))
+			try:
+				os.unlink(validate_fname)
+			except:
+				pass  # Don't worry about these hanging around
 	
 	# Check that all the parts of the resp structure are correct, based on the type of answer
 	question_record = resp["QUESTION_SECTION"][0]
