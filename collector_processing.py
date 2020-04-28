@@ -700,7 +700,7 @@ if __name__ == "__main__":
 	with futures.ProcessPoolExecutor() as executor:
 		for (this_correctness_tuple, _) in zip(correct_array_to_check, executor.map(process_one_correctness_array, correct_array_to_check)):
 			pass
-	log("Finished processing {} files in Incoming".format(len(all_files)))
+	log("Finished correctness checking")
 	
 	###############################################################
 	
