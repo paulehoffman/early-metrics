@@ -313,23 +313,21 @@ def process_one_correctness_array(in_array):
 			# Only act if this section has an RRSIG
 			has_rrsig = False
 			for this_in_rr_text in this_section_rrs:
-				rr_parts = this_in_rr_text.split(".", maxsplit=4)
+				rr_parts = this_in_rr_text.split(" ", maxsplit=4)
 				if rr_parts[3] == "RRSIG":
 					has_rrsig = True
 			if has_rrsig:
-				(validate_f, validate_fname) = tempfile.mkstemp(text=True)
+				validate_f = tempfile.NamedTemporaryFile(mode="wt")
+				validate_fname = validate_f.name
 				validate_f.write("\n".join(this_section_rrs))
-				validate_f.close()
+				validate_f.seek(0)
 				validate_p = subprocess.run("/home/metrics/Target/getdns_validate -s {} {}".format(recent_soa_root_filename, validate_fname),
 					shell=True, text=True, check=True, capture_output=True)
 				validate_output = validate_p.stdout.splitlines()[0]
 				(validate_return, _) = validate_output.split(" ", maxsplit=1)
 				if not validate_return == "400":
 					failure_reasons.append("Validating {} in {} got error of {}".format(this_section_name, this_id, validate_return))
-			try:
-				os.unlink(validate_fname)
-			except:
-				pass  # Don't worry about these hanging around
+				validate_f.close()
 	
 	# Check that all the parts of the resp structure are correct, based on the type of answer
 	question_record = resp["QUESTION_SECTION"][0]
@@ -421,7 +419,10 @@ def process_one_correctness_array(in_array):
 			# The Answer section contains the signed SOA record for the root. [obw]
 			failure_reasons.append(check_for_signed_rr(resp["ANSWER_SECTION"], "SOA"))
 			# The Authority section contains the signed NS RRset for the root. [ktm]
-			failure_reasons.append(check_for_signed_rr(resp["AUTHORITY_SECTION"], "NS"))
+			if not resp.get("AUTHORITY_SECTION"):
+				failure_reasons.append("The Authority section was empty")
+			else:
+				failure_reasons.append(check_for_signed_rr(resp["AUTHORITY_SECTION"], "NS"))
 		elif (this_qname == ".") and (this_qtype == "NS"):  # Processing for . / NS [amj]
 			# The header AA bit is set. [csz]
 			if not "aa" in resp["flags"]:
