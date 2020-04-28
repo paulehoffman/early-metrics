@@ -564,25 +564,6 @@ if __name__ == "__main__":
 		help="Run tests on requests")
 	opts = this_parser.parse_args()
 
-	# Tests can be run outside the normal cron job. Output is to the terminal, not logging.
-	if opts.test:
-		log("Running tests instead of a real run")
-		tests_dir = "{}/Tests".format(target_dir)
-		if not os.path.exists(tests_dir):
-			exit("Could not find {}".format(tests_dir))
-		soa_for_testing = open("{}/1-soa-to-use".format(tests_dir), mode="rt").read().strip()
-		this_recent_soa_serial_array = [ soa_for_testing ]
-		for this_test_file in sorted(glob.glob("{}/*.test".format(tests_dir))):
-			this_id = os.path.basename(this_test_file).replace(".test", "")
-			this_resp_pickle = pickle.dumps(yaml.load(open(this_test_file, mode="rb")))
-			process_one_correctness_array([this_id, this_recent_soa_serial_array, this_resp_pickle])
-		log("Finished tests")
-		exit()
-
-	log("Started overall collector processing")
-
-	# Set up directories
-	
 	# Where to get the incoming files
 	incoming_dir = os.path.expanduser("~/Incoming")
 	if not os.path.exists(incoming_dir):
@@ -603,6 +584,23 @@ if __name__ == "__main__":
 	if not os.path.exists(saved_matching_dir):
 		os.mkdir(saved_matching_dir)
 
+	# Tests can be run outside the normal cron job. Output is to the terminal, not logging.
+	if opts.test:
+		log("Running tests instead of a real run")
+		tests_dir = "{}/Tests".format(target_dir)
+		if not os.path.exists(tests_dir):
+			exit("Could not find {}".format(tests_dir))
+		soa_for_testing = open("{}/1-soa-to-use".format(tests_dir), mode="rt").read().strip()
+		this_recent_soa_serial_array = [ soa_for_testing ]
+		for this_test_file in sorted(glob.glob("{}/*.test".format(tests_dir))):
+			this_id = os.path.basename(this_test_file).replace(".test", "")
+			this_resp_pickle = pickle.dumps(yaml.load(open(this_test_file, mode="rb")))
+			process_one_correctness_array([this_id, this_recent_soa_serial_array, this_resp_pickle])
+		log("Finished tests")
+		exit()
+
+	log("Started overall collector processing")
+	
 	# Connect to the database
 	try:
 		conn = psycopg2.connect(dbname="metrics", user="metrics")
