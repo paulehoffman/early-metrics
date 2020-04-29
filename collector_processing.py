@@ -292,6 +292,10 @@ def process_one_correctness_array(in_array):
 		if resp.get(this_section_name):
 			rrsets_for_checking = {}
 			for this_full_record in resp[this_section_name]:
+				# There is a weird error somewhere else where this_full_record might be a dict instead of a str. If so, ignore it. #######
+				if isinstance(this_full_record, dict):
+					alert("Found bad record in id {} when checking responses".format(this_id))
+					continue
 				(rec_qname, _, _, rec_qtype, rec_rdata) = this_full_record.split(" ", maxsplit=4)
 				if not rec_qtype == "RRSIG":  # [ygx]
 					this_key = "{}/{}".format(rec_qname, rec_qtype)
