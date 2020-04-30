@@ -624,7 +624,7 @@ if __name__ == "__main__":
 			this_response = (process_one_correctness_array([this_id, this_recent_soa_serial_array, this_resp_pickle]))
 			if not this_response:
 				print("Expected failure, bug got pass, on {}".format(this_id))
-		log("Finished testing {} positive and {} negative tests".format(p_count, n_count)
+		log("Finished testing {} positive and {} negative tests".format(p_count, n_count))
 		exit()
 
 	log("Started overall collector processing")
