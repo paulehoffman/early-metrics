@@ -141,7 +141,7 @@ def process_one_incoming_file(full_file):
 		# Get it out of YAML and do basic sanity checks
 		#   But first, look for AAAA records that end in ":", which they should not
 		yaml_fixed = ""
-		yaml_in_text_lines = this_resp[6].decode("ascii").splitlines()
+		yaml_in_text_lines = this_resp[6].splitlines()
 		for this_line in yaml_in_text_lines:
 			if "IN AAAA" in this_line and this_line.endswith(":"):
 				yaml_fixed += this_line + "0" + "\n"
