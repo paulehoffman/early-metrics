@@ -603,7 +603,7 @@ if __name__ == "__main__":
 	# Tests can be run outside the normal cron job. Output is to the terminal, not logging.
 	if opts.test:
 		log("Running tests instead of a real run")
-		tests_dir = os.path.expanduser("~/home/metrics/repo/Tests")
+		tests_dir = "/home/metrics/repo/Tests"
 		soa_for_testing = open("{}/soa-to-use".format(tests_dir), mode="rt").read().strip()
 		this_recent_soa_serial_array = [ soa_for_testing ]
 		for this_test_file in sorted(glob.glob("{}/p-*".format(tests_dir))):
