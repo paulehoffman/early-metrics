@@ -606,13 +606,25 @@ if __name__ == "__main__":
 		tests_dir = "/home/metrics/repo/Tests"
 		soa_for_testing = open("{}/soa-to-use".format(tests_dir), mode="rt").read().strip()
 		this_recent_soa_serial_array = [ soa_for_testing ]
+		# Test the positives
+		p_count = 0
 		for this_test_file in sorted(glob.glob("{}/p-*".format(tests_dir))):
+			p_count += 1
 			this_id = os.path.basename(this_test_file)
 			this_resp_pickle = pickle.dumps(yaml.load(open(this_test_file, mode="rb")))
 			this_response = (process_one_correctness_array([this_id, this_recent_soa_serial_array, this_resp_pickle]))
 			if this_response:
 				print("Expected pass, bug got failure, on {}".format(this_id))
-		log("Finished tests")
+		# Test the negatives
+		n_count = 0
+		for this_test_file in sorted(glob.glob("{}/n-*".format(tests_dir))):
+			n_count += 1
+			this_id = os.path.basename(this_test_file)
+			this_resp_pickle = pickle.dumps(yaml.load(open(this_test_file, mode="rb")))
+			this_response = (process_one_correctness_array([this_id, this_recent_soa_serial_array, this_resp_pickle]))
+			if not this_response:
+				print("Expected failure, bug got pass, on {}".format(this_id))
+		log("Finished testing {} positive and {} negative tests".format(p_count, n_count)
 		exit()
 
 	log("Started overall collector processing")
