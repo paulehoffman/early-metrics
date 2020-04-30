@@ -139,8 +139,16 @@ def process_one_incoming_file(full_file):
 	for this_resp in in_obj["r"]:
 		response_count += 1
 		# Get it out of YAML and do basic sanity checks
+		#   But first, look for AAAA records that end in ":", which they should not
+		yaml_fixed = ""
+		yaml_in_text_lines = this_resp[6].decode("ascii").splitlines()
+		for this_line in yaml_in_text_lines:
+			if "IN AAAA" in this_line and this_line.endswith(":"):
+				yaml_fixed += this_line + "0" + "\n"
+			else:
+				yaml_fixed += this_line + "\n"
 		try:
-			this_resp_obj = yaml.load(this_resp[6])
+			this_resp_obj = yaml.load(yaml_fixed)
 		except:
 			alert("Could not interpret YAML from {} of {}".format(response_count, full_file))
 			continue
@@ -294,7 +302,7 @@ def process_one_correctness_array(in_array):
 			for this_full_record in resp[this_section_name]:
 				# There is a weird error somewhere else where this_full_record might be a dict instead of a str. If so, ignore it. #######
 				if isinstance(this_full_record, dict):
-					alert("Found bad record in id {} when checking responses".format(this_id))
+					alert("Found record with a dict in id {} when checking responses".format(this_id))
 					continue
 				(rec_qname, _, _, rec_qtype, rec_rdata) = this_full_record.split(" ", maxsplit=4)
 				if not rec_qtype == "RRSIG":  # [ygx]
