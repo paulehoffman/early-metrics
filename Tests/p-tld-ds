@@ -1,0 +1,33 @@
+-
+  type: MESSAGE
+  message:
+    type: AUTH_RESPONSE
+    query_time: !!timestamp 2020-04-30T18:32:37.382Z
+    response_time: !!timestamp 2020-04-30T18:32:37.408Z
+    message_size: 402b
+    socket_family: INET
+    socket_protocol: UDP
+    response_address: 198.41.0.4
+    response_port: 53
+    query_address: 0.0.0.0
+    query_port: 54816
+    response_message_data:
+      opcode: QUERY
+      status: NOERROR
+      id: 7276
+      flags: qr aa
+      QUESTION: 1
+      ANSWER: 3
+      AUTHORITY: 0
+      ADDITIONAL: 1
+      OPT_PSEUDOSECTION:
+        EDNS:
+          version: 0
+          flags: do
+          udp: 1472
+      QUESTION_SECTION:
+        - us. IN DS
+      ANSWER_SECTION:
+        - us. 86400 IN DS 39361 8 1 09E0AF18E54225F87A3B10E95C9DA3F1E58E5B59
+        - us. 86400 IN DS 39361 8 2 415D8DAE2299D2C2DAB7458ED4C715268CD2EB3AE3C1C249FF1696BF 62112201
+        - us. 86400 IN RRSIG DS 8 1 86400 20200513170000 20200430160000 48903 . iwAdFM7FNufqTpU/pe1nySyTeND3C2KvzXgMYR3+yLMXhu1bqbQ+Dy7G 7SdYAs4iBy/vrZZGrNtO6PATa0bFtRfpy7A52rOc/75Dl3CFf0dnP3Rr 4h9OSclxSy/Il/5Z8FsPkf5ZqVSRiA2ReIR5/M5Zzepr+alLMUDmZBW1 L2lotcGrGIJD3xtAB/rhdJrLugtFeCrQhBhCC+obZlZZN7AqF2UyfXR5 3li7h5YvCvpOCwtlwya2u9rR2vu619nPTsAEO1a0Hi9jgPJjGG0UlE9F oNndbXB2FR18cogeeI0pWWAgi+QM41X0eTnkA5u34rlqoy+ob8uIv69r K9jXlA==

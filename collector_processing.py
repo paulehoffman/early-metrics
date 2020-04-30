@@ -252,7 +252,7 @@ def process_one_correctness_array(in_array):
 		return
 	if this_resp_obj[0]["type"] == "DIG_ERROR":
 		if opts.test:
-			return "{}\t{}\t{}".format(this_id, True, "Timeout")
+			return "Timeout"
 		else:
 			try:
 				conn = psycopg2.connect(dbname="metrics", user="metrics")
@@ -267,11 +267,10 @@ def process_one_correctness_array(in_array):
 	elif not this_resp_obj[0]["type"] == "MESSAGE":
 		unexpected_message = "Found an unexpected dig type '{}' in correctness_info for {}".format(this_resp_obj[0]["type"], this_id)
 		if opts.test:
-			return "{}\t{}\t{}".format(this_id, False, unexpected_message)
+			return unexpected_message
 		else:
 			alert(unexpected_message)
-			return
-	
+			return	
 	# Convert this_recent_soa_serial_array into root_to_check by reading the file and unpickling it
 	recent_soa_pickle_filename = "{}/{}.matching.pickle".format(saved_matching_dir, this_recent_soa_serial_array[-1])
 	try:
@@ -530,7 +529,7 @@ def process_one_correctness_array(in_array):
 	failure_reason_text = "\n".join(pared_failure_reasons)
 	make_is_correct = (failure_reason_text == "")
 	if opts.test:
-		return "{}\t{}\t{}".format(this_id, make_is_correct, failure_reason_text)
+		return failure_reason_text
 	else:
 		try:
 			conn = psycopg2.connect(dbname="metrics", user="metrics")
@@ -604,15 +603,15 @@ if __name__ == "__main__":
 	# Tests can be run outside the normal cron job. Output is to the terminal, not logging.
 	if opts.test:
 		log("Running tests instead of a real run")
-		tests_dir = "{}/Tests".format(target_dir)
-		if not os.path.exists(tests_dir):
-			exit("Could not find {}".format(tests_dir))
-		soa_for_testing = open("{}/1-soa-to-use".format(tests_dir), mode="rt").read().strip()
+		tests_dir = os.path.expanduser("~/home/metrics/repo/Tests")
+		soa_for_testing = open("{}/soa-to-use".format(tests_dir), mode="rt").read().strip()
 		this_recent_soa_serial_array = [ soa_for_testing ]
-		for this_test_file in sorted(glob.glob("{}/*.test".format(tests_dir))):
-			this_id = os.path.basename(this_test_file).replace(".test", "")
+		for this_test_file in sorted(glob.glob("{}/p-*".format(tests_dir))):
+			this_id = os.path.basename(this_test_file)
 			this_resp_pickle = pickle.dumps(yaml.load(open(this_test_file, mode="rb")))
-			print(process_one_correctness_array([this_id, this_recent_soa_serial_array, this_resp_pickle]))
+			this_response = (process_one_correctness_array([this_id, this_recent_soa_serial_array, this_resp_pickle]))
+			if this_response:
+				print("Expected pass, bug got failure, on {}".format(this_id))
 		log("Finished tests")
 		exit()
 

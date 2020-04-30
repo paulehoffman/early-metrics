@@ -1,0 +1,36 @@
+-
+  type: MESSAGE
+  message:
+    type: AUTH_RESPONSE
+    query_time: !!timestamp 2020-04-30T18:32:37.755Z
+    response_time: !!timestamp 2020-04-30T18:32:37.780Z
+    message_size: 1049b
+    socket_family: INET
+    socket_protocol: UDP
+    response_address: 198.41.0.4
+    response_port: 53
+    query_address: 0.0.0.0
+    query_port: 60826
+    response_message_data:
+      opcode: QUERY
+      status: NXDOMAIN
+      id: 4511
+      flags: qr aa
+      QUESTION: 1
+      ANSWER: 0
+      AUTHORITY: 6
+      ADDITIONAL: 1
+      OPT_PSEUDOSECTION:
+        EDNS:
+          version: 0
+          flags: do
+          udp: 4096
+      QUESTION_SECTION:
+        - www.rssac047-test.hwzvpicwen. IN A
+      AUTHORITY_SECTION:
+        - . 86400 IN SOA a.root-servers.net. nstld.verisign-grs.com. 2020043001 1800 900 604800 86400
+        - . 86400 IN RRSIG SOA 8 0 86400 20200513170000 20200430160000 48903 . zf/VQKuBj3zntboSZZamLViGdnkwwzXWkrHHANsNLKBcIdtmvwO4QO4t 062ophDebSV5moGbI3j2gJxPuTYVvFacg/QP4qzKiZIpnXhRiG40Z7Kl iEZc9aadzk0JLcgb650VjI6r0eoiTNJ3H9KPTUOv3uDB/5UXIi+3bL6/ gZLa/d6NZok+ZBPf49rKha2F0lrUFTEWZuu4wU16XolUXmGV9rU6wmAE BOl2ro9iv56r7mH4/eiN+74CFWFY5Uqz+ZA8pGF7xXSXvUaM8KWzCOcw OSW9EllwzslmYLluV0YwXh8w/wJcbyG/8v4JAacXK7C93UOKLDmBmkYl mpGmUw==
+        - hughes. 86400 IN NSEC hyatt. NS DS RRSIG NSEC
+        - hughes. 86400 IN RRSIG NSEC 8 1 86400 20200513170000 20200430160000 48903 . tnxlrTmrpWzHsY61fW+E/gjjlWoEJEqwJtqhpjdxfvjNkElAelH7R2pz owRb9XJezjUOXPByuQVAIOBqNDP1KTuwznL9KZ0PmgpMKZtT2uV5wkiL urYMSwq7MP6A3q8r3OVw7OZnNXPrg0KxkfVyd7uim51NcWXdGHpse66I wNxtBulaN1BFjCc7N02bNxMEYgyicd2icmrtS6c1y3SHYdsqAxY/1UfC kRq5kRVdut4EOCAETSvsWuYeSDyfYS3ncBsH94+OsMISVK7k+F1ibMEZ CjyRVFR6ZWilX9M7oJheeZBpnc2DtGRkAL+A9mUMVUo7H4/RHspKVWXH rovDww==
+        - . 86400 IN NSEC aaa. NS SOA RRSIG NSEC DNSKEY
+        - . 86400 IN RRSIG NSEC 8 0 86400 20200513170000 20200430160000 48903 . J3CeswTIZtVGIyRCyz4cBkVC/in4M8yBb3TBFgdNqsT+zNsY5QkLYQdV eAGqp8c2pOFWY8+PVcjHlwrD9sBlfrhqjWrNm32kK+mCFhS2vjt/dEdX HxS4dCUWVnI6WkuSbALjLXjdEZBNCRREWUY1+qdURsATD43Bjs+4l+jl 0bjA+Hjoy5ggB0IMRsVGdjW9m4xp8bYDEWx3Ub8OCRji546fMtbTbccp IS8OgKISuqiVwmKh/RH7mERSai0j/9O9FTn8ux6yLVDQILQXzOP6NDxW ygNaMnh7W2NiaCgHb/pn2fsNAOUVG0sSCgZheKvPCDV0mAv5Y0IjTL8y I2Y7Sw==
