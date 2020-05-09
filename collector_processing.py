@@ -244,15 +244,15 @@ def process_one_correctness_array(in_array):
 	#   Normally returns nothing because it is writing the results into the correctness_info database
 	#   If running under opts.test, it does not write into the database but instead returns the results as text
 	(this_id, this_recent_soa_serial_array, this_resp_pickle) = in_array
-	# See if it is a timeout; if so, set is_correct but move on [lbl]
 	try:
 		this_resp_obj = pickle.loads(this_resp_pickle)
 	except Exception as e:
 		alert("Could not unpickle in correctness_info for {}: '{}'".format(this_id, e))
 		return
+	# See if it is a timeout; if so, set is_correct but move on [lbl]
 	if this_resp_obj[0]["type"] == "DIG_ERROR":
 		if opts.test:
-			return "Timeout"
+			return "Timeout [lbl]"
 		else:
 			try:
 				conn = psycopg2.connect(dbname="metrics", user="metrics")
@@ -311,13 +311,13 @@ def process_one_correctness_array(in_array):
 					rrsets_for_checking[this_key].add(rec_rdata)
 			for this_rrset_key in rrsets_for_checking:
 				if not this_rrset_key in root_to_check:
-					failure_reasons.append("{} was in {} in the response but not the root".format(this_rrset_key, this_section_name))
+					failure_reasons.append("{} was in {} in the response but not the root [vnk]".format(this_rrset_key, this_section_name))
 				else:
 					if rrsets_for_checking[this_rrset_key] < root_to_check[this_rrset_key]:
-						failure_reasons.append("RRset '{}' in response is shorter than '{}' in root zone".\
+						failure_reasons.append("RRset '{}' in response is shorter than '{}' in root zone [vnk]".\
 							format(rrsets_for_checking[this_rrset_key], root_to_check[this_rrset_key]))
 					elif rrsets_for_checking[this_rrset_key] > root_to_check[this_rrset_key]:
-						failure_reasons.append("RRset '{}' in response is longer than '{}' in root zone".\
+						failure_reasons.append("RRset '{}' in response is longer than '{}' in root zone [vnk]".\
 							format(rrsets_for_checking[this_rrset_key], root_to_check[this_rrset_key]))
 
 	# Check that each of the RRsets that are signed have their signatures validated. [yds]
@@ -602,7 +602,7 @@ if __name__ == "__main__":
 
 	# Tests can be run outside the normal cron job. Output is to the terminal, not logging.
 	if opts.test:
-		log("Running tests instead of a real run")
+		print("Running tests instead of a real run")
 		tests_dir = "/home/metrics/repo/Tests"
 		soa_for_testing = open("{}/soa-to-use".format(tests_dir), mode="rt").read().strip()
 		this_recent_soa_serial_array = [ soa_for_testing ]
@@ -624,7 +624,7 @@ if __name__ == "__main__":
 			this_response = (process_one_correctness_array([this_id, this_recent_soa_serial_array, this_resp_pickle]))
 			if not this_response:
 				print("Expected failure, bug got pass, on {}".format(this_id))
-		log("Finished testing {} positive and {} negative tests".format(p_count, n_count))
+		print("Finished testing {} positive and {} negative tests".format(p_count, n_count))
 		exit()
 
 	log("Started overall collector processing")

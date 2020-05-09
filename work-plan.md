@@ -51,12 +51,14 @@
 	- Linode
 	- Digital Ocean
 	- AWS
+		- AWS recently opened shop at Cape Town South Africa. https://aws.amazon.com/local/africa/ 
 	- Azure
+		- Microsoft Azure cloud is also available running in datacentres also in Cape Town and Johannesburg South Africa. https://azure.microsoft.com/en-us/global-infrastructure/southafrica/ 
 	- Google Cloud
 	- OVH
 	- Vultr.com
-	- Ask the GSEs for others
-
+	- Liquid Telecom in Africa
+	- https://www.africadatacentres.com/ 
 
 ## Collector
 
