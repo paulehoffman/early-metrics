@@ -22,8 +22,6 @@ n_files = {}
 
 # All of the RRsets in the Answer, Authority, and Additional sections match RRsets found in the zone. [vnk]
 
-########## Need to check longer, shorter, and different value
-
 # Add a new record to Answer
 out_text = "# [ffr] Start with p-dot-ns, add z.root-servers.net\n"
 for this_line in p_files["p-dot-ns"]:
@@ -61,7 +59,7 @@ n_files["n-vnk-zoc"] = out_text
 out_text = "# [gye] Start with p-tld-ns, change c.cctld.us. to z.cctld.us\n"
 for this_line in p_files["p-tld-ns"]:
 	if this_line == "        - us. 172800 IN NS c.cctld.us.\n":
-		out_text = "        - us. 172800 IN NS z.cctld.us.\n"
+		out_text += "        - us. 172800 IN NS z.cctld.us.\n"
 	else:
 		out_text += this_line
 n_files["n-vnk-gye"] = out_text
