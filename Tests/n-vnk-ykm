@@ -1,4 +1,5 @@
-# [ykm] Start with p-tld-ns, change A for c.cctld.us-
+# [ykm] Start with p-tld-ns, change A for c.cctld.us.
+-
   type: MESSAGE
   message:
     type: AUTH_RESPONSE

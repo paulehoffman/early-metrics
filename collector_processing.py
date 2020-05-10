@@ -600,7 +600,9 @@ if __name__ == "__main__":
 	if not os.path.exists(saved_matching_dir):
 		os.mkdir(saved_matching_dir)
 
-	# Tests can be run outside the normal cron job. Output is to the terminal, not logging.
+	###############################################################
+
+	# Tests can be run outside the normal cron job. Output is to the terminal, not logging. Exits when done
 	if opts.test:
 		print("Running tests instead of a real run")
 		tests_dir = "/home/metrics/repo/Tests"
@@ -626,6 +628,8 @@ if __name__ == "__main__":
 				print("Expected failure, bug got pass, on {}".format(this_id))
 		print("Finished testing {} positive and {} negative tests".format(p_count, n_count))
 		exit()
+
+	###############################################################
 
 	log("Started overall collector processing")
 	

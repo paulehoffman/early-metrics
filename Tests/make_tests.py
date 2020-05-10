@@ -39,7 +39,7 @@ for this_line in p_files["p-tld-ns"]:
 n_files["n-vnk-zoc"] = out_text
 
 # Add a new record to Additional
-out_text = "# [rse] Start with p-tld-ns, add an A for c.cctld.us"
+out_text = "# [rse] Start with p-tld-ns, add an A for c.cctld.us.\n"
 for this_line in p_files["p-tld-ns"]:
 	if this_line == "        - c.cctld.us. 172800 IN A 156.154.127.70\n":
 		out_text += "        - c.cctld.us. 172800 IN A 156.154.127.99\n"
@@ -65,7 +65,7 @@ for this_line in p_files["p-tld-ns"]:
 n_files["n-vnk-gye"] = out_text
 
 # Change a record in Additional
-out_text = "# [ykm] Start with p-tld-ns, change A for c.cctld.us"
+out_text = "# [ykm] Start with p-tld-ns, change A for c.cctld.us.\n"
 for this_line in p_files["p-tld-ns"]:
 	if this_line == "        - c.cctld.us. 172800 IN A 156.154.127.70\n":
 		out_text += "        - c.cctld.us. 172800 IN A 156.154.127.99\n"
