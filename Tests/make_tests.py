@@ -37,7 +37,7 @@ def create_n_file(id, compare_name, desc, file_lines):
 # Add a new record to Answer
 id = "ffr"
 compare_name = "p-dot-ns"
-desc = "Start with p-dot-ns, add z.root-servers.net to Answer\n"
+desc = "Start with p-dot-ns, add z.root-servers.net to Answer"
 file_lines = []
 for this_line in p_files[compare_name]:
 	if this_line == "        - . 518400 IN NS a.root-servers.net.":
@@ -48,7 +48,8 @@ create_n_file(id, compare_name, desc, file_lines)
 # Change a record in Answer
 id = "vpn"
 compare_name = "p-dot-ns"
-desc = "Start with p-dot-ns, change a.root-server.net to z.root-servers.net in Answer\n"
+desc = "Start with p-dot-ns, change a.root-server.net to z.root-servers.net in Answer"
+file_lines = []
 for this_line in p_files[compare_name]:
 	if this_line == "        - . 518400 IN NS a.root-servers.net.":
 		file_lines.append("        - . 518400 IN NS z.root-servers.net.")
@@ -59,7 +60,8 @@ create_n_file(id, compare_name, desc, file_lines)
 # Delete a record from Answer
 id = "uuc"
 compare_name = "p-dot-ns"
-desc = "Start with p-dot-ns, delete a.root-servers.net from Answer\n"
+desc = "Start with p-dot-ns, delete a.root-servers.net from Answer"
+file_lines = []
 for this_line in p_files[compare_name]:
 	if this_line == "        - . 518400 IN NS a.root-servers.net.":
 		continue
@@ -67,12 +69,17 @@ for this_line in p_files[compare_name]:
 create_n_file(id, compare_name, desc, file_lines) 
 
 # Add a new record to Authority 
-out_text = "# [zoc] Start with p-tld-ns, add z.cctld.us\n"
-for this_line in p_files["p-tld-ns"]:
-	if this_line == "        - us. 172800 IN NS c.cctld.us.\n":
-		out_text += "        - us. 172800 IN NS z.cctld.us.\n"
-	out_text += this_line
-n_files["n-vnk-zoc"] = out_text
+id = "zoc"
+compare_name = "p-tld-ns"
+desc = "Start with p-tld-ns, add z.cctld.us from Authority"
+file_lines = []
+for this_line in p_files[compare_name]:
+	if this_line == "        - us. 172800 IN NS c.cctld.us.":
+		file_lines.append("        - us. 172800 IN NS z.cctld.us.")
+	file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
+
+"""
 
 # Change a record in Authority
 out_text = "# [gye] Start with p-tld-ns, change c.cctld.us. to z.cctld.us\n"
@@ -118,3 +125,4 @@ for this_line in p_files["p-tld-ns"]:
 		out_text += this_line
 n_files["n-vnk-xpa"] = out_text
 
+"""
