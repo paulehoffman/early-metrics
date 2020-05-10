@@ -1,9 +1,0 @@
-        - c.cctld.us. 172800 IN A 156.154.127.99
-        - k.cctld.us. 172800 IN A 156.154.128.70
-        - k.cctld.us. 172800 IN AAAA 2001:503:e239::3:1
-        - a.cctld.us. 172800 IN A 156.154.124.70
-        - b.cctld.us. 172800 IN A 156.154.125.70
-        - b.cctld.us. 172800 IN AAAA 2001:502:ad09::29
-        - f.cctld.us. 172800 IN A 209.173.58.70
-        - f.cctld.us. 172800 IN AAAA 2001:500:3682::11
-        - e.cctld.us. 172800 IN A 156.154.126.70
