@@ -314,11 +314,11 @@ def process_one_correctness_array(in_array):
 					failure_reasons.append("{} was in {} in the response but not the root [vnk]".format(this_rrset_key, this_section_name))
 				else:
 					if rrsets_for_checking[this_rrset_key] < root_to_check[this_rrset_key]:
-						failure_reasons.append("RRset '{}' in response is shorter than '{}' in root zone [vnk]".\
-							format(rrsets_for_checking[this_rrset_key], root_to_check[this_rrset_key]))
+						failure_reasons.append("RRset '{}' in {} in response is shorter than '{}' in root zone [vnk]".\
+							format(rrsets_for_checking[this_rrset_key], this_section_name, root_to_check[this_rrset_key]))
 					elif rrsets_for_checking[this_rrset_key] > root_to_check[this_rrset_key]:
-						failure_reasons.append("RRset '{}' in response is longer than '{}' in root zone [vnk]".\
-							format(rrsets_for_checking[this_rrset_key], root_to_check[this_rrset_key]))
+						failure_reasons.append("RRset '{}' in {} in response is longer than '{}' in root zone [vnk]".\
+							format(rrsets_for_checking[this_rrset_key], this_section_name, root_to_check[this_rrset_key]))
 
 	# Check that each of the RRsets that are signed have their signatures validated. [yds]
 	#   Send all the records in each section to the function that checks for validity
@@ -625,7 +625,7 @@ if __name__ == "__main__":
 			this_resp_pickle = pickle.dumps(yaml.load(open(this_test_file, mode="rb")))
 			this_response = (process_one_correctness_array([this_id, this_recent_soa_serial_array, this_resp_pickle]))
 			if not this_response:
-				print("Expected failure, bug got pass, on {}".format(this_id))
+				print("Expected failure, but got pass, on {}".format(this_id))
 		print("Finished testing {} positive and {} negative tests".format(p_count, n_count))
 		exit()
 
