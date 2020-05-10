@@ -365,12 +365,13 @@ def process_one_correctness_array(in_array):
 				failure_reasons.append("Authority section was empty")
 			root_ns_for_qname = root_to_check["{}/NS".format(this_qname)]
 			auth_ns_for_qname = set()
-			for this_rec in resp["AUTHORITY_SECTION"]:
-				(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ", maxsplit=4)
-				if rec_qtype == "NS":
-					auth_ns_for_qname.add(rec_rdata)
-			if not auth_ns_for_qname == root_ns_for_qname:
-				failure_reasons.append("NS RRset in Authority was '{}', but NS from root was '{}'".format(auth_ns_for_qname, root_ns_for_qname))
+			if resp.get("AUTHORITY_SECTION"):
+				for this_rec in resp["AUTHORITY_SECTION"]:
+					(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ", maxsplit=4)
+					if rec_qtype == "NS":
+						auth_ns_for_qname.add(rec_rdata)
+				if not auth_ns_for_qname == root_ns_for_qname:
+					failure_reasons.append("NS RRset in Authority was '{}', but NS from root was '{}'".format(auth_ns_for_qname, root_ns_for_qname))
 			# If the DS RRset for the query name exists in the zone: [hue]
 			if root_to_check.get("{}/DS".format(this_qname)):
 				# The Authority section contains the signed DS RRset for the query name. [kbd]
