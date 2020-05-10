@@ -11,11 +11,11 @@ p-dot-soa
 p-neg
 p-tld-ds
 p-tld-ns
-'''.strip().readlines()
+'''.strip().splitlines()
 
 p_files = {}
 for this_file in p_file_names:
-	p_files[this_file] = open(this_file, mode="rt").readlines()
+	p_files[this_file] = open(this_file, mode="rt").read().splitlines()
 
 def create_n_file(id, compare_name, desc, file_lines):
 	compare_lines = p_files[compare_name]
@@ -37,7 +37,7 @@ def create_n_file(id, compare_name, desc, file_lines):
 # Add a new record to Answer
 id = "ffr"
 compare_name = "p-dot-ns"
-desc = "Start with p-dot-ns, add z.root-servers.net\n"
+desc = "Start with p-dot-ns, add z.root-servers.net to Answer\n"
 file_lines = []
 for this_line in p_files[compare_name]:
 	if this_line == "        - . 518400 IN NS a.root-servers.net.":
@@ -45,25 +45,26 @@ for this_line in p_files[compare_name]:
 	file_lines.append(this_line)
 create_n_file(id, compare_name, desc, file_lines) 
 
-exit()
-#########################
-
 # Change a record in Answer
-out_text = "# [vpn] Start with p-dot-ns, change a.root-server.net to z.root-servers.net\n"
-for this_line in p_files["p-dot-ns"]:
-	if this_line == "        - . 518400 IN NS a.root-servers.net.\n":
-		out_text += "        - . 518400 IN NS z.root-servers.net.\n"
+id = "vpn"
+compare_name = "p-dot-ns"
+desc = "Start with p-dot-ns, change a.root-server.net to z.root-servers.net in Answer\n"
+for this_line in p_files[compare_name]:
+	if this_line == "        - . 518400 IN NS a.root-servers.net.":
+		file_lines.append("        - . 518400 IN NS z.root-servers.net.")
 	else:
-		out_text += this_line
-n_files["n-vnk-vpn"] = out_text
+		file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
 
 # Delete a record from Answer
-out_text = "# [uuc] Start with p-dot-ns, delete a.root-servers.net\n"
-for this_line in p_files["p-dot-ns"]:
-	if this_line == "        - . 518400 IN NS a.root-servers.net.\n":
+id = "uuc"
+compare_name = "p-dot-ns"
+desc = "Start with p-dot-ns, delete a.root-servers.net from Answer\n"
+for this_line in p_files[compare_name]:
+	if this_line == "        - . 518400 IN NS a.root-servers.net.":
 		continue
-	out_text += this_line
-n_files["n-vnk-uuc"] = out_text
+	file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
 
 # Add a new record to Authority 
 out_text = "# [zoc] Start with p-tld-ns, add z.cctld.us\n"
