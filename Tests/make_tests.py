@@ -1,7 +1,28 @@
 #!/usr/bin/env python3
 ''' Program to make tests for metrics testing '''
+import glob, os
 
-# Text is copied from rssac-047.mkd
+def create_n_file(id, compare_name, desc, file_lines):
+	compare_lines = p_files[compare_name]
+	# Check if nothing changed
+	if file_lines == compare_lines:
+		exit("Found unchanged test creation for {}".format(id))
+	# Check if the test does not start as expected
+	if not file_lines[0] == "-":
+		exit("First line of {} was not '-'".format(id))
+	# Write the file
+	f = open("n-{}".format(id), mode="wt")
+	f.write("# [{}] {}\n".format(id, desc))
+	for this_line in file_lines:
+		f.write(this_line + "\n")
+	f.close()
+
+# Delete all the negative files before re-creating them
+for this_to_delete in glob.glob("n-*"):
+	try:
+		os.unlink(this_to_delete)
+	except:
+		exit("Stopping early because can't delete {}".format(this_to_delete))
 
 # Read all the positive files into memory
 p_file_names = '''
@@ -17,20 +38,7 @@ p_files = {}
 for this_file in p_file_names:
 	p_files[this_file] = open(this_file, mode="rt").read().splitlines()
 
-def create_n_file(id, compare_name, desc, file_lines):
-	compare_lines = p_files[compare_name]
-	# Check if nothing changed
-	if file_lines == compare_lines:
-		exit("Found unchanged test creation for {}".format(id))
-	# Check if the test does not start as expected
-	if not file_lines[0] == "-":
-		exit("First line of {} was not '-'".format(id))
-	# Write the file
-	f = open("n-{}".format(id), mode="wt")
-	f.write("# [{}] {}".format(id, desc))
-	for this_line in file_lines:
-		f.write(this_line + "\n")
-	f.close()
+##########
 
 # All of the RRsets in the Answer, Authority, and Additional sections match RRsets found in the zone. [vnk]
 
@@ -79,50 +87,62 @@ for this_line in p_files[compare_name]:
 	file_lines.append(this_line)
 create_n_file(id, compare_name, desc, file_lines) 
 
-"""
-
 # Change a record in Authority
-out_text = "# [gye] Start with p-tld-ns, change c.cctld.us. to z.cctld.us\n"
-for this_line in p_files["p-tld-ns"]:
-	if this_line == "        - us. 172800 IN NS c.cctld.us.\n":
-		out_text += "        - us. 172800 IN NS z.cctld.us.\n"
+id = "gye"
+compare_name = "p-tld-ns"
+desc = "Start with p-tld-ns, change z.cctld.us to z.cctld.us in Authority"
+file_lines = []
+for this_line in p_files[compare_name]:
+	if this_line == "        - us. 172800 IN NS c.cctld.us.":
+		file_lines.append("        - us. 172800 IN NS z.cctld.us.")
 	else:
-		out_text += this_line
-n_files["n-vnk-gye"] = out_text
+		file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
 
 # Delete a a record from Authority
-out_text = "# [gut] Start with p-tld-ns, delete c.cctld.us.\n"
-for this_line in p_files["p-tld-ns"]:
-	if this_line == "        - us. 172800 IN NS c.cctld.us.\n":
+id = "gut"
+compare_name = "p-tld-ns"
+desc = "Start with p-tld-ns, delete c.cctld.us.in Authority"
+file_lines = []
+for this_line in p_files[compare_name]:
+	if this_line == "        - us. 172800 IN NS c.cctld.us.":
 		continue
-	else:
-		out_text += this_line
-n_files["n-vnk-gut"] = out_text
+	file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
 
 # Add a new record to Additional
-out_text = "# [rse] Start with p-tld-ns, add an A for c.cctld.us\n"
-for this_line in p_files["p-tld-ns"]:
-	if this_line == "        - c.cctld.us. 172800 IN A 156.154.127.70\n":
-		out_text += "        - c.cctld.us. 172800 IN A 156.154.127.99\n"
-	out_text += this_line
-n_files["n-vnk-rse"] = out_text
+id = "rse"
+compare_name = "p-tld-ns"
+desc = "Start with p-tld-ns, add an A for c.cctld.us in Additional"
+file_lines = []
+for this_line in p_files[compare_name]:
+	if this_line == "        - c.cctld.us. 172800 IN A 156.154.127.70":
+		file_lines.append("        - c.cctld.us. 172800 IN A 156.154.127.99")
+	file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
 
 # Change a record in Additional
-out_text = "# [ykm] Start with p-tld-ns, change A for c.cctld.us\n"
-for this_line in p_files["p-tld-ns"]:
-	if this_line == "        - c.cctld.us. 172800 IN A 156.154.127.70\n":
-		out_text += "        - c.cctld.us. 172800 IN A 156.154.127.99\n"
+id = "ykm"
+compare_name = "p-tld-ns"
+desc = "Start with p-tld-ns, change A for c.cctld.us in Addtional"
+file_lines = []
+for this_line in p_files[compare_name]:
+	if this_line == "        - c.cctld.us. 172800 IN A 156.154.127.70":
+		file_lines.append("        - c.cctld.us. 172800 IN A 156.154.127.99")
 	else:
-		out_text += this_line
-n_files["n-vnk-ykm"] = out_text
+		file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
 
 # Delete a a record from Additional
-out_text = "# [xpa] Start with p-tld-ns, change A for c.cctld.us\n"
-for this_line in p_files["p-tld-ns"]:
-	if this_line == "        - c.cctld.us. 172800 IN A 156.154.127.70\n":
+id = "xpa"
+compare_name = "p-tld-ns"
+desc = "Start with p-tld-ns, change A for c.cctld.us.in Additional"
+file_lines = []
+for this_line in p_files[compare_name]:
+	if this_line == "        - us. 172800 IN NS c.cctld.us.":
 		continue
-	else:
-		out_text += this_line
-n_files["n-vnk-xpa"] = out_text
+	file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
 
-"""
+##########
+
