@@ -146,3 +146,44 @@ for this_line in p_files[compare_name]:
 		file_lines.append(this_line)
 create_n_file(id, compare_name, desc, file_lines) 
 
+##########
+
+# For positive responses with QNAME = <TLD> and QTYPE = NS, a correct result requires all of the following: [hmk]
+#   Use p-tld-ns
+
+# The header AA bit is not set. [ujy]
+id = "xpa"
+compare_name = "p-tld-ns"
+desc = "Start with p-tld-ns, set the AA bit"
+file_lines = []
+for this_line in p_files[compare_name]:
+	if this_line == "      flags: qr":
+		file_lines.append("      flags: qr aa")
+	else:
+		file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
+
+# The Answer section is empty. [aeg]
+id = "aul"
+compare_name = "p-tld-ns"
+desc = "Start with p-tld-ns, make the Authority section the Answer section instead"
+file_lines = []
+for this_line in p_files[compare_name]:
+	if this_line == "      AUTHORITY_SECTION:":
+		file_lines.append("      ANSWER_SECTION:")
+	else:
+		file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
+
+
+"""
+
+- The Authority section contains the entire NS RRset for the query name. `[pdd]`
+- If the DS RRset for the query name exists in the zone:`[hue]`
+  - The Authority section contains the signed DS RRset for the query name. `[kbd]`
+- If the DS RRset for the query name does not exist in the zone: `[fot]`
+  - The Authority section contains no DS RRset. `[bgr]`
+  - The Authority section contains a signed NSEC RRset covering the query name. `[mkl]` __NOT GOOD WORDING HERE__
+- The Additional section contains at least one A or AAAA record found in the zone associated with at least one NS record found in the Authority section. `[cjm]`
+"""
+
