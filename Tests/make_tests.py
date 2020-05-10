@@ -136,10 +136,10 @@ create_n_file(id, compare_name, desc, file_lines)
 # Delete a a record from Additional
 id = "xpa"
 compare_name = "p-tld-ns"
-desc = "Start with p-tld-ns, change A for c.cctld.us.in Additional"
+desc = "Start with p-tld-ns, delete A for c.cctld.us.in Additional"
 file_lines = []
 for this_line in p_files[compare_name]:
-	if this_line == "        - us. 172800 IN NS c.cctld.us.":
+	if this_line == "        - c.cctld.us. 172800 IN A 156.154.127.70":
 		continue
 	file_lines.append(this_line)
 create_n_file(id, compare_name, desc, file_lines) 
