@@ -11,26 +11,25 @@ p-dot-soa
 p-neg
 p-tld-ds
 p-tld-ns
-'''.strip().splitlines()
+'''.strip().readlines()
 
 p_files = {}
 for this_file in p_file_names:
 	p_files[this_file] = open(this_file, mode="rt").readlines()
 
-def create_n_file(id, compare_name, desc, in_text)
-	compare_text = p_files[]
+def create_n_file(id, compare_name, desc, file_lines):
+	compare_lines = p_files[compare_name]
 	# Check if nothing changed
-	if in_text == compare_text:
+	if file_lines == compare_lines:
 		exit("Found unchanged test creation for {}".format(id))
-	in_lines = in_text.splitlines()
-	compare_lines = compare_text.splitlines()
 	# Check if the test does not start as expected
-	if not in_text[0] == "-":
+	if not file_lines[0] == "-":
 		exit("First line of {} was not '-'".format(id))
 	# Write the file
 	f = open("n-{}".format(id), mode="wt")
 	f.write("# [{}] {}".format(id, desc))
-	f.write(in_text)
+	for this_line in file_lines:
+		f.write(this_line + "\n")
 	f.close()
 
 # All of the RRsets in the Answer, Authority, and Additional sections match RRsets found in the zone. [vnk]
@@ -39,12 +38,15 @@ def create_n_file(id, compare_name, desc, in_text)
 id = "ffr"
 compare_name = "p-dot-ns"
 desc = "Start with p-dot-ns, add z.root-servers.net\n"
+file_lines = []
 for this_line in p_files[compare_name]:
-	if this_line == "        - . 518400 IN NS a.root-servers.net.\n":
-		out_text += "        - . 518400 IN NS z.root-servers.net.\n"
-	out_text += this_line
-create_n_file(id, compare_name, desc, out_text) 
-n_files["n-vnk-ffr"] = out_text
+	if this_line == "        - . 518400 IN NS a.root-servers.net.":
+		file_lines.append("        - . 518400 IN NS z.root-servers.net.")
+	file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
+
+exit()
+#########################
 
 # Change a record in Answer
 out_text = "# [vpn] Start with p-dot-ns, change a.root-server.net to z.root-servers.net\n"
