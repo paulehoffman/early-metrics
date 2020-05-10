@@ -41,6 +41,10 @@ for this_file in p_file_names:
 ##########
 
 # All of the RRsets in the Answer, Authority, and Additional sections match RRsets found in the zone. [vnk]
+#   Add and change records in Answer (although this will also fail due to DNSSEC validation
+#   Add and change unsigned records in Authority
+#   Add and change unsigned records in Addtional
+#   Note that deleting records is not covered here because that can't be tested
 
 # Add a new record to Answer
 id = "ffr"
@@ -68,7 +72,7 @@ create_n_file(id, compare_name, desc, file_lines)
 # Add a new record to Authority 
 id = "zoc"
 compare_name = "p-tld-ns"
-desc = "Start with p-tld-ns, add z.cctld.us from Authority"
+desc = "Start with p-tld-ns, add z.cctld.us to Authority"
 file_lines = []
 for this_line in p_files[compare_name]:
 	if this_line == "        - us. 172800 IN NS c.cctld.us.":
@@ -79,7 +83,7 @@ create_n_file(id, compare_name, desc, file_lines)
 # Change a record in Authority
 id = "gye"
 compare_name = "p-tld-ns"
-desc = "Start with p-tld-ns, change z.cctld.us to z.cctld.us in Authority"
+desc = "Start with p-tld-ns, change c.cctld.us to z.cctld.us in Authority"
 file_lines = []
 for this_line in p_files[compare_name]:
 	if this_line == "        - us. 172800 IN NS c.cctld.us.":
@@ -112,4 +116,33 @@ for this_line in p_files[compare_name]:
 create_n_file(id, compare_name, desc, file_lines) 
 
 ##########
+
+# All RRsets that are signed have their signatures validated. [yds]
+#   Change the RRSIGs in different ways
+#   p-tld-ds has signed DS records for .us in the answer; the RRSIG looks like:
+#           - us. 86400 IN RRSIG DS 8 1 86400 20200513170000 20200430160000 48903 . iwAdFM7FNufqTpU/pe1nySyTeND3C2KvzXgMYR3+yLMXhu1bqbQ+Dy7G . . .
+
+# Change the RDATA but changing the covered type
+id = "uuc"
+compare_name = "p-tld-ds"
+desc = "Start with p-tld-ds, change the RRSIG RData in the Answer"
+file_lines = []
+for this_line in p_files[compare_name]:
+	if "RRSIG DS 8 1 86400 20200513170000 20200430160000" in this_line:
+		file_lines.append(this_line.replace("RRSIG DS 8", "RRSIG AAAA 8"))
+	else:
+		file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
+
+# Change the signature value itself
+id = "gut"
+compare_name = "p-tld-ds"
+desc = "Start with p-tld-ds, change the RRSIG signature"
+file_lines = []
+for this_line in p_files[compare_name]:
+	if "RRSIG DS 8 1 86400 20200513170000 20200430160000" in this_line:
+		file_lines.append(this_line.replace("pe1nySyTeND3C2KvzXgMYR3", "pe1nySyTeND3C2KvzXgMYR4"))
+	else:
+		file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
 
