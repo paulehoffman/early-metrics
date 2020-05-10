@@ -65,17 +65,6 @@ for this_line in p_files[compare_name]:
 		file_lines.append(this_line)
 create_n_file(id, compare_name, desc, file_lines) 
 
-# Delete a record from Answer
-id = "uuc"
-compare_name = "p-dot-ns"
-desc = "Start with p-dot-ns, delete a.root-servers.net from Answer"
-file_lines = []
-for this_line in p_files[compare_name]:
-	if this_line == "        - . 518400 IN NS a.root-servers.net.":
-		continue
-	file_lines.append(this_line)
-create_n_file(id, compare_name, desc, file_lines) 
-
 # Add a new record to Authority 
 id = "zoc"
 compare_name = "p-tld-ns"
@@ -99,17 +88,6 @@ for this_line in p_files[compare_name]:
 		file_lines.append(this_line)
 create_n_file(id, compare_name, desc, file_lines) 
 
-# Delete a a record from Authority
-id = "gut"
-compare_name = "p-tld-ns"
-desc = "Start with p-tld-ns, delete c.cctld.us.in Authority"
-file_lines = []
-for this_line in p_files[compare_name]:
-	if this_line == "        - us. 172800 IN NS c.cctld.us.":
-		continue
-	file_lines.append(this_line)
-create_n_file(id, compare_name, desc, file_lines) 
-
 # Add a new record to Additional
 id = "rse"
 compare_name = "p-tld-ns"
@@ -131,17 +109,6 @@ for this_line in p_files[compare_name]:
 		file_lines.append("        - c.cctld.us. 172800 IN A 156.154.127.99")
 	else:
 		file_lines.append(this_line)
-create_n_file(id, compare_name, desc, file_lines) 
-
-# Delete a a record from Additional
-id = "xpa"
-compare_name = "p-tld-ns"
-desc = "Start with p-tld-ns, delete A for c.cctld.us.in Additional"
-file_lines = []
-for this_line in p_files[compare_name]:
-	if this_line == "        - c.cctld.us. 172800 IN A 156.154.127.70":
-		continue
-	file_lines.append(this_line)
 create_n_file(id, compare_name, desc, file_lines) 
 
 ##########

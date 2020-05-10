@@ -313,11 +313,8 @@ def process_one_correctness_array(in_array):
 				if not this_rrset_key in root_to_check:
 					failure_reasons.append("{} was in {} in the response but not the root [vnk]".format(this_rrset_key, this_section_name))
 				else:
-					if rrsets_for_checking[this_rrset_key] < root_to_check[this_rrset_key]:
-						failure_reasons.append("RRset '{}' in {} in response is shorter than '{}' in root zone [vnk]".\
-							format(rrsets_for_checking[this_rrset_key], this_section_name, root_to_check[this_rrset_key]))
-					elif rrsets_for_checking[this_rrset_key] > root_to_check[this_rrset_key]:
-						failure_reasons.append("RRset '{}' in {} in response is longer than '{}' in root zone [vnk]".\
+					if not rrsets_for_checking[this_rrset_key] == root_to_check[this_rrset_key]:
+						failure_reasons.append("RRset '{}' in {} in response is different than '{}' in root zone [vnk]".\
 							format(rrsets_for_checking[this_rrset_key], this_section_name, root_to_check[this_rrset_key]))
 
 	# Check that each of the RRsets that are signed have their signatures validated. [yds]
