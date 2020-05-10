@@ -1,0 +1,51 @@
+# [zoc] Start with p-tld-ns, add an NS before c.cctld.us.
+-
+  type: MESSAGE
+  message:
+    type: AUTH_RESPONSE
+    query_time: !!timestamp 2020-04-30T18:32:37.282Z
+    response_time: !!timestamp 2020-04-30T18:32:37.309Z
+    message_size: 684b
+    socket_family: INET
+    socket_protocol: UDP
+    response_address: 198.41.0.4
+    response_port: 53
+    query_address: 0.0.0.0
+    query_port: 54910
+    response_message_data:
+      opcode: QUERY
+      status: NOERROR
+      id: 21295
+      flags: qr
+      QUESTION: 1
+      ANSWER: 0
+      AUTHORITY: 9
+      ADDITIONAL: 10
+      OPT_PSEUDOSECTION:
+        EDNS:
+          version: 0
+          flags: do
+          udp: 4096
+      QUESTION_SECTION:
+        - us. IN NS
+      AUTHORITY_SECTION:
+        - us. 172800 IN NS z.cctld.us.
+        - us. 172800 IN NS c.cctld.us.
+        - us. 172800 IN NS k.cctld.us.
+        - us. 172800 IN NS a.cctld.us.
+        - us. 172800 IN NS b.cctld.us.
+        - us. 172800 IN NS f.cctld.us.
+        - us. 172800 IN NS e.cctld.us.
+        - us. 86400 IN DS 39361 8 1 09E0AF18E54225F87A3B10E95C9DA3F1E58E5B59
+        - us. 86400 IN DS 39361 8 2 415D8DAE2299D2C2DAB7458ED4C715268CD2EB3AE3C1C249FF1696BF 62112201
+        - us. 86400 IN RRSIG DS 8 1 86400 20200513170000 20200430160000 48903 . iwAdFM7FNufqTpU/pe1nySyTeND3C2KvzXgMYR3+yLMXhu1bqbQ+Dy7G 7SdYAs4iBy/vrZZGrNtO6PATa0bFtRfpy7A52rOc/75Dl3CFf0dnP3Rr 4h9OSclxSy/Il/5Z8FsPkf5ZqVSRiA2ReIR5/M5Zzepr+alLMUDmZBW1 L2lotcGrGIJD3xtAB/rhdJrLugtFeCrQhBhCC+obZlZZN7AqF2UyfXR5 3li7h5YvCvpOCwtlwya2u9rR2vu619nPTsAEO1a0Hi9jgPJjGG0UlE9F oNndbXB2FR18cogeeI0pWWAgi+QM41X0eTnkA5u34rlqoy+ob8uIv69r K9jXlA==
+      ADDITIONAL_SECTION:
+        - c.cctld.us. 172800 IN A 156.154.127.70
+        - k.cctld.us. 172800 IN A 156.154.128.70
+        - k.cctld.us. 172800 IN AAAA 2001:503:e239::3:1
+        - a.cctld.us. 172800 IN A 156.154.124.70
+        - b.cctld.us. 172800 IN A 156.154.125.70
+        - b.cctld.us. 172800 IN AAAA 2001:502:ad09::29
+        - f.cctld.us. 172800 IN A 209.173.58.70
+        - f.cctld.us. 172800 IN AAAA 2001:500:3682::11
+        - e.cctld.us. 172800 IN A 156.154.126.70
