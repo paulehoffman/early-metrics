@@ -234,19 +234,16 @@ for this_line in p_files[compare_name]:
 		file_lines.append(this_line)
 create_n_file(id, compare_name, desc, file_lines) 
 
-# The Additional section contains at least one A or AAAA record found in the zone associated with at least one NS record found in the Authority section. `[cjm]`
+# The Additional section contains at least one A or AAAA record found in the zone associated with at least one NS record found in the Authority section. [cjm]
 id = "fvg"
-compare_name = "p-tld-ns-no-ds"
-desc = "Start with p-tld-ns-no-ds, remove the A record for lom.camnet.cm. and the AAAA record for ns.itu.ch." 
+compare_name = "p-tld-ns"
+desc = "Start with p-tld-ns, remove all the glue records and add a fake one" 
 file_lines = []
 for this_line in p_files[compare_name]:
-	if this_line == "        - lom.camnet.cm. 172800 IN A 195.24.192.34":
-		continue
-	if this_line == "        - ns.itu.ch. 172800 IN AAAA 2a00:7580:60:2141::10":
-		continue
+	if "cctld.us. 172800 IN" in this_line:
+		file_lines.append("        - z.cctld.us. 172800 IN A 156.154.127.70")
 	else:
 		file_lines.append(this_line)
 create_n_file(id, compare_name, desc, file_lines) 
-
 
 ##########
