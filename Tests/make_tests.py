@@ -41,8 +41,12 @@ for this_file in p_file_names:
 
 ##########
 
+# Whenever possible, create test cases that do not also cause validation failures
+
+##########
+
 # All of the RRsets in the Answer, Authority, and Additional sections match RRsets found in the zone. [vnk]
-#   Add and change records in Answer (although this will also fail due to DNSSEC validation
+#   Add and change records in Answer (although this will always fail due to DNSSEC validation)
 #   Add and change unsigned records in Authority
 #   Add and change unsigned records in Addtional
 #   Note that deleting records is not covered here because that can't be tested
@@ -50,7 +54,7 @@ for this_file in p_file_names:
 # Add a new record to Answer
 id = "ffr"
 compare_name = "p-dot-ns"
-desc = "Start with p-dot-ns, add z.root-servers.net to Answer"
+desc = "Start with p-dot-ns, add z.root-servers.net to Answer; will have DNSSEC validation failure"
 file_lines = []
 for this_line in p_files[compare_name]:
 	if this_line == "        - . 518400 IN NS a.root-servers.net.":
@@ -61,7 +65,7 @@ create_n_file(id, compare_name, desc, file_lines)
 # Change a record in Answer
 id = "vpn"
 compare_name = "p-dot-ns"
-desc = "Start with p-dot-ns, change a.root-server.net to z.root-servers.net in Answer"
+desc = "Start with p-dot-ns, change a.root-server.net to z.root-servers.net in Answer; will have DNSSEC validation failure"
 file_lines = []
 for this_line in p_files[compare_name]:
 	if this_line == "        - . 518400 IN NS a.root-servers.net.":
@@ -73,7 +77,7 @@ create_n_file(id, compare_name, desc, file_lines)
 # Add a new record to Authority 
 id = "zoc"
 compare_name = "p-tld-ns"
-desc = "Start with p-tld-ns, add z.cctld.us to Authority"
+desc = "Start with p-tld-ns, add z.cctld.us to Authority; use NS because it is unsigned"
 file_lines = []
 for this_line in p_files[compare_name]:
 	if this_line == "        - us. 172800 IN NS c.cctld.us.":
@@ -84,7 +88,7 @@ create_n_file(id, compare_name, desc, file_lines)
 # Change a record in Authority
 id = "gye"
 compare_name = "p-tld-ns"
-desc = "Start with p-tld-ns, change c.cctld.us to z.cctld.us in Authority"
+desc = "Start with p-tld-ns, change c.cctld.us to z.cctld.us in Authority; use NS because it is unsigned"
 file_lines = []
 for this_line in p_files[compare_name]:
 	if this_line == "        - us. 172800 IN NS c.cctld.us.":
@@ -123,10 +127,10 @@ create_n_file(id, compare_name, desc, file_lines)
 #   p-tld-ds has signed DS records for .us in the answer; the RRSIG looks like:
 #           - us. 86400 IN RRSIG DS 8 1 86400 20200513170000 20200430160000 48903 . iwAdFM7FNufqTpU/pe1nySyTeND3C2KvzXgMYR3+yLMXhu1bqbQ+Dy7G . . .
 
-# Change the RDATA but changing the covered type
+# Change the RDATA
 id = "uuc"
 compare_name = "p-tld-ds"
-desc = "Start with p-tld-ds, change the RRSIG RData in the Answer"
+desc = "Start with p-tld-ds, change the RRSIG RData in the Answer; causes validation failure"
 file_lines = []
 for this_line in p_files[compare_name]:
 	if "RRSIG DS 8 1 86400 20200513170000 20200430160000" in this_line:
@@ -138,7 +142,7 @@ create_n_file(id, compare_name, desc, file_lines)
 # Change the signature value itself
 id = "gut"
 compare_name = "p-tld-ds"
-desc = "Start with p-tld-ds, change the RRSIG signature"
+desc = "Start with p-tld-ds, change the RRSIG signature; causes validation failure"
 file_lines = []
 for this_line in p_files[compare_name]:
 	if "RRSIG DS 8 1 86400 20200513170000 20200430160000" in this_line:
@@ -198,7 +202,7 @@ create_n_file(id, compare_name, desc, file_lines)
 #   The Authority section contains the signed DS RRset for the query name. [kbd]
 id = "csl"
 compare_name = "p-tld-ns"
-desc = "Start with p-tld-ns, remove one of the DS records from the Authority section" 
+desc = "Start with p-tld-ns, remove one of the DS records from the Authority section; will cause validation failure" 
 file_lines = []
 for this_line in p_files[compare_name]:
 	if this_line == "        - us. 86400 IN DS 39361 8 1 09E0AF18E54225F87A3B10E95C9DA3F1E58E5B59":
@@ -247,3 +251,100 @@ for this_line in p_files[compare_name]:
 create_n_file(id, compare_name, desc, file_lines) 
 
 ##########
+
+# For positive responses where QNAME = <TLD> and QTYPE = DS, a correct result requires all of the following: [dru]
+#   Use p-tld-ds
+
+# The header AA bit is set. [yot]
+id = "ttr"
+compare_name = "p-tld-ds"
+desc = "Start with p-tld-ds, remove the AA bit"
+file_lines = []
+for this_line in p_files[compare_name]:
+	if this_line == "      flags: qr aa":
+		file_lines.append("      flags: qr")
+	else:
+		file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
+
+# The Answer section contains the signed DS RRset for the query name. [cpf]
+id = "zjs"
+compare_name = "p-tld-ds"
+desc = "Start with p-tld-ds, remove the the first DS record; validation will fail"
+file_lines = []
+for this_line in p_files[compare_name]:
+	if this_line == "        - us. 86400 IN DS 39361 8 1 09E0AF18E54225F87A3B10E95C9DA3F1E58E5B59":
+		continue
+	else:
+		file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
+
+# The Authority section is empty. [xdu]
+id = "rpr"
+compare_name = "p-tld-ds"
+desc = "Start with p-tld-ds, add an Authority section with an NS record"
+file_lines = []
+for this_line in p_files[compare_name]:
+	if "us. 86400 IN RRSIG" in this_line:
+		file_lines.append(this_line)
+		file_lines.append("      AUTHORITY_SECTION:")
+		file_lines.append("        - us. 172800 IN NS c.cctld.us.")
+create_n_file(id, compare_name, desc, file_lines) 
+      
+# The Additional section is empty. [mle]
+id = "ekf"
+compare_name = "p-tld-ds"
+desc = "Start with p-tld-ds, add an Additonal section with an A record"
+file_lines = []
+for this_line in p_files[compare_name]:
+	if "us. 86400 IN RRSIG" in this_line:
+		file_lines.append(this_line)
+		file_lines.append("      ADDITIONAL_SECTION:")
+		file_lines.append("        - c.cctld.us. 172800 IN A 156.154.127.70")
+create_n_file(id, compare_name, desc, file_lines) 
+
+# For positive responses for QNAME = . and QTYPE = SOA, a correct result requires all of the following: [owf]
+#   Use p-dot-soa
+
+# The header AA bit is set. [xhr]
+id = "apf"
+compare_name = "p-dot-soa"
+desc = "Start with p-dot-soa, remove the AA bit"
+file_lines = []
+for this_line in p_files[compare_name]:
+	if this_line == "      flags: qr aa":
+		file_lines.append("      flags: qr")
+	else:
+		file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
+
+# The Answer section contains the signed SOA record for the root. [obw]
+id = "apf"
+compare_name = "p-dot-soa"
+desc = "Start with p-dot-soa, remove the Answer section"
+file_lines = []
+for this_line in p_files[compare_name]:
+	if "ANSWER_SECTION:" in this_line:
+		continue
+	if ". 86400 IN SOA" in this_line:
+		continue
+	if ". 86400 IN RRSIG SOA" in this_line:
+		continue
+	else:
+		file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
+
+# The Authority section contains the signed NS RRset for the root. [ktm]
+id = "mtg"
+compare_name = "p-dot-soa"
+desc = "Start with p-dot-soa, remove a.root-servers.net from the Authority section"
+file_lines = []
+for this_line in p_files[compare_name]:
+	if this_line == "        - . 518400 IN NS a.root-servers.net.":
+		continue
+	else:
+		file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
+
+##########
+
