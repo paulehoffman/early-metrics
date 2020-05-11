@@ -81,6 +81,12 @@
 	- Find records in the correctness table that have not been checked, and check them
 	- Reports why any failure happens
 
+- `make_tests.py`
+	- Tests are run manually, probably once, to check whether the correctness tests in `collector_processing.py` is correct
+	- Go to repo/Tests/, run `make_tests.py` to make all the negative tests
+	- Run `collector_processing.py --test` to execute the tests
+	- See the output in repo/Tests/results.txt
+
 - `produce_reports.py`
 	- Run from cron job every week, and on the first of each month
 	-`--style _n_` to say what style of report (weekly, monthly)
