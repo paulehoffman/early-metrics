@@ -632,9 +632,9 @@ if __name__ == "__main__":
 		print("Finished testing {} positive and {} negative tests".format(p_count, n_count))
 		out_f = open("{}/results.txt".format(tests_dir), mode="wt")
 		for this_id in n_responses:
-			out_f.write("{}\n    {}\n".format(this_id, (n_responses[this_id]["desc"])))
+			out_f.write("{}\n".format(n_responses[this_id]["desc"]))
 			for this_line in n_responses[this_id]["resp"].splitlines():
-				out_f.write("        {}\n".format(this_line))
+				out_f.write("    {}\n".format(this_line))
 		out_f.close()
 		exit()
 
