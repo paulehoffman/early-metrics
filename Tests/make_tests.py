@@ -325,14 +325,10 @@ create_n_file(id, compare_name, desc, file_lines)
 # The Answer section contains the signed SOA record for the root. [obw]
 id = "apf"
 compare_name = "p-dot-soa"
-desc = "Start with p-dot-soa, remove the Answer section"
+desc = "Start with p-dot-soa, remove the SOA from Answer section"
 file_lines = []
 for this_line in p_files[compare_name]:
-	if "ANSWER_SECTION:" in this_line:
-		continue
 	if ". 86400 IN SOA" in this_line:
-		continue
-	if ". 86400 IN RRSIG SOA" in this_line:
 		continue
 	else:
 		file_lines.append(this_line)
