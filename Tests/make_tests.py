@@ -32,6 +32,7 @@ p-dot-soa
 p-neg
 p-tld-ds
 p-tld-ns
+p-tld-ns-no-ds
 '''.strip().splitlines()
 
 p_files = {}
@@ -166,24 +167,63 @@ create_n_file(id, compare_name, desc, file_lines)
 # The Answer section is empty. [aeg]
 id = "aul"
 compare_name = "p-tld-ns"
-desc = "Start with p-tld-ns, make the Authority section the Answer section instead"
+desc = "Start with p-tld-ns, create a bogus Answer section with the NS records" 
 file_lines = []
 for this_line in p_files[compare_name]:
 	if this_line == "      AUTHORITY_SECTION:":
 		file_lines.append("      ANSWER_SECTION:")
+		file_lines.append("        - us. 172800 IN NS c.cctld.us.")
+		file_lines.append("        - us. 172800 IN NS k.cctld.us.")
+		file_lines.append("        - us. 172800 IN NS a.cctld.us.")
+		file_lines.append("        - us. 172800 IN NS b.cctld.us.")
+		file_lines.append("        - us. 172800 IN NS f.cctld.us.")
+		file_lines.append("        - us. 172800 IN NS e.cctld.us.")
+		file_lines.append("      AUTHORITY_SECTION:")
+	else:
+		file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
+
+# The Authority section contains the entire NS RRset for the query name. [pdd]
+id = "mbh"
+compare_name = "p-tld-ns"
+desc = "Start with p-tld-ns, remove NS k.cctld.us. from the Authority section" 
+file_lines = []
+for this_line in p_files[compare_name]:
+	if this_line == "        - us. 172800 IN NS k.cctld.us.":
+		continue
+	file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
+
+# If the DS RRset for the query name exists in the zone: [hue]
+#   The Authority section contains the signed DS RRset for the query name. [kbd]
+id = "csl"
+compare_name = "p-tld-ns"
+desc = "Start with p-tld-ns, remove one of the DS records from the Authority section" 
+file_lines = []
+for this_line in p_files[compare_name]:
+	if this_line == "        - us. 86400 IN DS 39361 8 1 09E0AF18E54225F87A3B10E95C9DA3F1E58E5B59":
+		continue
+	file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
+
+# If the DS RRset for the query name does not exist in the zone: [fot]
+#   The Authority section contains no DS RRset. [bgr]
+#   The Authority section contains a signed NSEC RRset covering the query name. [mkl]`   #######################################
+
+id = "jke"
+compare_name = "p-tld-ns-no-ds"
+desc = "Start with p-tld-ns-no-ds, add a DS records to the Authority section" 
+file_lines = []
+for this_line in p_files[compare_name]:
+	if this_line == "      AUTHORITY_SECTION:":
+		file_lines.append(this_line)
+		file_lines.append("        - cm. 86400 IN DS 39361 8 1 09E0AF18E54225F87A3B10E95C9DA3F1E58E5B59")
 	else:
 		file_lines.append(this_line)
 create_n_file(id, compare_name, desc, file_lines) 
 
 
 """
-
-- The Authority section contains the entire NS RRset for the query name. `[pdd]`
-- If the DS RRset for the query name exists in the zone:`[hue]`
-  - The Authority section contains the signed DS RRset for the query name. `[kbd]`
-- If the DS RRset for the query name does not exist in the zone: `[fot]`
-  - The Authority section contains no DS RRset. `[bgr]`
-  - The Authority section contains a signed NSEC RRset covering the query name. `[mkl]` __NOT GOOD WORDING HERE__
 - The Additional section contains at least one A or AAAA record found in the zone associated with at least one NS record found in the Authority section. `[cjm]`
 """
 
