@@ -208,8 +208,7 @@ create_n_file(id, compare_name, desc, file_lines)
 
 # If the DS RRset for the query name does not exist in the zone: [fot]
 #   The Authority section contains no DS RRset. [bgr]
-#   The Authority section contains a signed NSEC RRset covering the query name. [mkl]`   #######################################
-
+#   The Authority section contains a signed NSEC RRset covering the query name. [mkl]
 id = "jke"
 compare_name = "p-tld-ns-no-ds"
 desc = "Start with p-tld-ns-no-ds, add a DS records to the Authority section" 
@@ -222,8 +221,32 @@ for this_line in p_files[compare_name]:
 		file_lines.append(this_line)
 create_n_file(id, compare_name, desc, file_lines) 
 
+id = "gpn"
+compare_name = "p-tld-ns-no-ds"
+desc = "Start with p-tld-ns-no-ds, remove the NSEC and its signature" 
+file_lines = []
+for this_line in p_files[compare_name]:
+	if this_line == "        - cm. 86400 IN NSEC cn. NS RRSIG NSEC":
+		continue
+	if this_line.startswith("        - cm. 86400 IN RRSIG NSEC"):
+		continue
+	else:
+		file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
 
-"""
-- The Additional section contains at least one A or AAAA record found in the zone associated with at least one NS record found in the Authority section. `[cjm]`
-"""
+# The Additional section contains at least one A or AAAA record found in the zone associated with at least one NS record found in the Authority section. `[cjm]`
+id = "fvg"
+compare_name = "p-tld-ns-no-ds"
+desc = "Start with p-tld-ns-no-ds, remove the A record for lom.camnet.cm. and the AAAA record for ns.itu.ch." 
+file_lines = []
+for this_line in p_files[compare_name]:
+	if this_line == "        - lom.camnet.cm. 172800 IN A 195.24.192.34":
+		continue
+	if this_line == "        - ns.itu.ch. 172800 IN AAAA 2a00:7580:60:2141::10":
+		continue
+	else:
+		file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
 
+
+##########
