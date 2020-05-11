@@ -432,7 +432,7 @@ desc = "Start with p-dot-dnskey, add an Additional section with an A record for 
 file_lines = []
 for this_line in p_files[compare_name]:
 	file_lines.append(this_line)
-file_lines.append("      ADDITONAL_SECTION:")
+file_lines.append("      ADDITIONAL_SECTION:")
 file_lines.append("        - a.root-servers.net. 518400 IN A 198.41.0.4")
 create_n_file(id, compare_name, desc, file_lines)
 
