@@ -299,13 +299,12 @@ compare_name = "p-tld-ds"
 desc = "Start with p-tld-ds, add an Additonal section with an A record"
 file_lines = []
 for this_line in p_files[compare_name]:
-	if "us. 86400 IN RRSIG" in this_line:
 		file_lines.append(this_line)
-		file_lines.append("      ADDITIONAL_SECTION:")
-		file_lines.append("        - c.cctld.us. 172800 IN A 156.154.127.70")
-	else:
-		file_lines.append(this_line)
+file_lines.append("      ADDITIONAL_SECTION:")
+file_lines.append("        - c.cctld.us. 172800 IN A 156.154.127.70")
 create_n_file(id, compare_name, desc, file_lines) 
+
+##########
 
 # For positive responses for QNAME = . and QTYPE = SOA, a correct result requires all of the following: [owf]
 #   Use p-dot-soa
@@ -325,7 +324,7 @@ create_n_file(id, compare_name, desc, file_lines)
 # The Answer section contains the signed SOA record for the root. [obw]
 id = "apf"
 compare_name = "p-dot-soa"
-desc = "Start with p-dot-soa, remove the SOA from Answer section"
+desc = "Start with p-dot-soa, remove the SOA from Answer section; this will fail validation"
 file_lines = []
 for this_line in p_files[compare_name]:
 	if ". 86400 IN SOA" in this_line:
@@ -337,7 +336,7 @@ create_n_file(id, compare_name, desc, file_lines)
 # The Authority section contains the signed NS RRset for the root. [ktm]
 id = "mtg"
 compare_name = "p-dot-soa"
-desc = "Start with p-dot-soa, remove a.root-servers.net from the Authority section"
+desc = "Start with p-dot-soa, remove a.root-servers.net from the Authority section; this will fail validation"
 file_lines = []
 for this_line in p_files[compare_name]:
 	if this_line == "        - . 518400 IN NS a.root-servers.net.":
@@ -347,4 +346,93 @@ for this_line in p_files[compare_name]:
 create_n_file(id, compare_name, desc, file_lines) 
 
 ##########
+
+# For positive responses for QNAME = . and QTYPE = NS, a correct result requires all of the following: [amj]
+#   Use p-dot-ns
+
+# The header AA bit is set. [csz]
+id = "kuc"
+compare_name = "p-dot-ns"
+desc = "Start with p-dot-ns, remove the AA bit"
+file_lines = []
+for this_line in p_files[compare_name]:
+	if this_line == "      flags: qr aa":
+		file_lines.append("      flags: qr")
+	else:
+		file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
+
+# The Answer section contains the signed NS RRset for the root. [wal]
+id = "oon"
+compare_name = "p-dot-ns"
+desc = "Start with p-dot-ns, remove a.root-servers.net. from the Answer section; this will fail validation"
+file_lines = []
+for this_line in p_files[compare_name]:
+	if this_line == "        - . 518400 IN NS a.root-servers.net.":
+		continue
+	else:
+		file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
+
+# The Authority section is empty. [eyk]
+id = "hmp"
+compare_name = "p-dot-ns"
+desc = "Start with p-dot-ns, add an Authority section with an A record for a.root-servers.net."
+file_lines = []
+for this_line in p_files[compare_name]:
+	file_lines.append(this_line)
+file_lines.append("      AUTHORITY_SECTION:")
+file_lines.append("        - a.root-servers.net. 518400 IN A 198.41.0.4")
+create_n_file(id, compare_name, desc, file_lines)
+
+##########
+
+# For positive responses for QNAME = . and QTYPE = DNSKEY, a correct result requires all of the following: [djd]
+#   Use p-dot-dnskey
+
+# The header AA bit is set. [occ]
+id = "kbc"
+compare_name = "p-dot-dnskey"
+desc = "Start with p-dot-dnskey, remove the AA bit"
+file_lines = []
+for this_line in p_files[compare_name]:
+	if this_line == "      flags: qr aa":
+		file_lines.append("      flags: qr")
+	else:
+		file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
+
+# The Answer section contains the signed DNSKEY RRset for the root. [eou]
+id = "nsz"
+compare_name = "p-dot-dnskey"
+desc = "Start with p-dot-dnskey, remove the DNSKEY that contains 'AwEAAc4qsciJ5MdMU'; this will fail validation "
+file_lines = []
+for this_line in p_files[compare_name]:
+	if "AwEAAc4qsciJ5MdMU" in this_line:
+		continue
+	else:
+		file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
+
+# The Authority section is empty. [kka]
+id = "coh"
+compare_name = "p-dot-dnskey"
+desc = "Start with p-dot-dnskey, add an Authority section with an NS record for a.root-servers.net."
+file_lines = []
+for this_line in p_files[compare_name]:
+	file_lines.append(this_line)
+file_lines.append("      AUTHORITY_SECTION:")
+file_lines.append("        - . 518400 IN NS a.root-servers.net.")
+create_n_file(id, compare_name, desc, file_lines)
+
+# The Additional section is empty. [jws]
+id = "nnd"
+compare_name = "p-dot-dnskey"
+desc = "Start with p-dot-dnskey, add an Additional section with an A record for a.root-servers.net."
+file_lines = []
+for this_line in p_files[compare_name]:
+	file_lines.append(this_line)
+file_lines.append("      ADDITONAL_SECTION:")
+file_lines.append("        - a.root-servers.net. 518400 IN A 198.41.0.4")
+create_n_file(id, compare_name, desc, file_lines)
 
