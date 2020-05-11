@@ -621,16 +621,15 @@ if __name__ == "__main__":
 		for this_test_file in sorted(glob.glob("{}/n-*".format(tests_dir))):
 			n_count += 1
 			this_id = os.path.basename(this_test_file)
-			in_lines = open(this_test_file, mode="rt").splitlines()
-			n_responses["id"] = this_id
-			n_responses["desc"] = in_lines[0]
+			in_lines = open(this_test_file, mode="rt").read().splitlines()
+			n_responses[this_id] = [ in_lines[0] ]
 			this_resp_pickle = pickle.dumps(yaml.load(open(this_test_file, mode="rt")))
 			this_response = (process_one_correctness_array([this_id, this_recent_soa_serial_array, this_resp_pickle]))
 			if not this_response:
 				print("Expected failure, but got pass, on {}".format(this_id))
-			n_responses["returns"] = this_response
+			n_responses[this_id].append(this_response)
 		print("Finished testing {} positive and {} negative tests".format(p_count, n_count))
-		out_f = open("{}/results.json", mode="wt")
+		out_f = open("{}/results.json".format(tests_dir), mode="wt")
 		json.dump(n_responses, out_f, indent=1)
 		out_f.close()
 		exit()
