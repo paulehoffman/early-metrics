@@ -3,6 +3,8 @@
 import glob, os
 
 def create_n_file(id, compare_name, desc, file_lines):
+	if id in all_n_ids:
+		exit("Found {} a second time. Exiting.".format(id))
 	compare_lines = p_files[compare_name]
 	# Check if nothing changed
 	if file_lines == compare_lines:
@@ -16,6 +18,7 @@ def create_n_file(id, compare_name, desc, file_lines):
 	for this_line in file_lines:
 		f.write(this_line + "\n")
 	f.close()
+	all_n_ids.append(id)
 
 # Delete all the negative files before re-creating them
 for this_to_delete in glob.glob("n-*"):
@@ -38,6 +41,9 @@ p-tld-ns-no-ds
 p_files = {}
 for this_file in p_file_names:
 	p_files[this_file] = open(this_file, mode="rt").read().splitlines()
+
+# Keep track of the IDs to make sure we don't accidentally copy one
+all_n_ids = []
 
 ##########
 
@@ -436,3 +442,90 @@ file_lines.append("      ADDITIONAL_SECTION:")
 file_lines.append("        - a.root-servers.net. 518400 IN A 198.41.0.4")
 create_n_file(id, compare_name, desc, file_lines)
 
+##########
+
+# For negative responses, a correct result requires all of the following: [vcu]
+#   Use p-neg
+
+# The header AA bit is set. [gpl]
+id = "ymb"
+compare_name = "p-neg"
+desc = "Start with p-neg, remove the AA bit"
+file_lines = []
+for this_line in p_files[compare_name]:
+	if this_line == "      flags: qr aa":
+		file_lines.append("      flags: qr")
+	else:
+		file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
+
+# The Answer section is empty. [dvh]
+id = "njw"
+compare_name = "p-neg"
+desc = "Start with p-neg, , create a bogus Answer section with an A record"
+file_lines = []
+for this_line in p_files[compare_name]:
+	if this_line == "      AUTHORITY_SECTION:":
+		file_lines.append("      ANSWER_SECTION:")
+		file_lines.append("        - www.rssac047-test.hwzvpicwen. 518400 IN A 127.0.0.1")
+		file_lines.append("      AUTHORITY_SECTION:")
+	else:
+		file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
+
+# The Authority section contains the signed . / SOA record. [axj]
+id = "pho"
+compare_name = "p-neg"
+desc = "Start with p-neg, , remove the SOA record and its RRSIG"
+file_lines = []
+for this_line in p_files[compare_name]:
+	if ". 86400 IN SOA" in this_line:
+		continue
+	if ". 86400 IN RRSIG SOA" in this_line:
+		continue
+	else:
+		file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
+
+# The Authority section contains a signed NSEC record covering the query name. [czb]
+id = "czg"
+compare_name = "p-neg"
+desc = "Start with p-neg, , remove the NSEC record covering the query and its RRSIG"
+file_lines = []
+for this_line in p_files[compare_name]:
+	if "hughes. 86400 IN NSEC" in this_line:
+		continue
+	if "hughes. 86400 IN RRSIG NSEC" in this_line:
+		continue
+	else:
+		file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
+
+# The Authority section contains a signed NSEC record with owner name “.” proving no wildcard exists in the zone. [jhz]
+id = "pdu"
+compare_name = "p-neg"
+desc = "Start with p-neg, , remove the NSEC record covering the . and its RRSIG"
+file_lines = []
+for this_line in p_files[compare_name]:
+	if ". 86400 IN NSEC aaa." in this_line:
+		continue
+	if ". 86400 IN RRSIG NSEC" in this_line:
+		continue
+	else:
+		file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines) 
+
+# The Additional section is empty. [trw]
+id = "anj"
+compare_name = "p-neg"
+desc = "Start with p-neg,add an Additonal section with an A record"
+file_lines = []
+for this_line in p_files[compare_name]:
+	file_lines.append(this_line)
+file_lines.append("      ADDITIONAL_SECTION:")
+file_lines.append("        - c.cctld.us. 172800 IN A 156.154.127.70")
+create_n_file(id, compare_name, desc, file_lines) 
+
+##########
+
+exit("Created {} files for the negative tests".format(len(all_n_ids)))
