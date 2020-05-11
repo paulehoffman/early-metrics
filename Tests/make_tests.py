@@ -289,6 +289,8 @@ for this_line in p_files[compare_name]:
 		file_lines.append(this_line)
 		file_lines.append("      AUTHORITY_SECTION:")
 		file_lines.append("        - us. 172800 IN NS c.cctld.us.")
+	else:
+		file_lines.append(this_line)
 create_n_file(id, compare_name, desc, file_lines) 
       
 # The Additional section is empty. [mle]
@@ -301,6 +303,8 @@ for this_line in p_files[compare_name]:
 		file_lines.append(this_line)
 		file_lines.append("      ADDITIONAL_SECTION:")
 		file_lines.append("        - c.cctld.us. 172800 IN A 156.154.127.70")
+	else:
+		file_lines.append(this_line)
 create_n_file(id, compare_name, desc, file_lines) 
 
 # For positive responses for QNAME = . and QTYPE = SOA, a correct result requires all of the following: [owf]
