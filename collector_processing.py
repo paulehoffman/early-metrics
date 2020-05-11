@@ -4,7 +4,7 @@
 # Run as the metrics user
 # Three-letter items in square brackets (such as [xyz]) refer to parts of rssac-047.md
 
-import argparse, datetime, glob, gzip, json, logging, os, pickle, psycopg2, subprocess, shutil, tempfile, yaml
+import argparse, datetime, glob, gzip, logging, os, pickle, psycopg2, subprocess, shutil, tempfile, yaml
 from concurrent import futures
 
 ###############################################################
@@ -622,15 +622,19 @@ if __name__ == "__main__":
 			n_count += 1
 			this_id = os.path.basename(this_test_file)
 			in_lines = open(this_test_file, mode="rt").read().splitlines()
-			n_responses[this_id] = [ in_lines[0] ]
+			n_responses[this_id] = {}
+			n_responses[this_id]["desc"] = in_lines[0]
 			this_resp_pickle = pickle.dumps(yaml.load(open(this_test_file, mode="rt")))
 			this_response = (process_one_correctness_array([this_id, this_recent_soa_serial_array, this_resp_pickle]))
 			if not this_response:
 				print("Expected failure, but got pass, on {}".format(this_id))
-			n_responses[this_id].append(this_response)
+			n_responses[this_id]["resp"] = this_response
 		print("Finished testing {} positive and {} negative tests".format(p_count, n_count))
-		out_f = open("{}/results.json".format(tests_dir), mode="wt")
-		json.dump(n_responses, out_f, indent=1)
+		out_f = open("{}/results.txt".format(tests_dir), mode="wt")
+		for this_id in n_responses:
+			out_f.write("{}\n    {}\n".format(this_id, (n_responses[this_id]["desc"])))
+			for this_line in n_responses[this_id]["resp"].splitlines():
+				out_f.write("        {}\n".format(this_line))
 		out_f.close()
 		exit()
 
