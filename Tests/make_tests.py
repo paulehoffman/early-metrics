@@ -328,7 +328,7 @@ for this_line in p_files[compare_name]:
 create_n_file(id, compare_name, desc, file_lines) 
 
 # The Answer section contains the signed SOA record for the root. [obw]
-id = "apf"
+id = "jjg"
 compare_name = "p-dot-soa"
 desc = "Start with p-dot-soa, remove the SOA from Answer section; this will fail validation"
 file_lines = []
