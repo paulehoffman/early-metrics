@@ -15,7 +15,7 @@
 ## Logging and alerts
 
 - Logs are text files kept on VPs and collector
-- Alerts are text files, monitored by Prometheus on collector
+- Alerts are text files, monitored by Prometheus/Zabbix/etc. on collector
 	- ~/Logs/nnn-alerts.txt on every machine
 - All Python scripts have _die_ function that prints to alert logs
 

@@ -4,7 +4,7 @@
 # Run as the metrics user
 # Three-letter items in square brackets (such as [xyz]) refer to parts of rssac-047.md
 
-import argparse, datetime, glob, gzip, logging, os, pickle, psycopg2, subprocess, shutil, tempfile, yaml
+import argparse, datetime, glob, gzip, logging, os, pickle, psycopg2, socket, subprocess, shutil, tempfile, yaml
 from concurrent import futures
 
 ###############################################################
@@ -314,6 +314,14 @@ def process_one_correctness_array(in_array):
 					failure_reasons.append("{} was in {} in the response but not the root [vnk]".format(this_rrset_key, this_section_name))
 				else:
 					if not rrsets_for_checking[this_rrset_key] == root_to_check[this_rrset_key]:
+						# Before giving up, see if it is a mismatch in the text for IPv6 addresses
+						try:
+							resp_ipv6 = socket.inet_pton(socket.AF_INET6, rrsets_for_checking[this_rrset_key])
+							root_ipv6 = socket.inet_pton(socket.AF_INET6, root_to_check[this_rrset_key])
+							if resp_ipv6 == root_ipv6:
+								continue
+						except:
+							pass  # The two values were not IPv6 addresses
 						failure_reasons.append("RRset '{}' in {} in response is different than '{}' in root zone [vnk]".\
 							format(rrsets_for_checking[this_rrset_key], this_section_name, root_to_check[this_rrset_key]))
 

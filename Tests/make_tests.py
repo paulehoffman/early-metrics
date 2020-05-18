@@ -36,6 +36,7 @@ p-neg
 p-tld-ds
 p-tld-ns
 p-tld-ns-no-ds
+p-by-ns
 '''.strip().splitlines()
 
 p_files = {}
@@ -124,7 +125,16 @@ for this_line in p_files[compare_name]:
 		file_lines.append("        - c.cctld.us. 172800 IN A 156.154.127.99")
 	else:
 		file_lines.append(this_line)
-create_n_file(id, compare_name, desc, file_lines) 
+create_n_file(id, compare_name, desc, file_lines)
+
+# Check for IPv6 addresses in Additional that end in :: in "dig" instead of ::0 as in the processed root file
+id = "kmg"
+compare_name = "p-tld-ns"
+desc = "Check p-by-ns, which has 2a05:4800:1:100:: and others in Addtional"
+file_lines = []
+for this_line in p_files[compare_name]:
+	file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines)
 
 ##########
 
@@ -529,3 +539,8 @@ create_n_file(id, compare_name, desc, file_lines)
 ##########
 
 exit("Created {} files for the negative tests".format(len(all_n_ids)))
+
+# Template for correctness digs
+#    dig +yaml {} {} @a.root-servers.net -4 +notcp +dnssec +bufsize=1220 +nsid +norecurse +time=4 +tries=1 +noignore
+# Template for other digs
+#    dig +yaml . SOA @a.root-servers.net -4 +notcp +nodnssec +noauthority +noadditional +bufsize=1220 +nsid +norecurse +time=4 +tries=1
