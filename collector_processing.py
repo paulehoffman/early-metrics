@@ -299,7 +299,7 @@ def process_one_correctness_array(in_array):
 		if resp.get(this_section_name):
 			rrsets_for_checking = {}
 			for this_full_record in resp[this_section_name]:
-				# There is a weird error somewhere else where this_full_record might be a dict instead of a str. If so, ignore it. #######
+				# There is an error in BIND 9.16.1 and .2 where this_full_record might be a dict instead of a str because of bad YAML for AAAA records. If so, ignore it. #######
 				if isinstance(this_full_record, dict):
 					alert("Found record with a dict in id {} when checking responses".format(this_id))
 					continue
@@ -336,6 +336,10 @@ def process_one_correctness_array(in_array):
 			# Only act if this section has an RRSIG
 			rrsigs_over_rrtypes = set()
 			for this_in_rr_text in this_section_rrs:
+				# There is an error in BIND 9.16.1 and .2 where this_full_record might be a dict instead of a str because of bad YAML for AAAA records. If so, ignore it. #######
+				if isinstance(this_full_record, dict):
+					alert("Found record with a dict in id {} when checking responses".format(this_id))
+					continue
 				# The following splits into 5 parts to expose the first field of RRSIGs
 				rr_parts = this_in_rr_text.split(" ", maxsplit=5)
 				if rr_parts[3] == "RRSIG":
