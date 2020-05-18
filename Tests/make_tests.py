@@ -129,7 +129,7 @@ create_n_file(id, compare_name, desc, file_lines)
 
 # Check for IPv6 addresses in Additional that end in :: in "dig" instead of ::0 as in the processed root file
 id = "kmg"
-compare_name = "p-tld-ns"
+compare_name = "p-by-ns"
 desc = "Check p-by-ns, which has 2a05:4800:1:100:: and others in Addtional"
 file_lines = []
 for this_line in p_files[compare_name]:
