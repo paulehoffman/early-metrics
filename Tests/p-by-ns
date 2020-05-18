@@ -2,19 +2,19 @@
   type: MESSAGE
   message:
     type: AUTH_RESPONSE
-    query_time: !!timestamp 2020-05-18T18:33:52.766Z
-    response_time: !!timestamp 2020-05-18T18:33:52.795Z
+    query_time: !!timestamp 2020-05-18T21:02:20.263Z
+    response_time: !!timestamp 2020-05-18T21:02:20.291Z
     message_size: 730b
     socket_family: INET
     socket_protocol: UDP
     response_address: 198.41.0.4
     response_port: 53
     query_address: 0.0.0.0
-    query_port: 65360
+    query_port: 62634
     response_message_data:
       opcode: QUERY
       status: NOERROR
-      id: 42708
+      id: 56135
       flags: qr
       QUESTION: 1
       ANSWER: 0

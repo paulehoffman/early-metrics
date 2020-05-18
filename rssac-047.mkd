@@ -85,7 +85,7 @@ Both connectionless and connection-based transactions may terminate in an error.
 
 ### 4.5 Spoofing Protections
 
-Vantage points must take reasonable steps to prevent acceptance of spoofed responses. Vantage point software must use proper source port randomization, `[uym]` query id randomization, `[wsb]` optional “0x20” mixed case, `[zon]` and proper query and response matching. `[doh]` DNS Cookies may be used as a lightweight DNS transaction security mechanism that provides limited protection to DNS servers and clients. `[ujj]` 
+Vantage points must take reasonable steps to prevent acceptance of spoofed responses. Vantage point software must use proper source port randomization, `[uym]` query id randomization, `[wsb]` optional “0x20” mixed case, `[zon]` __NOT DONE IN THE IMPLEMENTATION__ and proper query and response matching. `[doh]` DNS Cookies may be used as a lightweight DNS transaction security mechanism that provides limited protection to DNS servers and clients. `[ujj]`
 
 If vantage points detect malicious or spoofed traffic, such events should be recorded and logged so that manual inspection of measurements can be performed and disregarded if necessary. 
 
