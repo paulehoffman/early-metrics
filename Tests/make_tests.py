@@ -133,12 +133,11 @@ compare_name = "p-tld-ns"
 desc = "Check p-by-ns, which has 2a05:4800:1:100:: and others in Addtional"
 file_lines = []
 for this_line in p_files[compare_name]:
-	file_lines.append(this_line)
-create_n_file(id, compare_name, desc, file_lines)
 	if this_line == "          udp: 1472":  # Need to change at least one line to show we touched something
 		file_lines.append("          udp: 1473")
 	else:
 		file_lines.append(this_line)
+create_n_file(id, compare_name, desc, file_lines)
 
 ##########
 
