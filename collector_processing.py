@@ -140,6 +140,7 @@ def process_one_incoming_file(full_file):
 		response_count += 1
 		# Get it out of YAML and do basic sanity checks
 		#   But first, look for AAAA records that end in ":", which they should not
+		#   This is due to a bug in BIND up to 9.16.3
 		yaml_fixed = ""
 		yaml_in_text_lines = this_resp[6].splitlines()
 		for this_line in yaml_in_text_lines:
