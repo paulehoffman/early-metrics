@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 ''' Program to make tests for metrics testing '''
-import glob, os
+import glob, os, subprocess
 
 def create_n_file(id, compare_name, desc, file_lines):
 	if id in all_n_ids:
@@ -19,6 +19,26 @@ def create_n_file(id, compare_name, desc, file_lines):
 		f.write(this_line + "\n")
 	f.close()
 	all_n_ids.append(id)
+
+# Template for correctness digs
+#    dig +yaml {} {} @a.root-servers.net -4 +notcp +dnssec +bufsize=1220 +nsid +norecurse +time=4 +tries=1 +noignore
+# Template for other digs
+#    dig +yaml . SOA @a.root-servers.net -4 +notcp +nodnssec +noauthority +noadditional +bufsize=1220 +nsid +norecurse +time=4 +tries=1
+
+dig_loc = "/home/phoffman/Target/bin/dig"
+p_template = "@a.root-servers.net -4 +notcp +nodnssec +noauthority +noadditional +bufsize=1220 +nsid +norecurse +time=4 +tries=1"
+
+# Create the positive files
+cmd_list = """
+{} +yaml . DNSKEY {} > p-dot-dnskey
+{} +yaml . NS {} > p-dot-ns
+{} +yaml . SOA {} > p-dot-soa
+{} +yaml www.rssac047-test.abcdefghij A {} > p-neg
+""".strip().splitlines()
+
+for this_cmd in cmd_list:
+	subprocess.run(this_cmd.format(dig_loc, p_template), shell=True)
+
 
 # Delete all the negative files before re-creating them
 for this_to_delete in glob.glob("n-*"):
@@ -542,8 +562,3 @@ create_n_file(id, compare_name, desc, file_lines)
 ##########
 
 exit("Created {} files for the negative tests".format(len(all_n_ids)))
-
-# Template for correctness digs
-#    dig +yaml {} {} @a.root-servers.net -4 +notcp +dnssec +bufsize=1220 +nsid +norecurse +time=4 +tries=1 +noignore
-# Template for other digs
-#    dig +yaml . SOA @a.root-servers.net -4 +notcp +nodnssec +noauthority +noadditional +bufsize=1220 +nsid +norecurse +time=4 +tries=1

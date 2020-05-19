@@ -622,7 +622,7 @@ if __name__ == "__main__":
 			this_resp_pickle = pickle.dumps(yaml.load(open(this_test_file, mode="rb")))
 			this_response = (process_one_correctness_array([this_id, this_recent_soa_serial_array, this_resp_pickle]))
 			if this_response:
-				print("Expected pass, bug got failure, on {}".format(this_id))
+				print("Expected pass, but got failure, on {}\n  {}".format(this_id, this_response))
 		# Test the negatives
 		n_count = 0
 		# Collect the negative responses to put in a file
