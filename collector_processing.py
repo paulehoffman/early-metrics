@@ -583,7 +583,7 @@ if __name__ == "__main__":
 	
 	this_parser = argparse.ArgumentParser()
 	this_parser.add_argument("--test", action="store_true", dest="test",
-		help="Run tests on requests")
+		help="Run tests on requests; must be run in the Tests directory")
 	opts = this_parser.parse_args()
 
 	# Where to get the incoming files
@@ -611,12 +611,15 @@ if __name__ == "__main__":
 	# Tests can be run outside the normal cron job. Output is to the terminal, not logging. Exits when done
 	if opts.test:
 		print("Running tests instead of a real run")
-		tests_dir = "/home/metrics/repo/Tests"
-		soa_for_testing = open("{}/soa-to-use".format(tests_dir), mode="rt").read().strip()
+		# Sanity check that you are in the Tests directory
+		for this_check in [ "make_tests.py", "p-dot-soa", "soa-to-use" ]:
+			if not os.path.exists(this_check):
+				exit("Did not find {}. Exiting.".format(this_check))
+		soa_for_testing = open("soa-to-use", mode="rt").read().strip()
 		this_recent_soa_serial_array = [ soa_for_testing ]
 		# Test the positives
 		p_count = 0
-		for this_test_file in sorted(glob.glob("{}/p-*".format(tests_dir))):
+		for this_test_file in sorted(glob.glob("p-*")):
 			p_count += 1
 			this_id = os.path.basename(this_test_file)
 			this_resp_pickle = pickle.dumps(yaml.load(open(this_test_file, mode="rb")))
@@ -627,7 +630,7 @@ if __name__ == "__main__":
 		n_count = 0
 		# Collect the negative responses to put in a file
 		n_responses = {}
-		for this_test_file in sorted(glob.glob("{}/n-*".format(tests_dir))):
+		for this_test_file in sorted(glob.glob("n-*")):
 			n_count += 1
 			this_id = os.path.basename(this_test_file)
 			in_lines = open(this_test_file, mode="rt").read().splitlines()
@@ -639,7 +642,7 @@ if __name__ == "__main__":
 				print("Expected failure, but got pass, on {}".format(this_id))
 			n_responses[this_id]["resp"] = this_response
 		print("Finished testing {} positive and {} negative tests".format(p_count, n_count))
-		out_f = open("{}/results.txt".format(tests_dir), mode="wt")
+		out_f = open("results.txt", mode="wt")
 		for this_id in n_responses:
 			out_f.write("{}\n".format(n_responses[this_id]["desc"]))
 			for this_line in n_responses[this_id]["resp"].splitlines():

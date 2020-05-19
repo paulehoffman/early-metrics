@@ -564,4 +564,16 @@ create_n_file(id, compare_name, desc, file_lines)
 
 ##########
 
+# Read the p-dot-soa and write out the SOA to soa-to-use
+the_soa = ""
+for this_line in open("p-dot-soa", mode="rt"):
+	if "- . 86400 IN SOA a.root-servers.net. nstld.verisign-grs.com" in this_line:
+		parts = this_line.strip().split(" ")
+		the_soa = parts[7]
+if not the_soa:
+	exit("Didn't find an SOA. Exiting.")
+print("Found SOA {}".format(the_soa))
+f = open("soa-to-use", mode="wt")
+f.write("{}\n".format(the_soa))
+f.close()
 exit("Created {} files for the negative tests".format(len(all_n_ids)))

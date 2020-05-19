@@ -2,4 +2,5 @@ Local/*
 Ansible/authorized_keys
 Tests/p-*
 Tests/n-*
+Tests/soa-to-use
 
