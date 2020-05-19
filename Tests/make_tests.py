@@ -20,26 +20,28 @@ def create_n_file(id, compare_name, desc, file_lines):
 	f.close()
 	all_n_ids.append(id)
 
-# Template for correctness digs
-#    dig +yaml {} {} @a.root-servers.net -4 +notcp +dnssec +bufsize=1220 +nsid +norecurse +time=4 +tries=1 +noignore
-# Template for other digs
+# Template for . SOA
 #    dig +yaml . SOA @a.root-servers.net -4 +notcp +nodnssec +noauthority +noadditional +bufsize=1220 +nsid +norecurse +time=4 +tries=1
+# Template for all other digs
+#    dig +yaml {} {} @a.root-servers.net -4 +notcp +dnssec +bufsize=1220 +nsid +norecurse +time=4 +tries=1 +noignore
 
 dig_loc = os.path.expanduser("~/Target/bin/dig")
-p_template = "@a.root-servers.net -4 +notcp +nodnssec +noauthority +noadditional +bufsize=1220 +nsid +norecurse +time=4 +tries=1"
+p_template = "@a.root-servers.net -4 +notcp +dnssec +bufsize=1220 +nsid +norecurse +time=4 +tries=1 +noignore"
 
 # Create the positive files
 cmd_list = """
+{} +yaml . SOA {} > p-dot-soa
 {} +yaml . DNSKEY {} > p-dot-dnskey
 {} +yaml . NS {} > p-dot-ns
-{} +yaml . SOA {} > p-dot-soa
 {} +yaml www.rssac047-test.abcdefghij A {} > p-neg
+{} +yaml us DS {} > p-tld-ds
+{} +yaml us NS {} > p-tld-ns
+{} +yaml cm NS {} > p-tld-ns-no-ds
+{} +yaml by NS {} > p-by-ns
 """.strip().splitlines()
 
 for this_cmd in cmd_list:
 	subprocess.run(this_cmd.format(dig_loc, p_template), shell=True)
-
-exit() ################################
 
 # Delete all the negative files before re-creating them
 for this_to_delete in glob.glob("n-*"):
@@ -50,9 +52,9 @@ for this_to_delete in glob.glob("n-*"):
 
 # Read all the positive files into memory
 p_file_names = '''
+p-dot-soa
 p-dot-dnskey
 p-dot-ns
-p-dot-soa
 p-neg
 p-tld-ds
 p-tld-ns
@@ -151,11 +153,11 @@ create_n_file(id, compare_name, desc, file_lines)
 # Check for IPv6 addresses in Additional that end in :: in "dig" instead of ::0 as in the processed root file
 id = "kmg"
 compare_name = "p-by-ns"
-desc = "Check p-by-ns, which has 2a05:4800:1:100:: and others in Addtional"
+desc = "Check p-by-ns, which has some IPv6 addresses in Addtional that end in ::"
 file_lines = []
 for this_line in p_files[compare_name]:
-	if this_line == "          udp: 1472":  # Need to change at least one line to show we touched something
-		file_lines.append("          udp: 1473")
+	if this_line.endswith("::"):
+		file_lines.append(this_line + "0")
 	else:
 		file_lines.append(this_line)
 create_n_file(id, compare_name, desc, file_lines)
@@ -169,24 +171,24 @@ create_n_file(id, compare_name, desc, file_lines)
 
 # Change the RDATA
 id = "uuc"
-compare_name = "p-tld-ds"
-desc = "Start with p-tld-ds, change the RRSIG RData in the Answer; causes validation failure"
+compare_name = "p-dot-dnskey"
+desc = "Start with p-dot-dnskey, change the RRSIG RData in the Answer; causes validation failure"
 file_lines = []
 for this_line in p_files[compare_name]:
-	if "RRSIG DS 8 1 86400 20200513170000 20200430160000" in this_line:
-		file_lines.append(this_line.replace("RRSIG DS 8", "RRSIG AAAA 8"))
+	if "AwEAAaz/tAm8yTn4Mfeh" in this_line:
+		file_lines.append(this_line.replace("AwEAAaz/tAm8yTn4Mfeh", "AwEAAaz/tAm8yTn4MfeH"))
 	else:
 		file_lines.append(this_line)
 create_n_file(id, compare_name, desc, file_lines) 
 
 # Change the signature value itself
 id = "gut"
-compare_name = "p-tld-ds"
-desc = "Start with p-tld-ds, change the RRSIG signature; causes validation failure"
+compare_name = "p-dot-dnskey"
+desc = "Start with p-dot-dnskey, change the RRSIG signature; causes validation failure"
 file_lines = []
 for this_line in p_files[compare_name]:
-	if "RRSIG DS 8 1 86400 20200513170000 20200430160000" in this_line:
-		file_lines.append(this_line.replace("pe1nySyTeND3C2KvzXgMYR3", "pe1nySyTeND3C2KvzXgMYR4"))
+	if this_line.startswith("        - . 172800 IN RRSIG DNSKEY"):
+		file_lines.append(this_line.replace("Q", "q"))
 	else:
 		file_lines.append(this_line)
 create_n_file(id, compare_name, desc, file_lines) 
@@ -527,9 +529,9 @@ compare_name = "p-neg"
 desc = "Start with p-neg, , remove the NSEC record covering the query and its RRSIG"
 file_lines = []
 for this_line in p_files[compare_name]:
-	if "hughes. 86400 IN NSEC" in this_line:
+	if "abc. 86400 IN NSEC" in this_line:
 		continue
-	if "hughes. 86400 IN RRSIG NSEC" in this_line:
+	if "abc. 86400 IN RRSIG NSEC" in this_line:
 		continue
 	else:
 		file_lines.append(this_line)
