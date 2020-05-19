@@ -312,18 +312,30 @@ def process_one_correctness_array(in_array):
 					rrsets_for_checking[this_key].add(rec_rdata)
 			for this_rrset_key in rrsets_for_checking:
 				if not this_rrset_key in root_to_check:
-					failure_reasons.append("{} was in {} in the response but not the root [vnk]".format(this_rrset_key, this_section_name))
+					failure_reasons.append("'{}' was in '{}' in the response but not the root [vnk]".format(this_rrset_key, this_section_name))
 				else:
+					if not len(rrsets_for_checking[this_rrset_key]) == len(root_to_check[this_rrset_key]):
+						failure_reasons.append("RRset '{}' in {} in response has a different length than '{}' in root zone [vnk]".\
+							format(rrsets_for_checking[this_rrset_key], this_section_name, root_to_check[this_rrset_key]))
+						continue
 					if not rrsets_for_checking[this_rrset_key] == root_to_check[this_rrset_key]:
 						# Before giving up, see if it is a mismatch in the text for IPv6 addresses
-						try:
-							resp_ipv6 = socket.inet_pton(socket.AF_INET6, rrsets_for_checking[this_rrset_key])
-							root_ipv6 = socket.inet_pton(socket.AF_INET6, root_to_check[this_rrset_key])
-							if resp_ipv6 == root_ipv6:
+						#   First see if they are sets of one; if not, this will be a normal mismatch failure
+						if len(rrsets_for_checking[this_rrset_key]) != 1 or len(root_to_check[this_rrset_key]) != 1:
+							pass
+						else:
+							resp_val = rrsets_for_checking[this_rrset_key].pop()
+							root_val = root_to_check[this_rrset_key].pop()
+							try:
+								resp_ipv6 = socket.inet_pton(socket.AF_INET6, resp_val)
+								root_ipv6 = socket.inet_pton(socket.AF_INET6, root_val)
+								if resp_ipv6 == root_ipv6:
+									continue
+							except:
+								failure_reasons.append("RRset value '{}' in {} in response is different than '{}' in root zone [vnk]".\
+									format(resp_val, this_section_name, root_val))
 								continue
-						except:
-							pass  # The two values were not IPv6 addresses
-						failure_reasons.append("RRset '{}' in {} in response is different than '{}' in root zone [vnk]".\
+						failure_reasons.append("RRset value '{}' in {} in response is different than '{}' in root zone [vnk]".\
 							format(rrsets_for_checking[this_rrset_key], this_section_name, root_to_check[this_rrset_key]))
 
 	# Check that each of the RRsets that are signed have their signatures validated. [yds]
@@ -625,7 +637,7 @@ if __name__ == "__main__":
 			this_resp_pickle = pickle.dumps(yaml.load(open(this_test_file, mode="rb")))
 			this_response = (process_one_correctness_array([this_id, this_recent_soa_serial_array, this_resp_pickle]))
 			if this_response:
-				print("Expected pass, but got failure, on {}\n  {}".format(this_id, this_response))
+				print("Expected pass, but got failure, on {}\n{}\n".format(this_id, this_response))
 		# Test the negatives
 		n_count = 0
 		# Collect the negative responses to put in a file
@@ -640,13 +652,14 @@ if __name__ == "__main__":
 			this_response = (process_one_correctness_array([this_id, this_recent_soa_serial_array, this_resp_pickle]))
 			if not this_response:
 				print("Expected failure, but got pass, on {}".format(this_id))
-			n_responses[this_id]["resp"] = this_response
+			else:
+				n_responses[this_id]["resp"] = this_response
 		print("Finished testing {} positive and {} negative tests".format(p_count, n_count))
 		out_f = open("results.txt", mode="wt")
 		for this_id in n_responses:
-			out_f.write("{}\n".format(n_responses[this_id]["desc"]))
+			out_f.write("\n{}\n".format(n_responses[this_id]["desc"]))
 			for this_line in n_responses[this_id]["resp"].splitlines():
-				out_f.write("    {}\n".format(this_line))
+				out_f.write("{}\n".format(this_line))
 		out_f.close()
 		exit()
 

@@ -43,6 +43,16 @@ cmd_list = """
 for this_cmd in cmd_list:
 	subprocess.run(this_cmd.format(dig_loc, p_template), shell=True)
 
+# Fix p-by-ns for the BIND YAML bug
+all_by_lines = []
+for this_line in open("p-by-ns", mode="rt"):
+	if this_line.endswith("::\n"):
+		this_line = this_line.replace("::\n", "::0\n")
+	all_by_lines.append(this_line)
+f = open("p-by-ns", mode="wt")
+f.write("".join(all_by_lines))
+f.close()
+
 # Delete all the negative files before re-creating them
 for this_to_delete in glob.glob("n-*"):
 	try:
@@ -146,18 +156,6 @@ file_lines = []
 for this_line in p_files[compare_name]:
 	if this_line == "        - c.cctld.us. 172800 IN A 156.154.127.70":
 		file_lines.append("        - c.cctld.us. 172800 IN A 156.154.127.99")
-	else:
-		file_lines.append(this_line)
-create_n_file(id, compare_name, desc, file_lines)
-
-# Check for IPv6 addresses in Additional that end in :: in "dig" instead of ::0 as in the processed root file
-id = "kmg"
-compare_name = "p-by-ns"
-desc = "Check p-by-ns, which has some IPv6 addresses in Addtional that end in ::"
-file_lines = []
-for this_line in p_files[compare_name]:
-	if this_line.endswith("::"):
-		file_lines.append(this_line + "0")
 	else:
 		file_lines.append(this_line)
 create_n_file(id, compare_name, desc, file_lines)
