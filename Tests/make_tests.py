@@ -25,7 +25,7 @@ def create_n_file(id, compare_name, desc, file_lines):
 # Template for other digs
 #    dig +yaml . SOA @a.root-servers.net -4 +notcp +nodnssec +noauthority +noadditional +bufsize=1220 +nsid +norecurse +time=4 +tries=1
 
-dig_loc = "/home/phoffman/Target/bin/dig"
+dig_loc = os.path.expanduser("~/Target/bin/dig")
 p_template = "@a.root-servers.net -4 +notcp +nodnssec +noauthority +noadditional +bufsize=1220 +nsid +norecurse +time=4 +tries=1"
 
 # Create the positive files
@@ -39,6 +39,7 @@ cmd_list = """
 for this_cmd in cmd_list:
 	subprocess.run(this_cmd.format(dig_loc, p_template), shell=True)
 
+exit() ################################
 
 # Delete all the negative files before re-creating them
 for this_to_delete in glob.glob("n-*"):
