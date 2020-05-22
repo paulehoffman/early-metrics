@@ -503,10 +503,10 @@ def process_one_correctness_array(in_array):
 				(rec_qname, _, _, rec_qtype, _) = this_rec.split(" ", maxsplit=4)
 				if rec_qtype == "SOA":
 					if not rec_qname == ".":
-						failure_reasons.append("SOA in Authority section had QNAME {} instead of '.'".format(rec_qname))
+						failure_reasons.append("SOA in Authority section had QNAME {} instead of '.' [vcu]".format(rec_qname))
 			failure_reasons.append(check_for_signed_rr(resp["AUTHORITY_SECTION"], "SOA"))
 			# The Authority section contains a signed NSEC record covering the query name. [czb]
-			#   Note that the query name might have multiple labels, so only compare against the last
+			#   Note that the query name might have multiple labels, so only compare against the last label
 			this_qname_TLD = this_qname.split(".")[-2] + "."
 			nsec_covers_query_name = False
 			nsecs_in_authority = []
@@ -514,14 +514,18 @@ def process_one_correctness_array(in_array):
 				(rec_qname, _, _, rec_qtype, rec_rdata) = this_rec.split(" ", maxsplit=4)
 				if rec_qtype == "NSEC":
 					nsec_parts = rec_rdata.split(" ")
-					nsecs_in_authority.append("{}|{}".format(rec_qname, nsec_parts[0]))
+					nsec_parts_covered = nsec_parts[0]
+					# Sorting against "." doesn't work, so instead use the longest TLD that could be in the root zone
+					if nsec_parts_covered == ".":
+						nsec_parts_covered = "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+					nsecs_in_authority.append("{}|{}".format(rec_qname, nsec_parts_covered))
 					# Make a list of the three strings, then make sure the original QNAME is in the middle
-					test_sort = sorted([rec_qname, nsec_parts[0], this_qname_TLD])
+					test_sort = sorted([rec_qname, nsec_parts_covered, this_qname_TLD])
 					if test_sort[1] == this_qname_TLD:
 						nsec_covers_query_name = True
 						break
 			if not nsec_covers_query_name:
-				failure_reasons.append("NSECs in Authority '{}' did not cover qname '{}'".format(nsecs_in_authority, this_qname))
+				failure_reasons.append("NSECs in Authority '{}' did not cover qname '{}' [czb]".format(nsecs_in_authority, this_qname))
 			# The Authority section contains a signed NSEC record with owner name “.” proving no wildcard exists in the zone. [jhz]
 			nsec_with_owner_dot = False
 			for this_rec in resp["AUTHORITY_SECTION"]:
@@ -531,7 +535,7 @@ def process_one_correctness_array(in_array):
 						nsec_with_owner_dot = True
 						break;
 			if not 	nsec_with_owner_dot:
-				failure_reasons.append("Authority section did not contain a signed NSEC record with owner name '.'")
+				failure_reasons.append("Authority section did not contain a signed NSEC record with owner name '.' [jzh]")
 		# The Additional section is empty. [trw]
 		if resp.get("ADDITIONAL_SECTION"):
 			failure_reasons.append("Additional section was not empty")
