@@ -33,7 +33,7 @@ cmd_list = """
 {} +yaml . SOA {} > p-dot-soa
 {} +yaml . DNSKEY {} > p-dot-dnskey
 {} +yaml . NS {} > p-dot-ns
-{} +yaml www.rssac047-test.abcdefghij A {} > p-neg
+{} +yaml www.rssac047-test.zyxwvutsrqp A {} > p-neg
 {} +yaml us DS {} > p-tld-ds
 {} +yaml us NS {} > p-tld-ns
 {} +yaml cm NS {} > p-tld-ns-no-ds
@@ -527,9 +527,9 @@ compare_name = "p-neg"
 desc = "Start with p-neg, , remove the NSEC record covering the query and its RRSIG"
 file_lines = []
 for this_line in p_files[compare_name]:
-	if "abc. 86400 IN NSEC" in this_line:
+	if ". 86400 IN NSEC" in this_line:
 		continue
-	if "abc. 86400 IN RRSIG NSEC" in this_line:
+	if ". 86400 IN RRSIG NSEC" in this_line:
 		continue
 	else:
 		file_lines.append(this_line)
