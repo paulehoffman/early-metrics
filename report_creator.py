@@ -101,8 +101,8 @@ if __name__ == "__main__":
 		die("Unable to get database cursor: '{}'".format(e))
 	
 	# Get all the SOA records for this month
-	cur.execute("select rsi, internet, transport, dig_elapsed, timeout, soa from public.soa_info "\
-		+ "where date_derived between '{}' and  '{}'".format(first_of_last_month_timestamp, end_of_last_month_timestamp))
+	cur.execute("select date_derived, vp, rsi, internet, transport, dig_elapsed, timeout, soa from public.soa_info "\
+		+ "where date_derived between '{}' and  '{}' order by date_derived".format(first_of_last_month_timestamp, end_of_last_month_timestamp))
 	soa_recs = cur.fetchall()
 	log("Found {} SOA records".format(len(soa_recs)))
 	
@@ -112,26 +112,44 @@ if __name__ == "__main__":
 	#    The list of RSIs might change in the future, so treat this as a list [dlw]
 	rsi_list = [ "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m" ]
 	
-	# Go through the SOA records, storing results for availability and response latency
+	# Get the results for availability and response latency
 	rsi_availability = {}
 	rsi_response_latency = {}
+	rsi_publication_latency_lowest_soa = {}
 	for this_rsi in rsi_list:
 		# For availability, each internet_transport_pair has two values: number of timeouts, and count
 		rsi_availability[this_rsi] = { "v4udp": [ 0, 0 ], "v4tcp": [ 0, 0 ], "v6udp": [ 0, 0 ], "v6tcp": [ 0, 0 ] }
 		# For response latency, each internet_transport_pair has two values: sum of response latencies, and count
 		rsi_response_latency[this_rsi] = { "v4udp": [ 0, 0 ], "v4tcp": [ 0, 0 ], "v6udp": [ 0, 0 ], "v6tcp": [ 0, 0 ] }
+		# For publication latency, record the SOA for each internet_transport_pair for a particular datetime
+		rsi_publication_latency_lowest_soa[this_rsi] = { }
+	# Measurements for publication latency requires more work because the system has to determine when new SOAs are first seen
+	#   soa_first_seen keys are SOAs, values are the date first seen
+	soa_first_seen = {}
 	for this_rec in soa_recs:
-		(this_rsi, this_internet, this_transport, this_dig_elapsed, this_timeout, this_soa) = this_rec
+		(this_date, this_vp, this_rsi, this_internet, this_transport, this_dig_elapsed, this_timeout, this_soa) = this_rec
 		internet_transport_pair = this_internet + this_transport
 		# Availability [gfa]
 		if this_timeout:
 			rsi_availability[this_rsi][internet_transport_pair][0] += 1
 		rsi_availability[this_rsi][internet_transport_pair][1] += 1
-		# Response latency
-		rsi_response_latency[this_rsi][internet_transport_pair][0] += this_dig_elapsed
-		rsi_response_latency[this_rsi][internet_transport_pair][1] += 1
-	
-		
+		# Response latency [fhw]
+		if this_dig_elapsed:
+			rsi_response_latency[this_rsi][internet_transport_pair][0] += this_dig_elapsed
+			rsi_response_latency[this_rsi][internet_transport_pair][1] += 1
+		# Publication latency  # [yxn]
+		if not this_soa in soa_first_seen:
+			# Note that this relies on soa_recs to be ordered by date_derived
+			if this_soa:
+				soa_first_seen[this_soa] = this_date
+		# Timed-out responses don't count for publication latency  # [tub]
+		if not this_timeout:
+			if not rsi_publication_latency_lowest_soa[this_rsi].get(this_date):
+				rsi_publication_latency_lowest_soa[this_rsi][this_date] = this_soa
+			else:
+				# Store the minimum SOA that was seen [cnj]
+				if this_soa < rsi_publication_latency_lowest_soa[this_rsi][this_date]:
+					rsi_publication_latency_lowest_soa[this_rsi][this_date] = this_soa
 	
 	cur.close()
 	conn.close()
