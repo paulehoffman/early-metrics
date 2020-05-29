@@ -29,7 +29,8 @@
 
 - `vantage_point_metrics.py`
 	- Is run from cron job every 5 minutes on 0, 5, ... `[wyn]` `[mba]` `[wca]`
-	- Use `dig + yaml` from BIND 9.16.1
+	- All systems use UTC `[nms]`
+	- Use `dig + yaml` from BIND 9.16.3
 	- Checks for new root zone every 12 hours
 	- Run `scamper` after queries to each source for both IPv4 and IPv6
 	- Results of each run are saved as .pickle.gz to /sftp/transfer/Output for later pulling
