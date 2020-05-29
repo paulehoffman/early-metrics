@@ -170,7 +170,7 @@ def process_one_incoming_file(full_file):
 				if (not this_resp_obj[0]["message"].get("response_time")) or (not this_resp_obj[0]["message"].get("query_time")):
 					alert("Found a message without response_time or query_time in record {} of {}".format(response_count, full_file))
 					continue
-				dig_elapsed_as_delta = this_resp_obj[0]["message"]["response_time"] - this_resp_obj[0]["message"]["query_time"]
+				dig_elapsed_as_delta = this_resp_obj[0]["message"]["response_time"] - this_resp_obj[0]["message"]["query_time"]  # [aym]
 				this_dig_elapsed = datetime.timedelta.total_seconds(dig_elapsed_as_delta)
 				this_timeout = False
 				if not this_resp_obj[0]["message"].get("response_message_data").get("ANSWER_SECTION"):
@@ -179,12 +179,17 @@ def process_one_incoming_file(full_file):
 				this_soa_record = this_resp_obj[0]["message"]["response_message_data"]["ANSWER_SECTION"][0]
 				soa_record_parts = this_soa_record.split(" ")
 				this_soa = soa_record_parts[6]
+				# For SOA queries, if it is not NOERROR, it becomes a timeout  [ppo]
+				if not this_resp_obj[0]["message"]["response_message_data"]["status"] == "NOERROR":
+					this_timeout = True
+					this_dig_elapsed = None
+					this_soa = None
 			elif this_resp_obj[0]["type"] == "DIG_ERROR":
 				if not (("timed out" in this_resp_obj[0]["message"]) or ("communications error" in this_resp_obj[0]["message"])):
 					alert("Found unexpected dig error message '{}' in record {} of {}".format(this_resp_obj[0]["message"], response_count, full_file))
 					continue
 				this_dig_elapsed = None
-				this_timeout = True
+				this_timeout = True  # [yve]
 				this_soa = None
 			else:
 				alert("Found an unexpected dig type {} in record {} of {}".format(this_resp_obj[0]["type"], response_count, full_file))
