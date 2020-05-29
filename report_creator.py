@@ -34,9 +34,6 @@ if __name__ == "__main__":
 		log("Died with '{}'".format(error_message))
 		exit()
 	
-	# Where the binaries are
-	target_dir = "/home/metrics/Target"
-	
 	this_parser = argparse.ArgumentParser()
 	this_parser.add_argument("--test_date", action="store", dest="test_date",
 		help="Give a date as YY-MM-DD-HH-MM-SS to act as today")
@@ -76,17 +73,19 @@ if __name__ == "__main__":
 		first_of_last_month = now.replace(year=(now.year - 1), month=12, day=1)
 	first_of_last_month_file = first_of_last_month.strftime(strf_day_format)
 	first_of_last_month_timestamp = first_of_last_month.strftime(strf_timestamp_format)
-	end_of_last_month =  now.replace(day=1, hour=0, minute=0, second=0) - datetime.timedelta(seconds=1)
+	end_of_last_month =  now.replace(day=1, hour=0, minute=0, second=0) - datetime.timedelta(seconds=1)  # [ver] [jps]
 	end_of_last_month_timestamp = end_of_last_month.strftime(strf_timestamp_format)
 	log("It is now {}, the first of last month is {}".format(now.strftime("%Y-%m-%d"), first_of_last_month_file))
 	# Look for a report for last month
 	all_monthly_reports = glob.glob("{}/monthly*.txt".format(monthly_reports_dir))
 	for this_report in glob.glob("{}/monthly-*.txt".format(monthly_reports_dir)):
 		if first_of_last_month_file in this_report:
-			die("Found {}, so no need to create it.".format(this_report))
+			die("Found {}, so no need to create it.".format(this_report))  # [rps]
 	# Here if a monthly report needs to be made
 	new_monthly_report_name = "{}/monthly-{}.txt".format(monthly_reports_dir, first_of_last_month_file)
 	log("About to create {} for range {} to {}".format(new_monthly_report_name, first_of_last_month_timestamp, end_of_last_month_timestamp))
+	# Start the report text
+	report_text = "Report for {} to {}\n".format(first_of_last_month_timestamp, end_of_last_month_timestamp)
 
 	##############################################################
 
@@ -100,19 +99,21 @@ if __name__ == "__main__":
 	except Exception as e:
 		die("Unable to get database cursor: '{}'".format(e))
 	
+	# Keep track of the files seen in order to count the number of measurements
+	#   This will be filled in both in looking through the SOA and correctness datasets
+	files_seen = set()
+	# The list of RSIs might change in the future, so treat this as a list [dlw]
+	rsi_list = [ "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m" ]
+
+	##############################################################
+
 	# Get all the SOA records for this month
-	cur.execute("select date_derived, vp, rsi, internet, transport, dig_elapsed, timeout, soa from public.soa_info "\
+	cur.execute("select file_prefix, date_derived, rsi, internet, transport, dig_elapsed, timeout, soa from public.soa_info "\
 		+ "where date_derived between '{}' and  '{}' order by date_derived".format(first_of_last_month_timestamp, end_of_last_month_timestamp))
 	soa_recs = cur.fetchall()
 	log("Found {} SOA records".format(len(soa_recs)))
 	
-	##############################################################
-	
-	# RSIs to report on
-	#    The list of RSIs might change in the future, so treat this as a list [dlw]
-	rsi_list = [ "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m" ]
-	
-	# Get the results for availability and response latency
+	# Get the results for availability and response latency and response latency
 	rsi_availability = {}
 	rsi_response_latency = {}
 	rsi_publication_latency_lowest_soa = {}
@@ -127,7 +128,8 @@ if __name__ == "__main__":
 	#   soa_first_seen keys are SOAs, values are the date first seen
 	soa_first_seen = {}
 	for this_rec in soa_recs:
-		(this_date, this_vp, this_rsi, this_internet, this_transport, this_dig_elapsed, this_timeout, this_soa) = this_rec
+		(this_file_prefix, this_date, this_rsi, this_internet, this_transport, this_dig_elapsed, this_timeout, this_soa) = this_rec
+		files_seen.add(this_file_prefix)
 		internet_transport_pair = this_internet + this_transport
 		# Availability [gfa]
 		if this_timeout:
@@ -138,19 +140,51 @@ if __name__ == "__main__":
 			rsi_response_latency[this_rsi][internet_transport_pair][0] += this_dig_elapsed
 			rsi_response_latency[this_rsi][internet_transport_pair][1] += 1
 		# Publication latency  # [yxn]
+		#   Stort the date that a SOA was first seen; note that this relies on soa_recs to be ordered by date_derived
 		if not this_soa in soa_first_seen:
-			# Note that this relies on soa_recs to be ordered by date_derived
 			if this_soa:
 				soa_first_seen[this_soa] = this_date
-		# Timed-out responses don't count for publication latency  # [tub]
+		#    Store the minimum SOA that was seen [cnj]
+		#    Timed-out responses don't count for publication latency  # [tub]
 		if not this_timeout:
 			if not rsi_publication_latency_lowest_soa[this_rsi].get(this_date):
 				rsi_publication_latency_lowest_soa[this_rsi][this_date] = this_soa
-			else:
-				# Store the minimum SOA that was seen [cnj]
-				if this_soa < rsi_publication_latency_lowest_soa[this_rsi][this_date]:
-					rsi_publication_latency_lowest_soa[this_rsi][this_date] = this_soa
+			elif this_soa < rsi_publication_latency_lowest_soa[this_rsi][this_date]: 
+				rsi_publication_latency_lowest_soa[this_rsi][this_date] = this_soa
 	
+	##############################################################
+
+	# Get all the correctness records for this month
+	cur.execute("select file_prefix, date_derived, rsi, is_correct from public.correctness_info "\
+		+ "where date_derived between '{}' and  '{}' order by date_derived".format(first_of_last_month_timestamp, end_of_last_month_timestamp))
+	correctness_recs = cur.fetchall()
+	log("Found {} correctness records".format(len(correctness_recs)))
+	
+	# Get the results for availability and response latency and response latency
+	rsi_correctness = {}
+	for this_rsi in rsi_list:
+		# For correcness, each RSI has counts of true and false values for that date [jof] [lbl]
+		rsi_correctness[this_rsi] = {}
+	for this_rec in correctness_recs:
+		(this_file_prefix, this_date, this_rsi, this_correctness) = this_rec
+		files_seen.add(this_file_prefix)
+		if not rsi_correctness[this_rsi].get(this_date):
+			rsi_correctness[this_rsi][this_date] = { "correct": 0, "incorrect": 0 }
+		if this_correctness:
+			rsi_correctness[this_rsi][this_date]["correct"] += 1
+		else:
+			rsi_correctness[this_rsi][this_date]["incorrect"] += 1
+		
+	##############################################################
+
+	# Note the number of measurements for this month
+	report_text += "Number of measurments in the month: {}\n".format(len(files_seen))
+	
+	# Create the availability report
+	report_text += "RSI Availability"
+	
+	print("{}".format(report_text))  ################################
+
 	cur.close()
 	conn.close()
 	log("Finished report process")	
