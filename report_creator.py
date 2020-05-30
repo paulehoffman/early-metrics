@@ -99,7 +99,7 @@ if __name__ == "__main__":
 	except Exception as e:
 		die("Unable to get database cursor: '{}'".format(e))
 	
-	# Keep track of the files seen in order to count the number of measurements
+	# Keep track of the files seen in order to count the number of measurements across all vantage points
 	#   This will be filled in both in looking through the SOA and correctness datasets
 	files_seen = set()
 	# The list of RSIs might change in the future, so treat this as a list [dlw]
@@ -118,7 +118,7 @@ if __name__ == "__main__":
 	rsi_response_latency = {}
 	rsi_publication_latency_lowest_soa = {}
 	for this_rsi in rsi_list:
-		# For availability, each internet_transport_pair has two values: number of timeouts, and count
+		# For availability, each internet_transport_pair has two values: number of non-timeouts, and count
 		rsi_availability[this_rsi] = { "v4udp": [ 0, 0 ], "v4tcp": [ 0, 0 ], "v6udp": [ 0, 0 ], "v6tcp": [ 0, 0 ] }
 		# For response latency, each internet_transport_pair has two values: sum of response latencies, and count
 		rsi_response_latency[this_rsi] = { "v4udp": [ 0, 0 ], "v4tcp": [ 0, 0 ], "v6udp": [ 0, 0 ], "v6tcp": [ 0, 0 ] }
@@ -132,7 +132,7 @@ if __name__ == "__main__":
 		files_seen.add(this_file_prefix)
 		internet_transport_pair = this_internet + this_transport
 		# Availability [gfa]
-		if this_timeout:
+		if not this_timeout:
 			rsi_availability[this_rsi][internet_transport_pair][0] += 1
 		rsi_availability[this_rsi][internet_transport_pair][1] += 1
 		# Response latency [fhw]
@@ -163,26 +163,40 @@ if __name__ == "__main__":
 	# Get the results for availability and response latency and response latency
 	rsi_correctness = {}
 	for this_rsi in rsi_list:
-		# For correcness, each RSI has counts of true and false values for that date [jof] [lbl]
-		rsi_correctness[this_rsi] = {}
+		# For correcness, there are two values: number of incorrect responses, and count [jof] [lbl]
+		rsi_correctness[this_rsi] = [ 0, 0 ]
 	for this_rec in correctness_recs:
 		(this_file_prefix, this_date, this_rsi, this_correctness) = this_rec
 		files_seen.add(this_file_prefix)
-		if not rsi_correctness[this_rsi].get(this_date):
-			rsi_correctness[this_rsi][this_date] = { "correct": 0, "incorrect": 0 }
-		if this_correctness:
-			rsi_correctness[this_rsi][this_date]["correct"] += 1
-		else:
-			rsi_correctness[this_rsi][this_date]["incorrect"] += 1
+		if not this_correctness:
+			rsi_correctness[this_rsi][0] += 1
+		rsi_correctness[this_rsi][1] += 1
 		
 	##############################################################
 
 	# Note the number of measurements for this month
-	report_text += "Number of measurments in the month: {}\n".format(len(files_seen))
+	report_text += "Number of measurments across all vantage points in the month: {}\n".format(len(files_seen))
+	
+	report_pairs = { "v4udp": "IPv4 UDP", "v4tcp": "IPv4 TCP", "v6udp": "IPv6 UDP", "v6tcp": "IPv6 TCP", }
 	
 	# Create the availability report
-	report_text += "RSI Availability"
+	rsi_availability_threshold = .96  # [ydw]
+	report_text += "\nRSI Availability\nThreshold: {:.0f}%\n".format(rsi_availability_threshold * 100)  # [vmx]
+	for this_rsi in rsi_list:
+		report_text += "{}.root-servers.net:\n".format(this_rsi)
+			# rsi_availability[this_rsi] = { "v4udp": [ 0, 0 ], "v4tcp": [ 0, 0 ], "v6udp": [ 0, 0 ], "v6tcp": [ 0, 0 ] }
+		for this_pair in sorted(report_pairs):
+			this_ratio = rsi_availability[this_rsi][this_pair][0] / rsi_availability[this_rsi][this_pair][1]
+			if  this_ratio < rsi_availability_threshold:
+				this_result = "Fail"
+			else:
+				this_result = "Pass"
+			# ratio_text = "{:.0f}".format(this_ratio)  # Only used in debugging
+			# report_text += "  {}: {} ({} measurements)  {}\n".format(report_pairs[this_pair], this_result, rsi_availability[this_rsi][this_pair][1], ratio_text)
+			report_text += "  {}: {} ({} measurements)\n".format(report_pairs[this_pair], this_result, rsi_availability[this_rsi][this_pair][1])
+		report_text += "\n"
 	
+	# Remove this print statement before finishing
 	print("{}".format(report_text))  ################################
 
 	cur.close()
