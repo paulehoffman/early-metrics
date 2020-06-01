@@ -128,7 +128,7 @@ if __name__ == "__main__":
 	#   soa_first_seen keys are SOAs, values are the date first seen
 	soa_first_seen = {}
 	for this_rec in soa_recs:
-		(this_file_prefix, this_date, this_rsi, this_internet, this_transport, this_dig_elapsed, this_timeout, this_soa) = this_rec
+		(this_file_prefix, this_date_time, this_rsi, this_internet, this_transport, this_dig_elapsed, this_timeout, this_soa) = this_rec
 		files_seen.add(this_file_prefix)
 		internet_transport_pair = this_internet + this_transport
 		# Availability [gfa]
@@ -143,17 +143,16 @@ if __name__ == "__main__":
 			except:
 				die("Found a non-timed-out response that did not have an elapsed time: '{}'".format(this_rec))
 		# Publication latency  # [yxn]
-		#   Stort the date that a SOA was first seen; note that this relies on soa_recs to be ordered by date_derived
-		if not this_soa in soa_first_seen:
-			if this_soa:
-				soa_first_seen[this_soa] = this_date
-		#    Store the minimum SOA that was seen [cnj]
+		#   Store the date that a SOA was first seen; note that this relies on soa_recs to be ordered by date_derived
+		if this_soa and (not this_soa in soa_first_seen):
+			soa_first_seen[this_soa] = this_date_time
+		# Store the minimum SOA that was seen in this datetime [cnj]
 		#    Timed-out responses don't count for publication latency  # [tub]
 		if not this_timeout:
-			if not rsi_publication_latency_lowest_soa[this_rsi].get(this_date):
-				rsi_publication_latency_lowest_soa[this_rsi][this_date] = this_soa
-			elif this_soa < rsi_publication_latency_lowest_soa[this_rsi][this_date]: 
-				rsi_publication_latency_lowest_soa[this_rsi][this_date] = this_soa
+			if not rsi_publication_latency_lowest_soa[this_rsi].get(this_date_time):
+				rsi_publication_latency_lowest_soa[this_rsi][this_date_time] = this_soa
+			elif this_soa < rsi_publication_latency_lowest_soa[this_rsi][this_date_time]: 
+				rsi_publication_latency_lowest_soa[this_rsi][this_date_time] = this_soa
 	
 	##############################################################
 
@@ -167,7 +166,7 @@ if __name__ == "__main__":
 		# For correcness, there are two values: number of incorrect responses, and count [jof] [lbl]
 		rsi_correctness[this_rsi] = [ 0, 0 ]
 	for this_rec in correctness_recs:
-		(this_file_prefix, this_date, this_rsi, this_correctness) = this_rec
+		(this_file_prefix, this_date_time, this_rsi, this_correctness) = this_rec
 		files_seen.add(this_file_prefix)
 		if this_correctness:
 			rsi_correctness[this_rsi][0] += 1
@@ -222,6 +221,24 @@ if __name__ == "__main__":
 		report_text += "  {} ({} measurements)\n".format(this_result, rsi_correctness[this_rsi][1])  # [fee]
 		# ratio_text = "{} incorrect, {:.4f}%".format(rsi_correctness[this_rsi][1] - rsi_correctness[this_rsi][0], this_ratio)  # Only used in debugging
 		# report_text += "  {} ({} measurements)  {}\n".format(this_result, rsi_correctness[this_rsi][1], ratio_text)
+		report_text += "\n"
+	
+	# Publication latency report
+	rsi_publication_latency_threshold = 65 # [fwa]
+	report_text += "\nRSI Response Latency\nThreshold is {} minutes\n".format(rsi_publication_latency_threshold)  # [erf]
+	for this_rsi in rsi_list:
+		report_text += "{}.root-servers.net:\n".format(this_rsi)
+		# latency_differences is the delays in publication for this letter
+		latency_differences = []
+		for this_soa in soa_first_seen:
+			for this_publication_date_time in rsi_publication_latency_lowest_soa[this_rsi]:
+				if rsi_publication_latency_lowest_soa[this_rsi][this_publication_date_time] == this_soa:
+					latency_differences.append((this_publication_date_time - soa_first_seen[this_soa]).seconds)  # [kvg] [udz]
+		publication_latency_median = latency_differences[int(len(latency_differences) / 2)]  # [yzp]
+		this_result = "Fail" if publication_latency_median > rsi_publication_latency_threshold else "Pass"
+		# report_text += "  {} ({} measurements)\n".format(this_result, len(rsi_publication_latency_lowest_soa[this_rsi]))
+		median_text = "{}".format(publication_latency_median)  # Only used in debugging
+		report_text += "  {} ({} measurements)  {}\n".format(this_result, len(rsi_publication_latency_lowest_soa[this_rsi]), median_text)  # [jtz]
 		report_text += "\n"
 	
 	# Remove this print statement before finishing
