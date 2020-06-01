@@ -458,7 +458,7 @@ def process_one_correctness_array(in_array):
 			# The Additional section is empty. [mle]
 			if resp.get("ADDITIONAL_SECTION"):
 				failure_reasons.append("Additional section was not empty")
-		elif (this_qname == ".") and (this_qtype == "SOA"):  # Processing for . / SOA
+		elif (this_qname == ".") and (this_qtype == "SOA"):  # Processing for . / SOA [owf]
 			# The header AA bit is set. [xhr]
 			if not "aa" in resp["flags"]:
 				failure_reasons.append("AA bit was not set")

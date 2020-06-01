@@ -13,3 +13,11 @@
 
 [c00]
 c00.mtric.net superuser=root
+
+# Regions
+# Africa 010
+# Asia/Australia/Pacific 020
+# Europe 030
+# Latin America/Caribbean Islands 040
+# North America 050
+
