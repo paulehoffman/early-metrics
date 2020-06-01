@@ -120,10 +120,10 @@ if __name__ == "__main__":
 	for this_rsi in rsi_list:
 		# For availability, each internet_transport_pair has two values: number of non-timeouts, and count
 		rsi_availability[this_rsi] = { "v4udp": [ 0, 0 ], "v4tcp": [ 0, 0 ], "v6udp": [ 0, 0 ], "v6tcp": [ 0, 0 ] }
-		# For response latency, each internet_transport_pair has two values: sum of response latencies, and count
-		rsi_response_latency[this_rsi] = { "v4udp": [ 0, 0 ], "v4tcp": [ 0, 0 ], "v6udp": [ 0, 0 ], "v6tcp": [ 0, 0 ] }
+		# For response latency, each internet_transport_pair has two values: list of response latencies, and count
+		rsi_response_latency[this_rsi] = { "v4udp": [ [], 0 ], "v4tcp": [ [], 0 ], "v6udp": [ [], 0 ], "v6tcp": [ [], 0 ] }
 		# For publication latency, record the SOA for each internet_transport_pair for a particular datetime
-		rsi_publication_latency_lowest_soa[this_rsi] = { }
+		rsi_publication_latency_lowest_soa[this_rsi] = {}
 	# Measurements for publication latency requires more work because the system has to determine when new SOAs are first seen
 	#   soa_first_seen keys are SOAs, values are the date first seen
 	soa_first_seen = {}
@@ -136,9 +136,12 @@ if __name__ == "__main__":
 			rsi_availability[this_rsi][internet_transport_pair][0] += 1
 		rsi_availability[this_rsi][internet_transport_pair][1] += 1
 		# Response latency [fhw]
-		if this_dig_elapsed:
-			rsi_response_latency[this_rsi][internet_transport_pair][0] += this_dig_elapsed
-			rsi_response_latency[this_rsi][internet_transport_pair][1] += 1
+		if not this_timeout:  # [vpa]
+			try:
+				rsi_response_latency[this_rsi][internet_transport_pair][0].append(this_dig_elapsed)
+				rsi_response_latency[this_rsi][internet_transport_pair][1] += 1
+			except:
+				die("Found a non-timed-out response that did not have an elapsed time: '{}'".format(this_rec))
 		# Publication latency  # [yxn]
 		#   Stort the date that a SOA was first seen; note that this relies on soa_recs to be ordered by date_derived
 		if not this_soa in soa_first_seen:
@@ -154,13 +157,11 @@ if __name__ == "__main__":
 	
 	##############################################################
 
-	# Get all the correctness records for this month
+	# Get all the correctness records for this month [ebg]
 	cur.execute("select file_prefix, date_derived, rsi, is_correct from public.correctness_info "\
 		+ "where date_derived between '{}' and  '{}' order by date_derived".format(first_of_last_month_timestamp, end_of_last_month_timestamp))
 	correctness_recs = cur.fetchall()
 	log("Found {} correctness records".format(len(correctness_recs)))
-	
-	# Get the results for availability and response latency and response latency
 	rsi_correctness = {}
 	for this_rsi in rsi_list:
 		# For correcness, there are two values: number of incorrect responses, and count [jof] [lbl]
@@ -168,7 +169,7 @@ if __name__ == "__main__":
 	for this_rec in correctness_recs:
 		(this_file_prefix, this_date, this_rsi, this_correctness) = this_rec
 		files_seen.add(this_file_prefix)
-		if not this_correctness:
+		if this_correctness:
 			rsi_correctness[this_rsi][0] += 1
 		rsi_correctness[this_rsi][1] += 1
 		
@@ -179,21 +180,48 @@ if __name__ == "__main__":
 	
 	report_pairs = { "v4udp": "IPv4 UDP", "v4tcp": "IPv4 TCP", "v6udp": "IPv6 UDP", "v6tcp": "IPv6 TCP", }
 	
-	# Create the availability report
+	# Availability report
 	rsi_availability_threshold = .96  # [ydw]
-	report_text += "\nRSI Availability\nThreshold: {:.0f}%\n".format(rsi_availability_threshold * 100)  # [vmx]
+	report_text += "\n\nRSI Availability\nThreshold is {:.0f}%\n".format(rsi_availability_threshold * 100)  # [vmx]
 	for this_rsi in rsi_list:
 		report_text += "{}.root-servers.net:\n".format(this_rsi)
-			# rsi_availability[this_rsi] = { "v4udp": [ 0, 0 ], "v4tcp": [ 0, 0 ], "v6udp": [ 0, 0 ], "v6tcp": [ 0, 0 ] }
 		for this_pair in sorted(report_pairs):
 			this_ratio = rsi_availability[this_rsi][this_pair][0] / rsi_availability[this_rsi][this_pair][1]
-			if  this_ratio < rsi_availability_threshold:
-				this_result = "Fail"
-			else:
-				this_result = "Pass"
+			this_result = "Fail" if this_ratio < rsi_availability_threshold else "Pass"
+			report_text += "  {}: {} ({} measurements)\n".format(report_pairs[this_pair], this_result, rsi_availability[this_rsi][this_pair][1])  # [lkd]
 			# ratio_text = "{:.0f}".format(this_ratio)  # Only used in debugging
 			# report_text += "  {}: {} ({} measurements)  {}\n".format(report_pairs[this_pair], this_result, rsi_availability[this_rsi][this_pair][1], ratio_text)
-			report_text += "  {}: {} ({} measurements)\n".format(report_pairs[this_pair], this_result, rsi_availability[this_rsi][this_pair][1])
+		report_text += "\n"
+	
+	# Response latency report
+	rsi_response_latency_udp_threshold = 250  # [zuc]
+	rsi_response_latency_tcp_threshold = 500  # [bpl]
+	report_text += "\nRSI Response Latency\nThreshold for UDP is {}ms, threshold for TCP is {}ms\n"\
+		.format(rsi_response_latency_udp_threshold, rsi_response_latency_tcp_threshold)  # [znh]
+	for this_rsi in rsi_list:
+		report_text += "{}.root-servers.net:\n".format(this_rsi)
+		for this_pair in sorted(report_pairs):
+			response_latency_list = sorted(rsi_response_latency[this_rsi][this_pair][0])
+			response_latency_median = response_latency_list[int(rsi_response_latency[this_rsi][this_pair][1] / 2)]  # [mzx]
+			if "udp" in this_pair:
+				this_result = "Fail" if response_latency_median > rsi_response_latency_udp_threshold else "Pass"
+			else:
+				this_result = "Fail" if response_latency_median > rsi_response_latency_tcp_threshold else "Pass"
+			report_text += "  {}: {} ({} measurements)\n".format(report_pairs[this_pair], this_result, rsi_response_latency[this_rsi][this_pair][1])  # [lxr]
+			# median_text = "{}".format(response_latency_median)  # Only used in debugging
+			# report_text += "  {}: {} ({} measurements)  {}\n".format(report_pairs[this_pair], this_result, rsi_availability[this_rsi][this_pair][1], median_text)
+		report_text += "\n"
+	
+	# Correctness report
+	rsi_correctness_threshold = 1  # [ahw]
+	report_text += "\nRSI Correctness\nThreshold is 100%\n"  # [mah]
+	for this_rsi in rsi_list:
+		report_text += "{}.root-servers.net:\n".format(this_rsi)
+		this_ratio = rsi_correctness[this_rsi][0] / rsi_correctness[this_rsi][1]  # [skm]
+		this_result = "Fail" if this_ratio < rsi_correctness_threshold else "Pass"
+		report_text += "  {} ({} measurements)\n".format(this_result, rsi_correctness[this_rsi][1])  # [fee]
+		# ratio_text = "{} incorrect, {:.4f}%".format(rsi_correctness[this_rsi][1] - rsi_correctness[this_rsi][0], this_ratio)  # Only used in debugging
+		# report_text += "  {} ({} measurements)  {}\n".format(this_result, rsi_correctness[this_rsi][1], ratio_text)
 		report_text += "\n"
 	
 	# Remove this print statement before finishing
