@@ -12,7 +12,7 @@
   - name: Install all the needed packages
     apt:
       pkg: [build-essential, curl, git, libcap-dev, libssl-dev, libuv1-dev, man, pkg-config,
-        pyflakes3, python-ply, rsync, scamper, traceroute, unzip]
+        pyflakes3, python-ply, python3-requests, rsync, scamper, traceroute, unzip]
   - name: Put .bashrc for root
     copy:
       src: ../bashrc-for-metrics-and-root
@@ -47,7 +47,7 @@
   become_user: transfer
   become: yes
   tasks:
-  - name: Set up authorized_key for metrics
+  - name: Set up id_rsa for transfer
     authorized_key:
       user: transfer
       key: "{{ lookup('file', '../Local/transfer-id_rsa.pub') }}"

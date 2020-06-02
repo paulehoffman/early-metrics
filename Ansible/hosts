@@ -1,15 +1,5 @@
-[vp001]
-001.mtric.net superuser=root
-
-[vp002]
-002.mtric.net superuser=root
-
 [new_vps]
-003.mtric.net superuser=root
-
-# 001 DO, SFO2, Standard / 1 GB / 3 vCPUs, $15/mo
-# 002 DO, BLR, Standard / 1 GB / 3 vCPUs, $15/mo
-# 003 DO, SFO2, Standard / 1 GB / 3 vCPUs, $15/mo
+040.mtric.net superuser=root
 
 [c00]
 c00.mtric.net superuser=root
@@ -19,5 +9,6 @@ c00.mtric.net superuser=root
 # Asia/Australia/Pacific 020
 # Europe 030
 # Latin America/Caribbean Islands 040
+#   040, Uruguay minubeantel.uy
 # North America 050
 
