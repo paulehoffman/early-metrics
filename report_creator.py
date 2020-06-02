@@ -70,7 +70,7 @@ if __name__ == "__main__":
 	if not now.month == 1:
 		first_of_last_month = now.replace(month=(now.month - 1), day=1, hour=0, minute=0, second=0)
 	else:
-		first_of_last_month = now.replace(year=(now.year - 1), month=12, day=1)
+		first_of_last_month = now.replace(year=(now.year - 1), month=12, day=1, hour=0, minute=0, second=0)
 	first_of_last_month_file = first_of_last_month.strftime(strf_day_format)
 	first_of_last_month_timestamp = first_of_last_month.strftime(strf_timestamp_format)
 	end_of_last_month =  now.replace(day=1, hour=0, minute=0, second=0) - datetime.timedelta(seconds=1)  # [ver] [jps]
@@ -80,7 +80,8 @@ if __name__ == "__main__":
 	all_monthly_reports = glob.glob("{}/monthly*.txt".format(monthly_reports_dir))
 	for this_report in glob.glob("{}/monthly-*.txt".format(monthly_reports_dir)):
 		if first_of_last_month_file in this_report:
-			die("Found {}, so no need to create it.".format(this_report))  # [rps]
+			log("Found {}, so no need to create it.".format(this_report))  # [rps]
+			exit()
 	# Here if a monthly report needs to be made
 	new_monthly_report_name = "{}/monthly-{}.txt".format(monthly_reports_dir, first_of_last_month_file)
 	log("About to create {} for range {} to {}".format(new_monthly_report_name, first_of_last_month_timestamp, end_of_last_month_timestamp))
@@ -258,11 +259,13 @@ if __name__ == "__main__":
 		# median_text = "{}".format(publication_latency_median)  # Only used in debugging
 		# report_text += "  {} ({} measurements)  {}".format(this_result, len(rsi_publication_latency[this_rsi]), median_text)  # [jtz]
 		report_text += "\n"
-	
-	# Remove this print statement before finishing
-	print("{}".format(report_text))  ################################
 
-	cur.close()
-	conn.close()
+	##############################################################
+
+	# Write out the report
+	f_out = open(new_monthly_report_name, mode="wt")
+	f_out.write(report_text)
+	f_out.close()
+
 	log("Finished report process")	
 	exit()
