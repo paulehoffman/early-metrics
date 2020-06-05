@@ -355,7 +355,9 @@ Since the individual RSI response latency measurements are sent over specific tr
 
 __Measurements.__ In this method, the metric is derived from the set of RSI response latency measurements described in Section 5.1. `[spx]`
 
-__Aggregation.__ In each five-minutes measurement interval, find the best __"best" should be "lowest"__ k RSI response latencies for each vantage point and for each transport and address type. `[bom]` The aggregated response latency is calculated as the median value of the subset of lowest latencies. `[jbr]`
+__Aggregation.__ In each five-minutes measurement interval, find the best k RSI response latencies for each vantage point and for each transport and address type. `[bom]` The aggregated response latency is calculated as the median value of the subset of lowest latencies. `[jbr]`
+
+__The paragraph above should be replaced with:__  Aggregation. For each five-minute measurement interval, and for each each transport and address type, find the median of the lowest k RSI response latencies from the set of vantage points. The aggregated response latency for each each transport and address type is calculated as the median of the medians from the set of five-minute measurement intervals.
 
 __Precision.__ Measurement Count shall be presented to convey the measurement range and precision. `[hgm]`
 
