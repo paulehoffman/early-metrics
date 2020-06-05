@@ -4,7 +4,7 @@
 # Run as the metrics user
 # Three-letter items in square brackets (such as [xyz]) refer to parts of rssac-047.md
 
-import argparse, datetime, glob, logging, os, psycopg2
+import argparse, datetime, glob, logging, math, os, psycopg2
 
 if __name__ == "__main__":
 	# Get the base for the log directory
@@ -37,6 +37,8 @@ if __name__ == "__main__":
 	this_parser = argparse.ArgumentParser()
 	this_parser.add_argument("--test_date", action="store", dest="test_date",
 		help="Give a date as YY-MM-DD-HH-MM-SS to act as today")
+	this_parser.add_argument("--force", action="store_true", dest="force",
+		help="Force the monthly report to be recreated if it already exists")
 	opts = this_parser.parse_args()
 
 	# Subdirectories of ~/Output for the reports
@@ -80,8 +82,11 @@ if __name__ == "__main__":
 	all_monthly_reports = glob.glob("{}/monthly*.txt".format(monthly_reports_dir))
 	for this_report in glob.glob("{}/monthly-*.txt".format(monthly_reports_dir)):
 		if first_of_last_month_file in this_report:
-			log("Found {}, so no need to create it.".format(this_report))  # [rps]
-			exit()
+			if opts.force:
+				log("Found {}, going to re-create it.".format(this_report))
+			else:
+				log("Found {}, so no need to create it.".format(this_report))  # [rps]
+				exit()
 	# Here if a monthly report needs to be made
 	new_monthly_report_name = "{}/monthly-{}.txt".format(monthly_reports_dir, first_of_last_month_file)
 	log("About to create {} for range {} to {}".format(new_monthly_report_name, first_of_last_month_timestamp, end_of_last_month_timestamp))
@@ -114,12 +119,12 @@ if __name__ == "__main__":
 	##############################################################
 
 	# Get all the SOA records for this month
-	cur.execute("select file_prefix, date_derived, rsi, internet, transport, dig_elapsed, timeout, soa from public.soa_info "\
+	cur.execute("select file_prefix, date_derived, vp, rsi, internet, transport, dig_elapsed, timeout, soa from public.soa_info "\
 		+ "where date_derived between '{}' and  '{}' order by date_derived".format(first_of_last_month_timestamp, end_of_last_month_timestamp))
 	soa_recs = cur.fetchall()
 	log("Found {} SOA records".format(len(soa_recs)))
 	
-	# Get the results for availability and response latency and response latency
+	# Get the results for RSI availability and response latency and publcation latency
 	rsi_availability = {}
 	rsi_response_latency = {}
 	rsi_publication_latency = {}
@@ -132,7 +137,7 @@ if __name__ == "__main__":
 	#   soa_first_seen keys are SOAs, values are the date first seen
 	soa_first_seen = {}
 	for this_rec in soa_recs:
-		(this_file_prefix, this_date_time, this_rsi, this_internet, this_transport, this_dig_elapsed, this_timeout, this_soa) = this_rec
+		(this_file_prefix, this_date_time, this_vp, this_rsi, this_internet, this_transport, this_dig_elapsed, this_timeout, this_soa) = this_rec
 		files_seen.add(this_file_prefix)
 		internet_transport_pair = this_internet + this_transport
 		# Availability [gfa]
@@ -152,7 +157,6 @@ if __name__ == "__main__":
 	# Publication latency  # [yxn]
 	#   This must be run after the soa_first_seen dict is filled in
 	#   For publication latency, record the datetimes that each SOA is seen for each internet and transport pair
-	#   In 
 	for this_rsi in rsi_list:
 		rsi_publication_latency[this_rsi] = {}
 		for this_soa in soa_first_seen:
@@ -160,7 +164,7 @@ if __name__ == "__main__":
 	# Go through the SOA records again, filling in the fields for internet and transport pairs
 	#   Again, this relies on soa_recs to be in date order
 	for this_rec in soa_recs:
-		(this_file_prefix, this_date_time, this_rsi, this_internet, this_transport, this_dig_elapsed, this_timeout, this_soa) = this_rec
+		(this_file_prefix, this_date_time, this_vp, this_rsi, this_internet, this_transport, this_dig_elapsed, this_timeout, this_soa) = this_rec
 		# Timed-out responses don't count for publication latency  # [tub]
 		if this_timeout:
 			continue
@@ -199,13 +203,18 @@ if __name__ == "__main__":
 	# Note the number of measurements for this month
 	report_text += "Number of measurments across all vantage points in the month: {}\n".format(len(files_seen))
 	
+	# The report only has "Pass" and "Fail", not the metrics [ntt] [cpm] [nuc]
+
+	
+	# RSI reports
+	
 	# Availability report
 	rsi_availability_threshold = .96  # [ydw]
 	report_text += "\n\nRSI Availability\nThreshold is {:.0f}%\n".format(rsi_availability_threshold * 100)  # [vmx]
 	for this_rsi in rsi_list:
 		report_text += "{}.root-servers.net:\n".format(this_rsi)
 		for this_pair in sorted(report_pairs):
-			this_ratio = rsi_availability[this_rsi][this_pair][0] / rsi_availability[this_rsi][this_pair][1]
+			this_ratio = rsi_availability[this_rsi][this_pair][0] / rsi_availability[this_rsi][this_pair][1]  # [yah]
 			this_result = "Fail" if this_ratio < rsi_availability_threshold else "Pass"
 			report_text += "  {}: {} ({} measurements)".format(report_pairs[this_pair], this_result, rsi_availability[this_rsi][this_pair][1])  # [lkd]
 			# ratio_text = "{:.0f}".format(this_ratio)  # Only used in debugging
@@ -255,13 +264,44 @@ if __name__ == "__main__":
 				latency_differences.append(rsi_publication_latency[this_rsi][this_soa]["latency"].seconds)  # [kvg] [udz]
 		publication_latency_median = latency_differences[int(len(latency_differences) / 2)]  # [yzp]
 		this_result = "Fail" if publication_latency_median > rsi_publication_latency_threshold else "Pass"
-		report_text += "  {} ({} measurements)".format(this_result, len(rsi_publication_latency[this_rsi]))
+		report_text += "  {} ({} measurements)".format(this_result, len(rsi_publication_latency[this_rsi]))  # [hms]
 		# median_text = "{}".format(publication_latency_median)  # Only used in debugging
 		# report_text += "  {} ({} measurements)  {}".format(this_result, len(rsi_publication_latency[this_rsi]), median_text)  # [jtz]
 		report_text += "\n"
 
 	##############################################################
+	
+	# RSS reports
+	
+	# RSS availability and response latency use the value k defined in Section 4.9 of RSSAC-047
+	rss_k = math.ceil((len(rsi_list) - 1) * float(2/3))
+	
+	# Collect information for the RSS availability and response latency
+	rss_with_vps = {}
+	# For the RSS measurements, need to aggregate by vantage point
+	cur.execute("select vp, soa from public.soa_info "\
+		+ "where date_derived between '{}' and  '{}'".format(first_of_last_month_timestamp, end_of_last_month_timestamp))
+	vp_names = set()
+	for this_record in cur.fetchall():
+		vp_names.add(this_record[0])
+	log("Found {} vantage point names".format(len(vp_names)))
+	# For each VP and internet_transport_pair, collect the number of RSIs seen at a particular interval
+	rss_availability = {}
+	for this_vp in vp_names:
+		rss_availability[this_vp] = {}
+	# Go through te SOA records recorded earlier
+	for this_rec in soa_recs:
+		(this_file_prefix, this_date_time, this_vp, this_rsi, this_internet, this_transport, this_dig_elapsed, this_timeout, this_soa) = this_rec
+		if not rss_availability[this_vp].get(this_date_time):
+			rss_availability[this_vp][this_date_time] = { "v4udp": 0, "v4tcp": 0, "v6udp": 0, "v6tcp": 0 }
+		internet_transport_pair = this_internet + this_transport
+		if not this_timeout:
+			rss_availability[this_vp][this_date_time][internet_transport_pair] += 1
+		
 
+
+	##############################################################
+	
 	# Write out the report
 	f_out = open(new_monthly_report_name, mode="wt")
 	f_out.write(report_text)
