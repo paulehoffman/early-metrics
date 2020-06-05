@@ -199,13 +199,15 @@ if __name__ == "__main__":
 	# Note the number of measurements for this month
 	report_text += "Number of measurments across all vantage points in the month: {}\n".format(len(files_seen))
 	
+	# The report only has "Pass" and "Fail", not the metrics [ntt] [cpm] [nuc]
+	
 	# Availability report
 	rsi_availability_threshold = .96  # [ydw]
 	report_text += "\n\nRSI Availability\nThreshold is {:.0f}%\n".format(rsi_availability_threshold * 100)  # [vmx]
 	for this_rsi in rsi_list:
 		report_text += "{}.root-servers.net:\n".format(this_rsi)
 		for this_pair in sorted(report_pairs):
-			this_ratio = rsi_availability[this_rsi][this_pair][0] / rsi_availability[this_rsi][this_pair][1]
+			this_ratio = rsi_availability[this_rsi][this_pair][0] / rsi_availability[this_rsi][this_pair][1]  # [yah]
 			this_result = "Fail" if this_ratio < rsi_availability_threshold else "Pass"
 			report_text += "  {}: {} ({} measurements)".format(report_pairs[this_pair], this_result, rsi_availability[this_rsi][this_pair][1])  # [lkd]
 			# ratio_text = "{:.0f}".format(this_ratio)  # Only used in debugging
@@ -255,7 +257,7 @@ if __name__ == "__main__":
 				latency_differences.append(rsi_publication_latency[this_rsi][this_soa]["latency"].seconds)  # [kvg] [udz]
 		publication_latency_median = latency_differences[int(len(latency_differences) / 2)]  # [yzp]
 		this_result = "Fail" if publication_latency_median > rsi_publication_latency_threshold else "Pass"
-		report_text += "  {} ({} measurements)".format(this_result, len(rsi_publication_latency[this_rsi]))
+		report_text += "  {} ({} measurements)".format(this_result, len(rsi_publication_latency[this_rsi]))  # [hms]
 		# median_text = "{}".format(publication_latency_median)  # Only used in debugging
 		# report_text += "  {} ({} measurements)  {}".format(this_result, len(rsi_publication_latency[this_rsi]), median_text)  # [jtz]
 		report_text += "\n"
