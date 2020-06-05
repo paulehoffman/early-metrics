@@ -100,7 +100,7 @@ if __name__ == "__main__":
 		die("Splitting the SOA from the root zone just received failed with '{}'".format(e))
 
 	# Check if this SOA has already been seen
-	full_root_file_name = "{}/{}.root.txt".format(saved_root_zone_dir, this_soa)
+	full_root_file_name = "{}/{}.root.txt".format(saved_root_zone_dir, this_soa)  # [ooy]
 	if not os.path.exists(full_root_file_name):
 		out_f = open(full_root_file_name, mode="wt")
 		out_f.write(root_zone_request.text)

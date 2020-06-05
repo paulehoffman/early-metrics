@@ -204,9 +204,12 @@ if __name__ == "__main__":
 	report_text += "Number of measurments across all vantage points in the month: {}\n".format(len(files_seen))
 	
 	# The report only has "Pass" and "Fail", not the metrics [ntt] [cpm] [nuc]
+<<<<<<< HEAD
 
 	
 	# RSI reports
+=======
+>>>>>>> d4f438fd9938116b219f7979b3b9bb2f7a97ee70
 	
 	# Availability report
 	rsi_availability_threshold = .96  # [ydw]

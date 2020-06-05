@@ -41,7 +41,7 @@ def update_rr_list(file_to_write):
 	temp_latest_zone_f.close()
 	# Give the named-compilezone command, then post-process
 	try:
-		named_compilezone_p = subprocess.run("/home/metrics/Target/sbin/named-compilezone -q -i none -r ignore -o - . '{}'".format(temp_latest_zone_name),
+		named_compilezone_p = subprocess.run("/home/metrics/Target/sbin/named-compilezone -q -i none -r ignore -o - . '{}'".format(temp_latest_zone_name),\
 			shell=True, text=True, check=True, capture_output=True)
 	except Exception as e:
 		alert("named-compilezone failed with '{}'".format(e))

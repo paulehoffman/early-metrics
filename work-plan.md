@@ -47,25 +47,10 @@
 	- Do traceroutes to two places
 	- Ask if they need more or, if not, which to use
 
-- Possible VP providers
-	- hertzner.com
-	- Linode
-	- Digital Ocean
-	- AWS
-		- AWS recently opened shop at Cape Town South Africa. https://aws.amazon.com/local/africa/ 
-	- Azure
-		- Microsoft Azure cloud is also available running in datacentres also in Cape Town and Johannesburg South Africa.
-		- https://azure.microsoft.com/en-us/global-infrastructure/southafrica/ 
-	- Google Cloud
-	- OVH
-	- Vultr.com
-	- Liquid Telecom in Africa
-	- https://www.africadatacentres.com/ 
-
 ## Collector
 
 - Run on a VM with lots of cores and memory
-- Running latest Debian
+- Running Debian 10
 	- Thus automatically running NTP  `[ugt]`
 - All programs run as "metrics" user
 - Also has "tranfer" user for others to copy data

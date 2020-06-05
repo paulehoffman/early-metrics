@@ -65,7 +65,7 @@ For RSS metrics (Section 6), the collection system reports the results for each 
 
 Vantage points and the collection system shall be synchronized to Network Time Protocol (NTP). `[ugt]`
 
-Vantage points run all tests at five-minute intervals. `[wyn]` At the start of each five-minute interval, the measurement software should wait for an amount of time randomly chosen between 0 and 60 seconds. `[fzk]` Thus, measurements from all vantage points start at slightly different times, but still have enough time to complete within the five-minute interval. `[ygf]`
+Vantage points run all tests at five-minute intervals. `[wyn]` At the start of each five-minute interval, the measurement software should wait for an amount of time randomly chosen between 0 and 60 seconds. `[fzk]` Thus, measurements from all vantage points start at slightly different times, but still have enough time to complete within the five-minute interval. 
 
 Vantage points store measurements and the collection system reports metrics in Coordinated Universal Time (UTC). `[nms]` The collection system reports of pass or fail for thresholds are always shown for a whole month starting on the first of the month; `[ver]` dates for presentation always start at midnight (0 hours 0 minutes) UTC. `[jps]`
 
@@ -77,7 +77,7 @@ For connectionless requests (i.e., over UDP) a timer starts immediately after th
 
 For connection-based requests (e.g., over TCP) a timer starts when the connection is initiated. It stops when the entire DNS response has been received (although not waiting for the TCP connection to close). `[epp]`
 
-Some features such as TCP Fast Open (TFO) reduce connection setup delays. None of those features should be turned on in the measurement platform. `[zbf]` Environments and/or operating systems that do not allow TFO to be disabled should not be used for these measurements, if at all possible. `[jbt]`
+__Requirements in this paragraph are not currently implemented.__ Some features such as TCP Fast Open (TFO) reduce connection setup delays. None of those features should be turned on in the measurement platform. `[zbf]` Environments and/or operating systems that do not allow TFO to be disabled should not be used for these measurements, if at all possible. `[jbt]`
 
 ### 4.4 Connection Errors
 
@@ -91,7 +91,7 @@ If vantage points detect malicious or spoofed traffic, such events should be rec
 
 ### 4.6 Anycast
 
-The measurements defined in this report are “instance agnostic,” which means they do not target specific anycast instances within a RSI. Thus, the vantage points do not try to force queries to specific instances, rather they should let intermediate routers on the Internet determine which anycast instance of an RSI receives each query and measure the performance of the RSI as a whole. `[fpy]`
+The measurements defined in this report are “instance agnostic,” which means they do not target specific anycast instances within a RSI. Thus, the vantage points do not try to force queries to specific instances, rather they should let intermediate routers on the Internet determine which anycast instance of an RSI receives each query and measure the performance of the RSI as a whole.
 
 ### 4.7 Measurement Reuse
 
@@ -212,7 +212,7 @@ __Measuring Correctness.__ For a response received within the timeout value, the
 
 The collection system keeps a copy of every root zone file published after it has been set up. `[ooy]` A response is tested against all root zones that were first seen in use in the 48 hours preceding the query until a correct result is returned. `[yhu]` If no correct result is found, an incorrect result is returned. `[xog]`
 
-Correctness checking is based on the actual response data, rather than what was expected. `[fgp]` For example, if a query was sent in the expected positive style, but the received response was negative (e.g., NXDOMAIN), matching is performed as a negative response. This is done to handle cases when vantage points might not receive configuration updates for a short period of time.
+Correctness checking is based on the actual response data, rather than what was expected. For example, if a query was sent in the expected positive style, but the received response was negative (e.g., NXDOMAIN), matching is performed as a negative response. This is done to handle cases when vantage points might not receive configuration updates for a short period of time.
 
 For all matching testing:
 
@@ -284,6 +284,8 @@ The publication latency metric may also be affected by the situation described i
 
 __Measurements.__ The metrics are based on the amount of time between publication of a new root zone serial number, and the time the new serial number is observed by each vantage point over all of the transports and address types for each RSI. Rather than make additional SOA queries, this metric reuses the root zone SOA responses received from the response latency measurements from Section 5.2. `[kzu]`
 
+__The following section needs to be changed. It needs to be clear that it is describing metrics, not measurements. It also needs to remove "In each measurement interval" because the metrics are per SOA, not per time interval.__
+
 In each measurement interval, the collection system examines the response latency measurements and calculates the minimum SOA serial value over all of the transports and address types for each vantage point and RSI. `[cnj]` This is because the RSI might return different SOA serials over UDP/TCP and IPv4/IPv6. Timed out and bogus responses must not be used in this calculation. `[tub]`
 
 The collection system needs to know, approximately, when new zones are published by the root zone maintainer. This is accomplished by examining the collective SOA serial responses from all RSIs. `[yxn]`
@@ -317,7 +319,7 @@ This metric is derived from the set of RSI availability measurements described i
 
 __Aggregation.__ For each transport and address type, in each measurement interval t, and for each vantage point v, calculate r_(t,v) as the number of RSIs that responded to an availability query (section 5.1). `[egb]` The aggregated RSS availability (for each transport and address type) A is then:
 
-A = ( ∑ min(k, r_(t,v)) / ∑ k
+A = ( ∑ min(k, r_(t,v))) / ∑ k
 
 Where k is the value from Section 4.9, and the sums are taken over all intervals and all vantage points. `[cvf]`
 
@@ -353,7 +355,7 @@ Since the individual RSI response latency measurements are sent over specific tr
 
 __Measurements.__ In this method, the metric is derived from the set of RSI response latency measurements described in Section 5.1. `[spx]`
 
-__Aggregation.__ In each five-minutes measurement interval, find the best k RSI response latencies for each vantage point and for each transport and address type. `[bom]` The aggregated response latency is calculated as the median value of the subset of lowest latencies. `[jbr]`
+__Aggregation.__ In each five-minutes measurement interval, find the best __"best" should be "lowest"__ k RSI response latencies for each vantage point and for each transport and address type. `[bom]` The aggregated response latency is calculated as the median value of the subset of lowest latencies. `[jbr]`
 
 __Precision.__ Measurement Count shall be presented to convey the measurement range and precision. `[hgm]`
 
