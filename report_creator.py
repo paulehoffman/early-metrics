@@ -227,7 +227,7 @@ if __name__ == "__main__":
 	
 	# RSS availability collation
 		
-	# For RSS availability, for each VP, for each date_time, count the availability in each internet/transport pair
+	# For RSS availability, for each VP, for each date_time, count the availability in each internet/transport pair, and total count
 	rss_availability = {}
 	for this_vp in vp_names:
 		rss_availability[this_vp] = {}
@@ -235,10 +235,11 @@ if __name__ == "__main__":
 	for this_rec in soa_recs:
 		(this_file_prefix, this_date_time, this_vp, this_rsi, this_internet, this_transport, this_dig_elapsed, this_timeout, this_soa) = this_rec
 		if not rss_availability[this_vp].get(this_date_time):
-			rss_availability[this_vp][this_date_time] = { "v4udp": 0, "v4tcp": 0, "v6udp": 0, "v6tcp": 0 }
+			rss_availability[this_vp][this_date_time] = { "v4udp": [ 0, 0 ], "v4tcp": [ 0, 0 ], "v6udp": [ 0, 0 ], "v6tcp": [ 0, 0 ] }
 		int_trans_pair = this_internet + this_transport
 		if not this_timeout:
-			rss_availability[this_vp][this_date_time][int_trans_pair] += 1  # [egb]
+			rss_availability[this_vp][this_date_time][int_trans_pair][0] += 1  # [egb]
+			rss_availability[this_vp][this_date_time][int_trans_pair][1] += 1
 				
 	##############################################################
 	
@@ -246,21 +247,23 @@ if __name__ == "__main__":
 
 	# For RSS response latency, for each date_time, each internet/transport pair has a list of latencies
 	rss_response_latency_in = {}
-	latency_intervals = set()
-	for this_rec in soa_recs:
+	rss_latency_intervals = set()
+	for this_rec in soa_recs:  # [spx]
 		(this_file_prefix, this_date_time, this_vp, this_rsi, this_internet, this_transport, this_dig_elapsed, this_timeout, this_soa) = this_rec
-		latency_intervals.add(this_date_time)
+		rss_latency_intervals.add(this_date_time)
 		if not rss_response_latency_in.get(this_date_time):
 			rss_response_latency_in[this_date_time] = { "v4udp": [], "v4tcp": [], "v6udp": [], "v6tcp": [] }
 		int_trans_pair = this_internet + this_transport
 		if this_dig_elapsed:
-			rss_response_latency_in[this_date_time][int_trans_pair].append(this_dig_elapsed)
+			rss_response_latency_in[this_date_time][int_trans_pair].append(this_dig_elapsed)  # [bom]
 	# Reduce each list of latencies to the median of the lowest k latencies in that last
 	rss_response_latency_aggregates = {}
-	for this_interval in latency_intervals:
+	for this_interval in rss_latency_intervals:
 		rss_response_latency_aggregates[this_interval] = {}
 		for this_pair in report_pairs:
-			rss_response_latency_aggregates[this_interval][this_pair] = statistics.median(rss_response_latency_in[this_interval][this_pair][0:rss_k-1])
+			this_median = statistics.median(rss_response_latency_in[this_interval][this_pair][0:rss_k-1])  # [jbr]
+			this_count = len(rss_response_latency_in[this_interval][this_pair])
+			rss_response_latency_aggregates[this_interval][this_pair] = [ this_median, this_count ]
 			
 	##############################################################
 	
@@ -299,9 +302,9 @@ if __name__ == "__main__":
 		report_text += "\n"
 	
 	# RSI response latency report
-	rsi_response_latency_udp_threshold = 250  # [zuc]
-	rsi_response_latency_tcp_threshold = 500  # [bpl]
-	report_text += "\nRSI Response Latency\nThreshold for UDP is {}ms, threshold for TCP is {}ms\n"\
+	rsi_response_latency_udp_threshold = .250  # [zuc]
+	rsi_response_latency_tcp_threshold = .500  # [bpl]
+	report_text += "\nRSI Response Latency\nThreshold for UDP is {} seconds, threshold for TCP is {} seconds\n"\
 		.format(rsi_response_latency_udp_threshold, rsi_response_latency_tcp_threshold)  # [znh]
 	for this_rsi in rsi_list:
 		report_text += "{}.root-servers.net:\n".format(this_rsi)
@@ -351,21 +354,40 @@ if __name__ == "__main__":
 	
 	# RSS availability report
 	rss_availability_threshold = .99999  # [wzz]
-	report_text += "\nRSS Availability\nThreshold is {:.0f}%\n".format(rsi_availability_threshold * 100)  # [vmx]
+	report_text += "\nRSS Availability\nThreshold is {:.3f}%\n".format(rss_availability_threshold * 100)  # [vmx]
 	for this_pair in sorted(report_pairs):
 		this_numerator = 0
 		this_denominator = 0
 		this_count = 0
 		for this_vp in rss_availability:
 			for this_date_time in rss_availability[this_vp]:
-				this_numerator += min(rss_k, rss_availability[this_vp][this_date_time][this_pair])
+				this_numerator += min(rss_k, rss_availability[this_vp][this_date_time][this_pair][0])
 				this_denominator += rss_k
-				this_count += 1
+				this_count += rss_availability[this_vp][this_date_time][this_pair][1]
 		this_ratio = this_numerator / this_denominator  # [cvf]
 		this_result = "Fail" if this_ratio < rss_availability_threshold else "Pass"
-		report_text += "  {}: {:.6f}% ({}) ({} measurements)\n".format(report_pairs[this_pair], this_ratio * 100, this_result, this_count)  # [vxl] [fdy]
+		report_text += "  {}: {:.3f}% ({}) ({} measurements)\n".format(report_pairs[this_pair], this_ratio * 100, this_result, this_count)  # [vxl] [fdy]
 	report_text += "\n"
 		
+	# RSS response latency report
+	rss_response_latency_udp_threshold = .150  # [uwf]
+	rss_response_latency_tcp_threshold = .300  # [lmx]
+	report_text += "\nRSS Response Latency\nThreshold for UDP is {} seconds, threshold for TCP is {} seconds\n"\
+		.format(rss_response_latency_udp_threshold, rss_response_latency_tcp_threshold)  # [gwm]
+	for this_pair in sorted(report_pairs):
+		pair_latencies = []
+		pair_count = 0
+		for this_interval in rss_latency_intervals:
+			pair_latencies.append(rss_response_latency_aggregates[this_interval][this_pair][0])
+			pair_count += rss_response_latency_aggregates[this_interval][this_pair][1]
+		pair_response_latency_median = statistics.median(pair_latencies)
+		if "udp" in this_pair:
+			this_result = "Fail" if pair_response_latency_median > rss_response_latency_udp_threshold else "Pass"
+		else:
+			this_result = "Fail" if pair_response_latency_median > rss_response_latency_tcp_threshold else "Pass"
+		report_text += "  {}: {} ({}) ({} measurements)\n".format(report_pairs[this_pair], pair_response_latency_median, this_result, pair_count)  # [gwm]
+	report_text += "\n"
+	
 
 	##############################################################
 	
