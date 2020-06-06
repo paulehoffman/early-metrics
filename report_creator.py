@@ -95,6 +95,20 @@ if __name__ == "__main__":
 
 	##############################################################
 
+	# Keep track of the files seen in order to count the number of measurements across all vantage points
+	#   This will be filled in both in looking through the SOA and correctness datasets
+	files_seen = set()
+	# The list of RSIs might change in the future, so treat this as a list [dlw]
+	rsi_list = [ "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m" ]
+
+	# RSS availability and response latency use the value k defined in Section 4.9 of RSSAC-047
+	rss_k = math.ceil((len(rsi_list) - 1) * float(2/3))
+	
+	# The following is used for keeping track of the internet/transport pairs, and the way they are expressed in the report
+	report_pairs = { "v4udp": "IPv4 UDP", "v4tcp": "IPv4 TCP", "v6udp": "IPv6 UDP", "v6tcp": "IPv6 TCP" }
+
+	##############################################################
+
 	# Connect to the database
 	try:
 		conn = psycopg2.connect(dbname="metrics", user="metrics")
@@ -105,29 +119,34 @@ if __name__ == "__main__":
 	except Exception as e:
 		die("Unable to get database cursor: '{}'".format(e))
 	
-	##############################################################
-
-	# Keep track of the files seen in order to count the number of measurements across all vantage points
-	#   This will be filled in both in looking through the SOA and correctness datasets
-	files_seen = set()
-	# The list of RSIs might change in the future, so treat this as a list [dlw]
-	rsi_list = [ "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m" ]
-
-	# The following is used for keeping track of the internet/transport pairs, and the way they are expressed in the report
-	report_pairs = { "v4udp": "IPv4 UDP", "v4tcp": "IPv4 TCP", "v6udp": "IPv6 UDP", "v6tcp": "IPv6 TCP" }
-
-	##############################################################
+	where_clause = "where date_derived between '{}' and  '{}' ".format(first_of_last_month_timestamp, end_of_last_month_timestamp)
 
 	# Get all the SOA records for this month
 	cur.execute("select file_prefix, date_derived, vp, rsi, internet, transport, dig_elapsed, timeout, soa from public.soa_info "\
-		+ "where date_derived between '{}' and  '{}' order by date_derived".format(first_of_last_month_timestamp, end_of_last_month_timestamp))
+		+ "{} order by date_derived".format(where_clause))
 	soa_recs = cur.fetchall()
 	log("Found {} SOA records".format(len(soa_recs)))
 	
-	# Get the results for RSI availability and response latency and publcation latency
+	# Get all the correctness records for this month
+	cur.execute("select file_prefix, date_derived, rsi, is_correct from public.correctness_info {} order by date_derived".format(where_clause))
+	correctness_recs = cur.fetchall()
+	log("Found {} correctness records".format(len(correctness_recs)))
+
+	# Collect information for the RSS availability
+	cur.execute("select vp from public.soa_info {} group by vp".format(where_clause))
+	vp_names = set()
+	for this_record in cur.fetchall():
+		vp_names.add(this_record[0])
+	log("Found {} vantage point names".format(len(vp_names)))
+	
+	cur.close()
+	conn.close()
+
+	##############################################################
+
+	# RSI availability and RSI response latency collation (done at the same time)
 	rsi_availability = {}
 	rsi_response_latency = {}
-	rsi_publication_latency = {}
 	for this_rsi in rsi_list:
 		# For availability, each internet_transport_pair has two values: number of non-timeouts, and count
 		rsi_availability[this_rsi] = { "v4udp": [ 0, 0 ], "v4tcp": [ 0, 0 ], "v6udp": [ 0, 0 ], "v6tcp": [ 0, 0 ] }
@@ -140,11 +159,11 @@ if __name__ == "__main__":
 		(this_file_prefix, this_date_time, this_vp, this_rsi, this_internet, this_transport, this_dig_elapsed, this_timeout, this_soa) = this_rec
 		files_seen.add(this_file_prefix)
 		internet_transport_pair = this_internet + this_transport
-		# Availability [gfa]
+		# RSI availability [gfa]
 		if not this_timeout:
 			rsi_availability[this_rsi][internet_transport_pair][0] += 1
 		rsi_availability[this_rsi][internet_transport_pair][1] += 1
-		# Response latency [fhw]
+		# RSI response latency [fhw]
 		if not this_timeout:  # [vpa]
 			try:
 				rsi_response_latency[this_rsi][internet_transport_pair][0].append(this_dig_elapsed)
@@ -154,9 +173,13 @@ if __name__ == "__main__":
 		# Store the date that a SOA was first seen; note that this relies on soa_recs to be ordered by date_derived
 		if this_soa and (not this_soa in soa_first_seen):
 			soa_first_seen[this_soa] = this_date_time
-	# Publication latency  # [yxn]
+
+	##############################################################
+
+	# Publication latency collation  # [yxn]
 	#   This must be run after the soa_first_seen dict is filled in
 	#   For publication latency, record the datetimes that each SOA is seen for each internet and transport pair
+	rsi_publication_latency = {}
 	for this_rsi in rsi_list:
 		rsi_publication_latency[this_rsi] = {}
 		for this_soa in soa_first_seen:
@@ -182,11 +205,7 @@ if __name__ == "__main__":
 				
 	##############################################################
 
-	# Get all the correctness records for this month [ebg]
-	cur.execute("select file_prefix, date_derived, rsi, is_correct from public.correctness_info "\
-		+ "where date_derived between '{}' and  '{}' order by date_derived".format(first_of_last_month_timestamp, end_of_last_month_timestamp))
-	correctness_recs = cur.fetchall()
-	log("Found {} correctness records".format(len(correctness_recs)))
+	# RSI correctness collation [ebg]
 	rsi_correctness = {}
 	for this_rsi in rsi_list:
 		# For correcness, there are two values: number of incorrect responses, and count [jof] [lbl]
@@ -199,17 +218,48 @@ if __name__ == "__main__":
 		rsi_correctness[this_rsi][1] += 1
 		
 	##############################################################
+	
+	# RSS availability collation
+		
+	rss_availability = {}
+	for this_vp in vp_names:
+		rss_availability[this_vp] = {}
+	# Go through te SOA records recorded earlier
+	for this_rec in soa_recs:
+		(this_file_prefix, this_date_time, this_vp, this_rsi, this_internet, this_transport, this_dig_elapsed, this_timeout, this_soa) = this_rec
+		if not rss_availability[this_vp].get(this_date_time):
+			rss_availability[this_vp][this_date_time] = { "v4udp": 0, "v4tcp": 0, "v6udp": 0, "v6tcp": 0 }
+		internet_transport_pair = this_internet + this_transport
+		if not this_timeout:
+			rss_availability[this_vp][this_date_time][internet_transport_pair] += 1
+				
+	##############################################################
+	
+	# RSS response latency collation
+		
+	# INCOMPLETE #######################
+	rss_response_latency = {}
+	for this_rec in soa_recs:
+		(this_file_prefix, this_date_time, this_vp, this_rsi, this_internet, this_transport, this_dig_elapsed, this_timeout, this_soa) = this_rec
+			
+	##############################################################
+	
+	# RSS correctness collation
+	
+	# Nothing needs to be done here; it is done below as "count the number of incorrect responses"
+
+
+
+	##############################################################
+	
+	# Write the monthly report
 
 	# Note the number of measurements for this month
 	report_text += "Number of measurments across all vantage points in the month: {}\n".format(len(files_seen))
 	
 	# The report only has "Pass" and "Fail", not the metrics [ntt] [cpm] [nuc]
-<<<<<<< HEAD
-
 	
 	# RSI reports
-=======
->>>>>>> d4f438fd9938116b219f7979b3b9bb2f7a97ee70
 	
 	# Availability report
 	rsi_availability_threshold = .96  # [ydw]
@@ -271,37 +321,6 @@ if __name__ == "__main__":
 		# median_text = "{}".format(publication_latency_median)  # Only used in debugging
 		# report_text += "  {} ({} measurements)  {}".format(this_result, len(rsi_publication_latency[this_rsi]), median_text)  # [jtz]
 		report_text += "\n"
-
-	##############################################################
-	
-	# RSS reports
-	
-	# RSS availability and response latency use the value k defined in Section 4.9 of RSSAC-047
-	rss_k = math.ceil((len(rsi_list) - 1) * float(2/3))
-	
-	# Collect information for the RSS availability and response latency
-	rss_with_vps = {}
-	# For the RSS measurements, need to aggregate by vantage point
-	cur.execute("select vp, soa from public.soa_info "\
-		+ "where date_derived between '{}' and  '{}'".format(first_of_last_month_timestamp, end_of_last_month_timestamp))
-	vp_names = set()
-	for this_record in cur.fetchall():
-		vp_names.add(this_record[0])
-	log("Found {} vantage point names".format(len(vp_names)))
-	# For each VP and internet_transport_pair, collect the number of RSIs seen at a particular interval
-	rss_availability = {}
-	for this_vp in vp_names:
-		rss_availability[this_vp] = {}
-	# Go through te SOA records recorded earlier
-	for this_rec in soa_recs:
-		(this_file_prefix, this_date_time, this_vp, this_rsi, this_internet, this_transport, this_dig_elapsed, this_timeout, this_soa) = this_rec
-		if not rss_availability[this_vp].get(this_date_time):
-			rss_availability[this_vp][this_date_time] = { "v4udp": 0, "v4tcp": 0, "v6udp": 0, "v6tcp": 0 }
-		internet_transport_pair = this_internet + this_transport
-		if not this_timeout:
-			rss_availability[this_vp][this_date_time][internet_transport_pair] += 1
-		
-
 
 	##############################################################
 	
