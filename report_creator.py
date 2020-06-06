@@ -4,7 +4,7 @@
 # Run as the metrics user
 # Three-letter items in square brackets (such as [xyz]) refer to parts of rssac-047.md
 
-import argparse, datetime, glob, logging, math, os, psycopg2
+import argparse, datetime, glob, logging, math, os, psycopg2, statistics
 
 if __name__ == "__main__":
 	# Get the base for the log directory
@@ -145,12 +145,13 @@ if __name__ == "__main__":
 	##############################################################
 
 	# RSI availability and RSI response latency collation (done at the same time)
+
+	# For RSI availability, for each RSI, each internet/transport pair has two values: number of non-timeouts, and count
+	# For RSI response latency, for each RSI, each internet/transport pair has two values: list of response latencies, and count
 	rsi_availability = {}
 	rsi_response_latency = {}
 	for this_rsi in rsi_list:
-		# For availability, each internet_transport_pair has two values: number of non-timeouts, and count
 		rsi_availability[this_rsi] = { "v4udp": [ 0, 0 ], "v4tcp": [ 0, 0 ], "v6udp": [ 0, 0 ], "v6tcp": [ 0, 0 ] }
-		# For response latency, each internet_transport_pair has two values: list of response latencies, and count
 		rsi_response_latency[this_rsi] = { "v4udp": [ [], 0 ], "v4tcp": [ [], 0 ], "v6udp": [ [], 0 ], "v6tcp": [ [], 0 ] }
 	# Measurements for publication latency requires more work because the system has to determine when new SOAs are first seen
 	#   soa_first_seen keys are SOAs, values are the date first seen
@@ -158,16 +159,16 @@ if __name__ == "__main__":
 	for this_rec in soa_recs:
 		(this_file_prefix, this_date_time, this_vp, this_rsi, this_internet, this_transport, this_dig_elapsed, this_timeout, this_soa) = this_rec
 		files_seen.add(this_file_prefix)
-		internet_transport_pair = this_internet + this_transport
+		int_trans_pair = this_internet + this_transport
 		# RSI availability [gfa]
 		if not this_timeout:
-			rsi_availability[this_rsi][internet_transport_pair][0] += 1
-		rsi_availability[this_rsi][internet_transport_pair][1] += 1
+			rsi_availability[this_rsi][int_trans_pair][0] += 1
+		rsi_availability[this_rsi][int_trans_pair][1] += 1
 		# RSI response latency [fhw]
 		if not this_timeout:  # [vpa]
 			try:
-				rsi_response_latency[this_rsi][internet_transport_pair][0].append(this_dig_elapsed)
-				rsi_response_latency[this_rsi][internet_transport_pair][1] += 1
+				rsi_response_latency[this_rsi][int_trans_pair][0].append(this_dig_elapsed)
+				rsi_response_latency[this_rsi][int_trans_pair][1] += 1
 			except:
 				die("Found a non-timed-out response that did not have an elapsed time: '{}'".format(this_rec))
 		# Store the date that a SOA was first seen; note that this relies on soa_recs to be ordered by date_derived
@@ -176,14 +177,15 @@ if __name__ == "__main__":
 
 	##############################################################
 
-	# Publication latency collation  # [yxn]
-	#   This must be run after the soa_first_seen dict is filled in
-	#   For publication latency, record the datetimes that each SOA is seen for each internet and transport pair
+	# RSI publication latency collation  # [yxn]
+
+	# This must be run after the soa_first_seen dict is filled in
+	# For publication latency, record the datetimes that each SOA is seen for each internet and transport pair
 	rsi_publication_latency = {}
 	for this_rsi in rsi_list:
 		rsi_publication_latency[this_rsi] = {}
 		for this_soa in soa_first_seen:
-			rsi_publication_latency[this_rsi][this_soa] = { "v4udp": None, "v4tcp": None, "v6udp": None, "v6tcp": None, "last": None, "latency": None }
+			rsi_publication_latency[this_rsi][this_soa] = { "v4udp": None, "v4tcp": None, "v6udp": None, "v6tcp": None, "last": None, "latency": 0 }
 	# Go through the SOA records again, filling in the fields for internet and transport pairs
 	#   Again, this relies on soa_recs to be in date order
 	for this_rec in soa_recs:
@@ -199,16 +201,20 @@ if __name__ == "__main__":
 	for this_rsi in rsi_list:
 		for this_soa in soa_first_seen:
 			for this_pair in report_pairs:
-				rsi_publication_latency[this_rsi][this_soa]["last"] = rsi_publication_latency[this_rsi][this_soa][this_pair]
+				if not rsi_publication_latency[this_rsi][this_soa]["last"]:
+						rsi_publication_latency[this_rsi][this_soa]["last"] = rsi_publication_latency[this_rsi][this_soa][this_pair]
+				elif rsi_publication_latency[this_rsi][this_soa][this_pair] > rsi_publication_latency[this_rsi][this_soa]["last"]:
+						rsi_publication_latency[this_rsi][this_soa]["last"] = rsi_publication_latency[this_rsi][this_soa][this_pair]
 			# Fill in the "latency" entry by comparing the "last" to the SOA datetime; it is stored as a datetime.timedelta
 			rsi_publication_latency[this_rsi][this_soa]["latency"] = rsi_publication_latency[this_rsi][this_soa]["last"] - soa_first_seen[this_soa]
 				
 	##############################################################
 
 	# RSI correctness collation [ebg]
+
+	# For RSI correctness, for each RSI, there are two values: number of incorrect responses, and count [jof] [lbl]
 	rsi_correctness = {}
 	for this_rsi in rsi_list:
-		# For correcness, there are two values: number of incorrect responses, and count [jof] [lbl]
 		rsi_correctness[this_rsi] = [ 0, 0 ]
 	for this_rec in correctness_recs:
 		(this_file_prefix, this_date_time, this_rsi, this_correctness) = this_rec
@@ -221,6 +227,7 @@ if __name__ == "__main__":
 	
 	# RSS availability collation
 		
+	# For RSS availability, for each VP, for each date_time, count the availability in each internet/transport pair
 	rss_availability = {}
 	for this_vp in vp_names:
 		rss_availability[this_vp] = {}
@@ -229,26 +236,43 @@ if __name__ == "__main__":
 		(this_file_prefix, this_date_time, this_vp, this_rsi, this_internet, this_transport, this_dig_elapsed, this_timeout, this_soa) = this_rec
 		if not rss_availability[this_vp].get(this_date_time):
 			rss_availability[this_vp][this_date_time] = { "v4udp": 0, "v4tcp": 0, "v6udp": 0, "v6tcp": 0 }
-		internet_transport_pair = this_internet + this_transport
+		int_trans_pair = this_internet + this_transport
 		if not this_timeout:
-			rss_availability[this_vp][this_date_time][internet_transport_pair] += 1
+			rss_availability[this_vp][this_date_time][int_trans_pair] += 1  # [egb]
 				
 	##############################################################
 	
 	# RSS response latency collation
-		
-	# INCOMPLETE #######################
-	rss_response_latency = {}
+
+	# For RSS response latency, for each date_time, each internet/transport pair has a list of latencies
+	rss_response_latency_in = {}
+	latency_intervals = set()
 	for this_rec in soa_recs:
 		(this_file_prefix, this_date_time, this_vp, this_rsi, this_internet, this_transport, this_dig_elapsed, this_timeout, this_soa) = this_rec
+		latency_intervals.add(this_date_time)
+		if not rss_response_latency_in.get(this_date_time):
+			rss_response_latency_in[this_date_time] = { "v4udp": [], "v4tcp": [], "v6udp": [], "v6tcp": [] }
+		int_trans_pair = this_internet + this_transport
+		if this_dig_elapsed:
+			rss_response_latency_in[this_date_time][int_trans_pair].append(this_dig_elapsed)
+	# Reduce each list of latencies to the median of the lowest k latencies in that last
+	rss_response_latency_aggregates = {}
+	for this_interval in latency_intervals:
+		rss_response_latency_aggregates[this_interval] = {}
+		for this_pair in report_pairs:
+			rss_response_latency_aggregates[this_interval][this_pair] = statistics.median(rss_response_latency_in[this_interval][this_pair][0:rss_k-1])
 			
 	##############################################################
 	
 	# RSS correctness collation
 	
-	# Nothing needs to be done here; it is done below as "count the number of incorrect responses"
+	# Nothing needs to be done here; it is done below as "find the ratio of the number of incorrect responses"
 
-
+	##############################################################
+	
+	# RSS publication latency collation
+	
+	# Nothing needs to be done here; it is done below as "find the median of the number of publicaiton latencies"
 
 	##############################################################
 	
@@ -257,11 +281,11 @@ if __name__ == "__main__":
 	# Note the number of measurements for this month
 	report_text += "Number of measurments across all vantage points in the month: {}\n".format(len(files_seen))
 	
-	# The report only has "Pass" and "Fail", not the metrics [ntt] [cpm] [nuc]
+	# The report only has "Pass" and "Fail", not the collated metrics [ntt] [cpm]
 	
 	# RSI reports
 	
-	# Availability report
+	# RSI availability report
 	rsi_availability_threshold = .96  # [ydw]
 	report_text += "\n\nRSI Availability\nThreshold is {:.0f}%\n".format(rsi_availability_threshold * 100)  # [vmx]
 	for this_rsi in rsi_list:
@@ -274,7 +298,7 @@ if __name__ == "__main__":
 			# report_text += "  {}: {} ({} measurements)  {}".format(report_pairs[this_pair], this_result, rsi_availability[this_rsi][this_pair][1], ratio_text)
 		report_text += "\n"
 	
-	# Response latency report
+	# RSI response latency report
 	rsi_response_latency_udp_threshold = 250  # [zuc]
 	rsi_response_latency_tcp_threshold = 500  # [bpl]
 	report_text += "\nRSI Response Latency\nThreshold for UDP is {}ms, threshold for TCP is {}ms\n"\
@@ -282,8 +306,7 @@ if __name__ == "__main__":
 	for this_rsi in rsi_list:
 		report_text += "{}.root-servers.net:\n".format(this_rsi)
 		for this_pair in sorted(report_pairs):
-			response_latency_list = sorted(rsi_response_latency[this_rsi][this_pair][0])
-			response_latency_median = response_latency_list[int(rsi_response_latency[this_rsi][this_pair][1] / 2)]  # [mzx]
+			response_latency_median = statistics.median(rsi_response_latency[this_rsi][this_pair][0]) # [mzx]
 			if "udp" in this_pair:
 				this_result = "Fail" if response_latency_median > rsi_response_latency_udp_threshold else "Pass"
 			else:
@@ -293,7 +316,7 @@ if __name__ == "__main__":
 			# report_text += "  {}: {} ({} measurements)  {}".format(report_pairs[this_pair], this_result, rsi_availability[this_rsi][this_pair][1], median_text)
 		report_text += "\n"
 	
-	# Correctness report
+	# RSI correctness report
 	rsi_correctness_threshold = 1  # [ahw]
 	report_text += "\nRSI Correctness\nThreshold is 100%\n"  # [mah]
 	for this_rsi in rsi_list:
@@ -305,7 +328,7 @@ if __name__ == "__main__":
 		# report_text += "  {} ({} measurements)  {}".format(this_result, rsi_correctness[this_rsi][1], ratio_text)
 		report_text += "\n"
 	
-	# Publication latency report
+	# RSI publication latency report
 	rsi_publication_latency_threshold = 65 # [fwa]
 	report_text += "\nRSI Response Latency\nThreshold is {} minutes\n".format(rsi_publication_latency_threshold)  # [erf]
 	for this_rsi in rsi_list:
@@ -315,12 +338,34 @@ if __name__ == "__main__":
 		for this_soa in soa_first_seen:
 			if rsi_publication_latency[this_rsi].get(this_soa):
 				latency_differences.append(rsi_publication_latency[this_rsi][this_soa]["latency"].seconds)  # [kvg] [udz]
-		publication_latency_median = latency_differences[int(len(latency_differences) / 2)]  # [yzp]
+		publication_latency_median = statistics.median(latency_differences)  # [yzp]
 		this_result = "Fail" if publication_latency_median > rsi_publication_latency_threshold else "Pass"
 		report_text += "  {} ({} measurements)".format(this_result, len(rsi_publication_latency[this_rsi]))  # [hms]
 		# median_text = "{}".format(publication_latency_median)  # Only used in debugging
 		# report_text += "  {} ({} measurements)  {}".format(this_result, len(rsi_publication_latency[this_rsi]), median_text)  # [jtz]
 		report_text += "\n"
+
+	# RSS reports
+	
+	# Report both the derived values and a pass/fail indicator for each RSS metric [nuc]
+	
+	# RSS availability report
+	rss_availability_threshold = .99999  # [wzz]
+	report_text += "\nRSS Availability\nThreshold is {:.0f}%\n".format(rsi_availability_threshold * 100)  # [vmx]
+	for this_pair in sorted(report_pairs):
+		this_numerator = 0
+		this_denominator = 0
+		this_count = 0
+		for this_vp in rss_availability:
+			for this_date_time in rss_availability[this_vp]:
+				this_numerator += min(rss_k, rss_availability[this_vp][this_date_time][this_pair])
+				this_denominator += rss_k
+				this_count += 1
+		this_ratio = this_numerator / this_denominator  # [cvf]
+		this_result = "Fail" if this_ratio < rss_availability_threshold else "Pass"
+		report_text += "  {}: {:.6f}% ({}) ({} measurements)\n".format(report_pairs[this_pair], this_ratio * 100, this_result, this_count)  # [vxl] [fdy]
+	report_text += "\n"
+		
 
 	##############################################################
 	
