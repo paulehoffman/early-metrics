@@ -319,7 +319,7 @@ This metric is derived from the set of RSI availability measurements described i
 
 __Aggregation.__ For each transport and address type, in each measurement interval t, and for each vantage point v, calculate r_(t,v) as the number of RSIs that responded to an availability query (section 5.1). `[egb]` The aggregated RSS availability (for each transport and address type) A is then:
 
-A = ( ∑ min(k, r_(t,v))) / ∑ k
+A = (∑ min(k, r_(t,v))) / ∑ k
 
 Where k is the value from Section 4.9, and the sums are taken over all intervals and all vantage points. `[cvf]`
 
