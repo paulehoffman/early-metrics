@@ -76,14 +76,7 @@
 
 - `produce_reports.py`
 	- Run from cron job every week, and on the first of each month
-	-`--style _n_` to say what style of report (weekly, monthly)
+	- `--debug` to add debugging info to the report
+	- `--force` to recreate a report that already exists
+	- `--test_date` to pretend that it is a different date in order to make earlier reports
 
-- `watch_collector.py`
-	- Run from cron job every 30 minutes on 20, 50
-	- Alerts if ~/Output/Originals is not fuller than on the last run
-	- Alerts if ~/Output/root_zones is not fuller than it was 24 hours ago
-	- Check for disk usage > 80%, alert if found
-
-- Data distribution
-	- Raw responses (.pickle.gz) files available for a month or longer in ~transport
-	- Available by read-only rsync or maybe HTTPS
