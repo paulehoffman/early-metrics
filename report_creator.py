@@ -222,8 +222,8 @@ if __name__ == "__main__":
 						rsi_publication_latency[this_rsi][this_soa]["last"] = rsi_publication_latency[this_rsi][this_soa][this_pair]
 				elif rsi_publication_latency[this_rsi][this_soa][this_pair] > rsi_publication_latency[this_rsi][this_soa]["last"]:
 						rsi_publication_latency[this_rsi][this_soa]["last"] = rsi_publication_latency[this_rsi][this_soa][this_pair]
-			# Fill in the "latency" entry by comparing the "last" to the SOA datetime; it is stored as a datetime.timedelta
-			rsi_publication_latency[this_rsi][this_soa]["latency"] = rsi_publication_latency[this_rsi][this_soa]["last"] - soa_first_seen[this_soa]
+			# Fill in the "latency" entry by comparing the "last" to the SOA datetime; it is stored as seconds
+			rsi_publication_latency[this_rsi][this_soa]["latency"] = (rsi_publication_latency[this_rsi][this_soa]["last"] - soa_first_seen[this_soa]).seconds
 				
 	##############################################################
 	
@@ -308,9 +308,8 @@ if __name__ == "__main__":
 			rsi_availability_ratio = rsi_availability[this_rsi][this_pair][0] / rsi_availability[this_rsi][this_pair][1]  # [yah]
 			pass_fail_text = "Fail" if rsi_availability_ratio < rsi_availability_threshold else "Pass"
 			debug_text = " -- {:.3f}".format(rsi_availability_ratio) if opts.debug else ""
-			report_text += "    {}: {} ({} measurements){}\n"\
+			report_text += "    {}: {}, {} measurements{}\n"\
 				.format(report_pairs[this_pair], pass_fail_text, rsi_availability[this_rsi][this_pair][1], debug_text)  # [lkd]
-		report_text += "\n"
 	
 	# RSI response latency report
 	rsi_response_latency_udp_threshold = .250  # [zuc]
@@ -326,9 +325,8 @@ if __name__ == "__main__":
 			else:
 				pass_fail_text = "Fail" if response_latency_median > rsi_response_latency_tcp_threshold else "Pass"
 			debug_text = " -- {:.3f} median".format(response_latency_median) if opts.debug else ""
-			report_text += "    {}: {} ({} measurements){}\n"\
+			report_text += "    {}: {}, {} measurements{}\n"\
 				.format(report_pairs[this_pair], pass_fail_text, rsi_response_latency[this_rsi][this_pair][1], debug_text)  # [lxr]
-		report_text += "\n"
 	
 	# RSI correctness report
 	rsi_correctness_threshold = 1  # [ahw]
@@ -338,23 +336,23 @@ if __name__ == "__main__":
 		rsi_correctness_ratio = rsi_correctness[this_rsi][0] / rsi_correctness[this_rsi][1]  # [skm]
 		pass_fail_text = "Fail" if rsi_correctness_ratio < rsi_correctness_threshold else "Pass"
 		debug_text = " -- {} incorrect, {:.4f}".format(rsi_correctness[this_rsi][1] - rsi_correctness[this_rsi][0], rsi_correctness_ratio) if opts.debug else ""
-		report_text += "    {} ({} measurements){}\n"\
+		report_text += "    {}, {} measurements{}\n"\
 			.format(pass_fail_text, rsi_correctness[this_rsi][1], debug_text)  # [fee]
 	
 	# RSI publication latency report
 	rsi_publication_latency_threshold = 65 * 60 # [fwa]
-	report_text += "\nRSI Puublication Latency\nThreshold is {} seconds\n".format(rsi_publication_latency_threshold)  # [erf]
+	report_text += "\nRSI Publication Latency\nThreshold is {} seconds\n".format(rsi_publication_latency_threshold)  # [erf]
 	for this_rsi in rsi_list:
 		report_text += "  {}.root-servers.net:\n".format(this_rsi)
 		# latency_differences is the delays in publication for this letter
 		latency_differences = []
 		for this_soa in soa_first_seen:
 			if rsi_publication_latency[this_rsi].get(this_soa):
-				latency_differences.append(rsi_publication_latency[this_rsi][this_soa]["latency"].seconds)  # [kvg] [udz]
+				latency_differences.append(rsi_publication_latency[this_rsi][this_soa]["latency"])  # [kvg] [udz]
 		publication_latency_median = statistics.median(latency_differences)  # [yzp]
 		pass_fail_text = "Fail" if publication_latency_median > rsi_publication_latency_threshold else "Pass"
 		debug_text = " -- {} median".format(publication_latency_median) if opts.debug else ""
-		report_text += "    {} ({} measurements){}\n"\
+		report_text += "    {}, {} measurements{}\n"\
 			.format(pass_fail_text, len(rsi_publication_latency[this_rsi]), debug_text)  # [hms]
 
 	# RSS reports
@@ -376,7 +374,7 @@ if __name__ == "__main__":
 		this_ratio = rss_availability_numerator / rss_availability_denominator  # [cvf]
 		pass_fail_text = "Fail" if this_ratio < rss_availability_threshold else "Pass"
 		debug_text = " -- {}/{}".format(rss_availability_numerator, rss_availability_denominator) if opts.debug else ""
-		report_text += "  {}: {:.3f}% ({}) ({} measurements){}\n"\
+		report_text += "  {}: {:.3f}%, {}, {} measurements{}\n"\
 			.format(report_pairs[this_pair], this_ratio * 100, pass_fail_text, this_count, debug_text)  # [vxl] [fdy]
 		
 	# RSS response latency report
@@ -395,8 +393,8 @@ if __name__ == "__main__":
 			pass_fail_text = "Fail" if pair_response_latency_median > rss_response_latency_udp_threshold else "Pass"
 		else:
 			pass_fail_text = "Fail" if pair_response_latency_median > rss_response_latency_tcp_threshold else "Pass"
-		debug_text = " -- " if opts.debug else ""
-		report_text += "  {}: {} ({}) ({} measurements){}\n"\
+		debug_text = " -- {:.3f} mean".format(statistics.mean(pair_latencies)) if opts.debug else ""
+		report_text += "  {}: {} median, {}, {} measurements{}\n"\
 			.format(report_pairs[this_pair], pair_response_latency_median, pass_fail_text, pair_count, debug_text)  # [gwm]
 	
 	# RSS correctness report
@@ -404,17 +402,17 @@ if __name__ == "__main__":
 	report_text += "\nRSI Correctness\nThreshold is 100%\n"  # [gfh]
 	pass_fail_text = "Fail" if rss_correctness_ratio < rss_correctness_threshold else "Pass"
 	debug_text = " -- {} incorrect".format(rss_correctness_incorrect) if opts.debug else ""
-	report_text += "   Entire RSS {:.6f}% {} ({} measurements){}\n"\
+	report_text += "   Entire RSS {:.6f}%, {}, {} measurements{}\n"\
 		.format(rss_correctness_ratio, pass_fail_text, rss_correctness_denominator, debug_text)  # [kea] [vpj]
 
 	# RSS publication latency
 	rss_publication_latency_threshold = 35 * 60  # [zkl]
-	report_text += "\nRSS Puublication Latency\nThreshold is {} seconds\n".format(rsi_publication_latency_threshold)  # [erf]
-	rss_publication_latency = statistics.median(rss_publication_latency_list)  # [zgb]
-	pass_fail_text = "Fail" if rss_publication_latency < rss_correctness_threshold else "Pass"
-	debug_text = " -- " if opts.debug else ""
-	report_text += "   Entire RSS {:.6f}% ({} measurements){}\n"\
-		.format(rss_publication_latency, pass_fail_text, debug_text)  # [daz] [tkw]
+	report_text += "\nRSS Publication Latency\nThreshold is {} seconds\n".format(rss_publication_latency_threshold)  # [erf]
+	rss_publication_latency_median = statistics.median(rss_publication_latency_list)  # [zgb]
+	pass_fail_text = "Fail" if rss_publication_latency_median > rss_publication_latency_threshold else "Pass"
+	debug_text = " -- {:.3f} mean".format(statistics.mean(rss_publication_latency_list)) if opts.debug else ""
+	report_text += "   Entire RSS {} median, {}, {} measurements{}\n"\
+		.format(rss_publication_latency_median, pass_fail_text, len(rss_publication_latency_list), debug_text)  # [daz] [tkw]
 
 	##############################################################
 	
