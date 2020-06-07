@@ -179,6 +179,21 @@ if __name__ == "__main__":
 
 	##############################################################
 
+	# RSI correctness collation [ebg]
+
+	# For RSI correctness, for each RSI, there are two values: number of incorrect responses, and count [jof] [lbl]
+	rsi_correctness = {}
+	for this_rsi in rsi_list:
+		rsi_correctness[this_rsi] = [ 0, 0 ]
+	for this_rec in correctness_recs:
+		(this_file_prefix, this_date_time, this_rsi, this_correctness) = this_rec
+		files_seen.add(this_file_prefix)
+		if this_correctness:
+			rsi_correctness[this_rsi][0] += 1
+		rsi_correctness[this_rsi][1] += 1
+		
+	##############################################################
+
 	# RSI publication latency collation  # [yxn]
 
 	# This must be run after the soa_first_seen dict is filled in
@@ -210,21 +225,6 @@ if __name__ == "__main__":
 			# Fill in the "latency" entry by comparing the "last" to the SOA datetime; it is stored as a datetime.timedelta
 			rsi_publication_latency[this_rsi][this_soa]["latency"] = rsi_publication_latency[this_rsi][this_soa]["last"] - soa_first_seen[this_soa]
 				
-	##############################################################
-
-	# RSI correctness collation [ebg]
-
-	# For RSI correctness, for each RSI, there are two values: number of incorrect responses, and count [jof] [lbl]
-	rsi_correctness = {}
-	for this_rsi in rsi_list:
-		rsi_correctness[this_rsi] = [ 0, 0 ]
-	for this_rec in correctness_recs:
-		(this_file_prefix, this_date_time, this_rsi, this_correctness) = this_rec
-		files_seen.add(this_file_prefix)
-		if this_correctness:
-			rsi_correctness[this_rsi][0] += 1
-		rsi_correctness[this_rsi][1] += 1
-		
 	##############################################################
 	
 	# RSS availability collation
@@ -283,7 +283,10 @@ if __name__ == "__main__":
 	
 	# RSS publication latency collation
 	
-	# Nothing needs to be done here; it is done below as "find the median of the number of publicaiton latencies"
+	rss_publication_latency_list = []
+	for this_rsi in rsi_list:
+		for this_soa in soa_first_seen:
+			rss_publication_latency_list.append(rsi_publication_latency[this_rsi][this_soa]["latency"])  # [dbo]
 
 	##############################################################
 	
@@ -335,13 +338,12 @@ if __name__ == "__main__":
 		rsi_correctness_ratio = rsi_correctness[this_rsi][0] / rsi_correctness[this_rsi][1]  # [skm]
 		pass_fail_text = "Fail" if rsi_correctness_ratio < rsi_correctness_threshold else "Pass"
 		debug_text = " -- {} incorrect, {:.4f}".format(rsi_correctness[this_rsi][1] - rsi_correctness[this_rsi][0], rsi_correctness_ratio) if opts.debug else ""
-		report_text += "    {} ({} measurements){}"\
+		report_text += "    {} ({} measurements){}\n"\
 			.format(pass_fail_text, rsi_correctness[this_rsi][1], debug_text)  # [fee]
-		report_text += "\n"
 	
 	# RSI publication latency report
-	rsi_publication_latency_threshold = 65 # [fwa]
-	report_text += "\nRSI Response Latency\nThreshold is {} minutes\n".format(rsi_publication_latency_threshold)  # [erf]
+	rsi_publication_latency_threshold = 65 * 60 # [fwa]
+	report_text += "\nRSI Puublication Latency\nThreshold is {} seconds\n".format(rsi_publication_latency_threshold)  # [erf]
 	for this_rsi in rsi_list:
 		report_text += "  {}.root-servers.net:\n".format(this_rsi)
 		# latency_differences is the delays in publication for this letter
@@ -352,9 +354,8 @@ if __name__ == "__main__":
 		publication_latency_median = statistics.median(latency_differences)  # [yzp]
 		pass_fail_text = "Fail" if publication_latency_median > rsi_publication_latency_threshold else "Pass"
 		debug_text = " -- {} median".format(publication_latency_median) if opts.debug else ""
-		report_text += "    {} ({} measurements){}"\
+		report_text += "    {} ({} measurements){}\n"\
 			.format(pass_fail_text, len(rsi_publication_latency[this_rsi]), debug_text)  # [hms]
-		report_text += "\n"
 
 	# RSS reports
 	
@@ -405,6 +406,15 @@ if __name__ == "__main__":
 	debug_text = " -- {} incorrect".format(rss_correctness_incorrect) if opts.debug else ""
 	report_text += "   Entire RSS {:.6f}% {} ({} measurements){}\n"\
 		.format(rss_correctness_ratio, pass_fail_text, rss_correctness_denominator, debug_text)  # [kea] [vpj]
+
+	# RSS publication latency
+	rss_publication_latency_threshold = 35 * 60  # [zkl]
+	report_text += "\nRSS Puublication Latency\nThreshold is {} seconds\n".format(rsi_publication_latency_threshold)  # [erf]
+	rss_publication_latency = statistics.median(rss_publication_latency_list)  # [zgb]
+	pass_fail_text = "Fail" if rss_publication_latency < rss_correctness_threshold else "Pass"
+	debug_text = " -- " if opts.debug else ""
+	report_text += "   Entire RSS {:.6f}% ({} measurements){}\n"\
+		.format(rss_publication_latency, pass_fail_text, debug_text)  # [daz] [tkw]
 
 	##############################################################
 	
