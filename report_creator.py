@@ -223,7 +223,7 @@ if __name__ == "__main__":
 				elif rsi_publication_latency[this_rsi][this_soa][this_pair] > rsi_publication_latency[this_rsi][this_soa]["last"]:
 						rsi_publication_latency[this_rsi][this_soa]["last"] = rsi_publication_latency[this_rsi][this_soa][this_pair]
 			# Fill in the "latency" entry by comparing the "last" to the SOA datetime; it is stored as seconds
-			rsi_publication_latency[this_rsi][this_soa]["latency"] = (rsi_publication_latency[this_rsi][this_soa]["last"] - soa_first_seen[this_soa]).seconds
+			rsi_publication_latency[this_rsi][this_soa]["latency"] = (rsi_publication_latency[this_rsi][this_soa]["last"] - soa_first_seen[this_soa]).seconds [jtz]
 				
 	##############################################################
 	
@@ -361,7 +361,7 @@ if __name__ == "__main__":
 	
 	# RSS availability report
 	rss_availability_threshold = .99999  # [wzz]
-	report_text += "\nRSS Availability\nThreshold is {:.3f}%\n".format(rss_availability_threshold * 100)  # [vmx]
+	report_text += "\nRSS Availability\nThreshold is {:.3f}%\n".format(rss_availability_threshold * 100)  # [fdy]
 	for this_pair in sorted(report_pairs):
 		rss_availability_numerator = 0
 		rss_availability_denominator = 0
@@ -375,7 +375,7 @@ if __name__ == "__main__":
 		pass_fail_text = "Fail" if this_ratio < rss_availability_threshold else "Pass"
 		debug_text = " -- {}/{}".format(rss_availability_numerator, rss_availability_denominator) if opts.debug else ""
 		report_text += "  {}: {:.3f}%, {}, {} measurements{}\n"\
-			.format(report_pairs[this_pair], this_ratio * 100, pass_fail_text, this_count, debug_text)  # [vxl] [fdy]
+			.format(report_pairs[this_pair], this_ratio * 100, pass_fail_text, this_count, debug_text)  # [vxl] [hgm]
 		
 	# RSS response latency report
 	rss_response_latency_udp_threshold = .150  # [uwf]
@@ -395,24 +395,24 @@ if __name__ == "__main__":
 			pass_fail_text = "Fail" if pair_response_latency_median > rss_response_latency_tcp_threshold else "Pass"
 		debug_text = " -- {:.3f} mean".format(statistics.mean(pair_latencies)) if opts.debug else ""
 		report_text += "  {}: {} median, {}, {} measurements{}\n"\
-			.format(report_pairs[this_pair], pair_response_latency_median, pass_fail_text, pair_count, debug_text)  # [gwm]
+			.format(report_pairs[this_pair], pair_response_latency_median, pass_fail_text, pair_count, debug_text)
 	
 	# RSS correctness report
-	rss_correctness_threshold = 1  # [ahw]
-	report_text += "\nRSI Correctness\nThreshold is 100%\n"  # [gfh]
-	pass_fail_text = "Fail" if rss_correctness_ratio < rss_correctness_threshold else "Pass"
+	rss_correctness_threshold = 1  # [gfh]
+	report_text += "\nRSI Correctness\nThreshold is 100%\n"  # [vpj]
+	pass_fail_text = "Fail" if rss_correctness_ratio < rss_correctness_threshold else "Pass"  # [udc]
 	debug_text = " -- {} incorrect".format(rss_correctness_incorrect) if opts.debug else ""
 	report_text += "   Entire RSS {:.6f}%, {}, {} measurements{}\n"\
-		.format(rss_correctness_ratio, pass_fail_text, rss_correctness_denominator, debug_text)  # [kea] [vpj]
+		.format(rss_correctness_ratio, pass_fail_text, rss_correctness_denominator, debug_text)  # [kea]
 
 	# RSS publication latency
 	rss_publication_latency_threshold = 35 * 60  # [zkl]
-	report_text += "\nRSS Publication Latency\nThreshold is {} seconds\n".format(rss_publication_latency_threshold)  # [erf]
+	report_text += "\nRSS Publication Latency\nThreshold is {} seconds\n".format(rss_publication_latency_threshold)  # [tkw]
 	rss_publication_latency_median = statistics.median(rss_publication_latency_list)  # [zgb]
 	pass_fail_text = "Fail" if rss_publication_latency_median > rss_publication_latency_threshold else "Pass"
 	debug_text = " -- {:.3f} mean".format(statistics.mean(rss_publication_latency_list)) if opts.debug else ""
 	report_text += "   Entire RSS {} median, {}, {} measurements{}\n"\
-		.format(rss_publication_latency_median, pass_fail_text, len(rss_publication_latency_list), debug_text)  # [daz] [tkw]
+		.format(rss_publication_latency_median, pass_fail_text, len(rss_publication_latency_list), debug_text)  # [daz]
 
 	##############################################################
 	

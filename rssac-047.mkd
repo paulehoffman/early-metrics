@@ -5,7 +5,7 @@ Some of the text from RSSAC047 has been removed here, so do not rely on it as a 
  
 The purpose of this document is to mark all text that might be linked to the source code and operational plan for a metrics and analysis implementation of RSSAC047.
 The text of this document is basically what is in RSSAC047, but tags are added in every place that something from RSSAC047 might affect implementation.
-All tags are given as `[xyz]`, where "xyz" is a unique, randomly selected three-letter string. That same `[xyz]` will appear in the implementation code or other documents.
+All tags are given as `[xyz]`, where "xyz" is a unique, randomly selected three-letter string. That bracketed tag "[xyz]" will appear in the implementation code or other documents.
 
 ## Preface
 
