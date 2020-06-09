@@ -400,7 +400,9 @@ def process_one_correctness_array(in_array):
 			# If the DS RRset for the query name exists in the zone: [hue]
 			if root_to_check.get("{}/DS".format(this_qname)):
 				# The Authority section contains the signed DS RRset for the query name. [kbd]
-				failure_reasons.append("{} [kbd]".format(check_for_signed_rr(resp["AUTHORITY_SECTION"], "DS")))
+				this_resp = check_for_signed_rr(resp["AUTHORITY_SECTION"], "DS")
+				if this_resp:
+					failure_reasons.append("{} [kbd]".format(this_resp))
 			else:  # If the DS RRset for the query name does not exist in the zone: [fot]
 				# The Authority section contains no DS RRset. [bgr]
 				for this_rec in resp["AUTHORITY_SECTION"]:
