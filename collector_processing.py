@@ -453,7 +453,9 @@ def process_one_correctness_array(in_array):
 					if rec_qtype == "DS":
 						if not rec_qname == this_qname:
 							failure_reasons.append("DS in Answer section had QNAME {} instead of {} [cpf]".format(rec_qname, this_qname))
-				failure_reasons.append("{} [cpf]".format(check_for_signed_rr(resp["ANSWER_SECTION"], "DS")))
+				this_resp = check_for_signed_rr(resp["ANSWER_SECTION"], "DS")
+				if this_resp:
+					failure_reasons.append("{} [cpf]".format(this_resp))
 			# The Authority section is empty. [xdu]
 			if resp.get("AUTHORITY_SECTION"):
 				failure_reasons.append("Authority section was not empty [xdu]")
@@ -465,18 +467,24 @@ def process_one_correctness_array(in_array):
 			if not "aa" in resp["flags"]:
 				failure_reasons.append("AA bit was not set [xhr]")
 			# The Answer section contains the signed SOA record for the root. [obw]
-			failure_reasons.append("{} [obw]".format(check_for_signed_rr(resp["ANSWER_SECTION"], "SOA")))
+			this_resp = check_for_signed_rr(resp["ANSWER_SECTION"], "SOA")
+			if this_resp:
+				failure_reasons.append("{} [obw]".format(this_resp))
 			# The Authority section contains the signed NS RRset for the root. [ktm]
 			if not resp.get("AUTHORITY_SECTION"):
 				failure_reasons.append("The Authority section was empty [ktm]")
 			else:
-				failure_reasons.append("{} [ktm]".format(check_for_signed_rr(resp["AUTHORITY_SECTION"], "NS")))
+				this_resp = check_for_signed_rr(resp["AUTHORITY_SECTION"], "NS")
+				if this_resp:
+					failure_reasons.append("{} [ktm]".format(this_resp))
 		elif (this_qname == ".") and (this_qtype == "NS"):  # Processing for . / NS [amj]
 			# The header AA bit is set. [csz]
 			if not "aa" in resp["flags"]:
 				failure_reasons.append("AA bit was not set [csz]")
 			# The Answer section contains the signed NS RRset for the root. [wal]
-			failure_reasons.append("{} [wal]".format(check_for_signed_rr(resp["ANSWER_SECTION"], "NS")))
+			this_resp = check_for_signed_rr(resp["ANSWER_SECTION"], "NS")
+			if this_resp:
+				failure_reasons.append("{} [wal]".format(this_resp))
 			# The Authority section is empty. [eyk]
 			if resp.get("AUTHORITY_SECTION"):
 				failure_reasons.append("Authority section was not empty [eyk]")
@@ -485,7 +493,9 @@ def process_one_correctness_array(in_array):
 			if not "aa" in resp["flags"]:
 				failure_reasons.append("AA bit was not set [occ]")
 			# The Answer section contains the signed DNSKEY RRset for the root. [eou]
-			failure_reasons.append("{} [eou]".format(check_for_signed_rr(resp["ANSWER_SECTION"], "DNSKEY")))
+			this_resp = check_for_signed_rr(resp["ANSWER_SECTION"], "DNSKEY")
+			if this_resp:
+				failure_reasons.append("{} [eou]".format(this_resp))
 			# The Authority section is empty. [kka]
 			if resp.get("AUTHORITY_SECTION"):
 				failure_reasons.append("Authority section was not empty [kka]")
@@ -511,7 +521,9 @@ def process_one_correctness_array(in_array):
 				if rec_qtype == "SOA":
 					if not rec_qname == ".":
 						failure_reasons.append("SOA in Authority section had QNAME {} instead of '.' [vcu]".format(rec_qname))
-			failure_reasons.append("{} [axj]".format(check_for_signed_rr(resp["AUTHORITY_SECTION"], "SOA")))
+			this_resp = check_for_signed_rr(resp["AUTHORITY_SECTION"], "SOA")
+			if this_resp:
+				failure_reasons.append("{} [axj]".format(this_resp))
 			# The Authority section contains a signed NSEC record covering the query name. [czb]
 			#   Note that the query name might have multiple labels, so only compare against the last label
 			this_qname_TLD = this_qname.split(".")[-2] + "."
