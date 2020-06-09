@@ -244,8 +244,10 @@ id = "csl"
 compare_name = "p-tld-ns"
 desc = "Start with p-tld-ns, remove one of the DS records from the Authority section; will cause validation failure" 
 file_lines = []
+removed_one = False
 for this_line in p_files[compare_name]:
-	if this_line == "        - us. 86400 IN DS 39361 8 1 09E0AF18E54225F87A3B10E95C9DA3F1E58E5B59":
+	if ("- us. 86400 IN DS" in this_line) and not removed_one:
+		removed_one = True
 		continue
 	file_lines.append(this_line)
 create_n_file(id, compare_name, desc, file_lines) 
@@ -312,8 +314,10 @@ id = "zjs"
 compare_name = "p-tld-ds"
 desc = "Start with p-tld-ds, remove the the first DS record; validation will fail"
 file_lines = []
+removed_one = False
 for this_line in p_files[compare_name]:
-	if this_line == "        - us. 86400 IN DS 39361 8 1 09E0AF18E54225F87A3B10E95C9DA3F1E58E5B59":
+	if ("- us. 86400 IN DS" in this_line) and not removed_one:
+		removed_one = True
 		continue
 	else:
 		file_lines.append(this_line)
