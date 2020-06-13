@@ -246,9 +246,10 @@ def check_for_signed_rr(list_of_records_from_section, name_of_rrtype):
 ###############################################################
 
 def process_one_correctness_array(in_array):
-	# Process one tuple of id / SOA / pickle_of_response
+	# Process one tuple of id / SOA array / pickle_of_response
 	#   Normally returns nothing because it is writing the results into the correctness_info database
-	#   If running under opts.test, it does not write into the database but instead returns the results as text
+	# If running under opts.test, it does not write into the database but instead returns the results as text.
+	#   Also, when running under opts.test, the second argument is [ "test" ], not a list of SOAs
 	(this_id, this_recent_soa_serial_array, this_resp_pickle) = in_array
 	try:
 		this_resp_obj = pickle.loads(this_resp_pickle)
@@ -278,17 +279,24 @@ def process_one_correctness_array(in_array):
 			alert(unexpected_message)
 			return	
 	# Convert this_recent_soa_serial_array into root_to_check by reading the file and unpickling it
-	recent_soa_pickle_filename = "{}/{}.matching.pickle".format(saved_matching_dir, this_recent_soa_serial_array[-1])
-	try:
-		soa_f = open(recent_soa_pickle_filename, mode="rb")
-	except:
-		alert("Found SOA {} in correctness checking for {} for which there was no file".format(this_recent_soa_serial_array[-1], this_id))
-		return
-	try:
-		root_to_check = pickle.load(soa_f)
-	except:
-		alert("Could not unpickle {} while processing {} for correctness".format(recent_soa_pickle_filename, this_id))
-		return
+	#   HOWEVER, if running under opts.test, this_recent_soa_serial_array is not an array at all, but instead the root to check
+	if opts.test:
+		try:
+			root_to_check = pickle.load(open("root_name_and_types.pickle", mode="rb"))
+		except:
+			exit("While running under --test, could not find and unpickle 'root_name_and_types.pickle'. Exiting.")
+	else:
+		recent_soa_pickle_filename = "{}/{}.matching.pickle".format(saved_matching_dir, this_recent_soa_serial_array[-1])
+		try:
+			soa_f = open(recent_soa_pickle_filename, mode="rb")
+		except:
+			alert("Found SOA {} in correctness checking for {} for which there was no file".format(this_recent_soa_serial_array[-1], this_id))
+			return
+		try:
+			root_to_check = pickle.load(soa_f)
+		except:
+			alert("Could not unpickle {} while processing {} for correctness".format(recent_soa_pickle_filename, this_id))
+			return
 	
 	# Here if it is a dig MESSAGE type
 	#   failure_reasons holds an expanding set of reasons
@@ -345,7 +353,10 @@ def process_one_correctness_array(in_array):
 
 	# Check that each of the RRsets that are signed have their signatures validated. [yds]
 	#   Send all the records in each section to the function that checks for validity
-	recent_soa_root_filename = "{}/{}.root.txt".format(saved_root_zone_dir, this_recent_soa_serial_array[-1])
+	if opts.test:
+		recent_soa_root_filename = "root_zone.txt"
+	else:
+		recent_soa_root_filename = "{}/{}.root.txt".format(saved_root_zone_dir, this_recent_soa_serial_array[-1])
 	if not os.path.exists(recent_soa_root_filename):
 		alert("Could not find {} for correctness validation, so skipping".format(recent_soa_root_filename))
 	else:
@@ -647,18 +658,16 @@ if __name__ == "__main__":
 	if opts.test:
 		print("Running tests instead of a real run")
 		# Sanity check that you are in the Tests directory
-		for this_check in [ "make_tests.py", "p-dot-soa", "soa-to-use" ]:
+		for this_check in [ "make_tests.py", "p-dot-soa", "root_name_and_types.pickle" ]:
 			if not os.path.exists(this_check):
-				exit("Did not find {}. Exiting.".format(this_check))
-		soa_for_testing = open("soa-to-use", mode="rt").read().strip()
-		this_recent_soa_serial_array = [ soa_for_testing ]
+				exit("Did not find {} for running under --test. Exiting.".format(this_check))
 		# Test the positives
 		p_count = 0
 		for this_test_file in sorted(glob.glob("p-*")):
 			p_count += 1
 			this_id = os.path.basename(this_test_file)
 			this_resp_pickle = pickle.dumps(yaml.load(open(this_test_file, mode="rb")))
-			this_response = (process_one_correctness_array([this_id, this_recent_soa_serial_array, this_resp_pickle]))
+			this_response = (process_one_correctness_array([this_id, [ "test" ], this_resp_pickle]))
 			if this_response:
 				print("Expected pass, but got failure, on {}\n{}\n".format(this_id, this_response))
 		# Test the negatives
@@ -672,7 +681,7 @@ if __name__ == "__main__":
 			n_responses[this_id] = {}
 			n_responses[this_id]["desc"] = in_lines[0]
 			this_resp_pickle = pickle.dumps(yaml.load(open(this_test_file, mode="rt")))
-			this_response = (process_one_correctness_array([this_id, this_recent_soa_serial_array, this_resp_pickle]))
+			this_response = (process_one_correctness_array([this_id, [ "test" ], this_resp_pickle]))
 			if not this_response:
 				print("Expected failure, but got pass, on {}".format(this_id))
 			else:
@@ -765,8 +774,3 @@ if __name__ == "__main__":
 	conn.close()
 	log("Finished overall collector processing")	
 	exit()
-
-"""
-	# Need the root zone file for this
-	recent_soa_root_filename = "{}/{}.root.txt".format(saved_root_zone_dir, this_recent_soa_serial_array[-1])
-"""

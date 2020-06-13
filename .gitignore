@@ -2,5 +2,6 @@ Local/*
 Ansible/authorized_keys
 Tests/p-*
 Tests/n-*
-Tests/soa-to-use
 Tests/results.txt
+Tests/root_name_and_types.pickle
+Tests/root_zone.txt
